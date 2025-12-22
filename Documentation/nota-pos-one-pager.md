@@ -11,7 +11,7 @@ Over the course of nearly two decades in the restaurant industry, I have worked 
 ## Key Differentiators
 
 **Built by Someone Who's Been There**
-- Designed by a former floor manager, server, and bartender
+- Designed by a former floor manager, server, bartender and kitchen prepper
 - Every feature addresses a real operational pain point
 - Interface optimized for speed during service, not executive presentations
 
