@@ -6,3 +6,4 @@ com/notapos/NotaPosApplication.class
 com/notapos/entity/RestaurantTable.class
 com/notapos/service/TableService.class
 com/notapos/repository/TableRepository.class
+com/notapos/controller/MenuItemController.class
