@@ -5,11 +5,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Entity representing a customer order.
+ * Entity representing a customer order (the entire check/tab for a table).
  * 
- * Orders contain multiple OrderItems and implement the delay timer feature.
- * The delay timer gives servers a customizable window to edit orders
- * before they are locked and sent to the kitchen.
+ * An Order stays open throughout the meal and contains multiple OrderItems.
+ * Each OrderItem has its own delay timer - not the Order itself.
+ * Order is completed when the guest pays and leaves.
  * 
  * @author CJ
  */
@@ -32,15 +32,6 @@ public class Order {
     @Column(name = "status", nullable = false, length = 20)
     private String status = "open";
 
-    @Column(name = "delay_seconds", nullable = false)
-    private Integer delaySeconds = 15;
-
-    @Column(name = "delay_expires_at")
-    private LocalDateTime delayExpiresAt;
-
-    @Column(name = "is_locked", nullable = false)
-    private Boolean isLocked = false;
-
     @Column(name = "subtotal", precision = 10, scale = 2)
     private BigDecimal subtotal = BigDecimal.ZERO;
 
@@ -53,9 +44,6 @@ public class Order {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "fired_at")
-    private LocalDateTime firedAt;
-
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
@@ -65,7 +53,7 @@ public class Order {
         return orderId;
     }
 
-    public void serOrderId(Long orderId) {
+    public void setOrderId(Long orderId) {
         this.orderId = orderId;
     }
 
@@ -91,30 +79,6 @@ public class Order {
 
     public void setStatus(String status) {
         this.status = status;
-    }
-
-    public Integer getDelaySeconds() {
-        return delaySeconds;
-    }
-
-    public void setDelaySeconds(Integer delaySeconds) {
-        this.delaySeconds = delaySeconds;
-    }
-
-    public LocalDateTime getDelayExpiresAt() {
-        return delayExpiresAt;
-    }
-
-    public void setDelayExpiresAt(LocalDateTime delayExpiresAt) {
-        this.delayExpiresAt = delayExpiresAt;
-    }
-
-    public Boolean getIsLocked() {
-        return isLocked;
-    }
-
-    public void setIsLocked(Boolean isLocked) {
-        this.isLocked = isLocked;
     }
 
     public BigDecimal getSubtotal() {
@@ -145,14 +109,6 @@ public class Order {
         return createdAt;
     }
 
-    public LocalDateTime getFiredAt() {
-        return firedAt;
-    }
-
-    public void setFiredAt(LocalDateTime firedAt) {
-        this.firedAt = firedAt;
-    }
-
     public LocalDateTime getCompletedAt() {
         return completedAt;
     }
@@ -164,9 +120,5 @@ public class Order {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-
-        if (delayExpiresAt == null && delaySeconds != null) {
-            delayExpiresAt = createdAt.plusSeconds(delaySeconds);
-        }
     }
 }

@@ -1,11 +1,13 @@
 com/notapos/repository/OrderRepository.class
 com/notapos/entity/MenuItem.class
-com/notapos/service/MenuItemService.class
 com/notapos/entity/Order.class
-com/notapos/repository/MenuItemRepository.class
+com/notapos/service/OrderService.class
 com/notapos/controller/TableController.class
 com/notapos/NotaPosApplication.class
 com/notapos/entity/RestaurantTable.class
 com/notapos/service/TableService.class
 com/notapos/repository/TableRepository.class
+com/notapos/service/MenuItemService.class
+com/notapos/controller/OrderController.class
+com/notapos/repository/MenuItemRepository.class
 com/notapos/controller/MenuItemController.class

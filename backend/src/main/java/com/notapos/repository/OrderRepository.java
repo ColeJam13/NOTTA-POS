@@ -10,9 +10,6 @@ import java.util.List;
 /**
  * Repository for Order entity.
  * 
- * Provides database access methods for managing orders.
- * Includes custom queries for delay timer functionality.
- * 
  * @author CJ
  */
 
@@ -22,14 +19,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByTableId(Long tableId);            // Find all orders for specific table
 
     List<Order> findByStatus(String status);            // Find all orders with specific status
-
-    List<Order> findByIsLocked(Boolean isLocked);       // Find all unlocked (still editable) orders
-
-    @Query("SELECT o FROM Order o WHERE o.delayExpiresAt <= :now AND o.isLocked = :isLocked")       // Find orders whos delay has expired but arent locked yet
-    List<Order> findExpiredUnlockedOrders(LocalDateTime now, Boolean isLocked);                             // For the background job that locks orders
-
-    @Query("SELECT o FROM Order o WHERE o.tableId = :tableId AND o.status != :status")              // Find all open orders for a table (not complete)
-    List<Order> findActiveOrdersByTable(Long tableId, String status);
 
     List<Order> findByTableIdAndStatus(Long tableId, String status);                        // Find orders by status and table
 
