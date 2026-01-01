@@ -2,6 +2,7 @@ com/notapos/repository/OrderRepository.class
 com/notapos/entity/MenuItem.class
 com/notapos/entity/Order.class
 com/notapos/service/OrderService.class
+com/notapos/repository/OrderItemRepository.class
 com/notapos/controller/TableController.class
 com/notapos/entity/OrderItem.class
 com/notapos/NotaPosApplication.class
