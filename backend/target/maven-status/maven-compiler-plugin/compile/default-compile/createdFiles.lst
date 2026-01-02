@@ -17,4 +17,5 @@ com/notapos/service/MenuItemService.class
 com/notapos/controller/OrderController.class
 com/notapos/service/PrepStationService.class
 com/notapos/repository/MenuItemRepository.class
+com/notapos/controller/PrepStationController.class
 com/notapos/controller/MenuItemController.class

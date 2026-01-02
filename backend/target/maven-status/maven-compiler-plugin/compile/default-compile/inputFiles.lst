@@ -6,6 +6,7 @@
 /Users/cjamison/Projects/NotaPOS/backend/src/main/java/com/notapos/controller/MenuItemController.java
 /Users/cjamison/Projects/NotaPOS/backend/src/main/java/com/notapos/controller/OrderItemController.java
 /Users/cjamison/Projects/NotaPOS/backend/src/main/java/com/notapos/NotaPosApplication.java
+/Users/cjamison/Projects/NotaPOS/backend/src/main/java/com/notapos/controller/PrepStationController.java
 /Users/cjamison/Projects/NotaPOS/backend/src/main/java/com/notapos/repository/OrderItemRepository.java
 /Users/cjamison/Projects/NotaPOS/backend/src/main/java/com/notapos/service/OrderService.java
 /Users/cjamison/Projects/NotaPOS/backend/src/main/java/com/notapos/repository/OrderRepository.java
