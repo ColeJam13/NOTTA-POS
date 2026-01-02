@@ -30,6 +30,7 @@ com/notapos/service/MenuItemService.class
 com/notapos/controller/ModifierController.class
 com/notapos/repository/MenuItemRepository.class
 com/notapos/service/ModifierService.class
+com/notapos/service/TableStatusLogService.class
 com/notapos/entity/ModifierGroup.class
 com/notapos/controller/ModifierGroupController.class
 com/notapos/repository/ModifierGroupRepository.class
