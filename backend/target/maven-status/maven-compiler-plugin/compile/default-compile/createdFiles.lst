@@ -1,3 +1,4 @@
+com/notapos/repository/OrderItemModifierRepository.class
 com/notapos/entity/MenuItem.class
 com/notapos/entity/Order.class
 com/notapos/service/OrderService.class
