@@ -8,6 +8,7 @@ com/notapos/controller/TableController.class
 com/notapos/entity/OrderItem.class
 com/notapos/NotaPosApplication.class
 com/notapos/entity/RestaurantTable.class
+com/notapos/entity/PrepStation.class
 com/notapos/controller/OrderItemController.class
 com/notapos/service/TableService.class
 com/notapos/repository/TableRepository.class
