@@ -115,4 +115,10 @@ public class OrderItemController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    @PostMapping("/lock-expired")
+    public ResponseEntity<List<OrderItem>> lockExpiredItems() {
+        List<OrderItem> locked = orderItemService.lockAndFireExpiredItems();
+        return ResponseEntity.ok(locked);
+    }
 }
