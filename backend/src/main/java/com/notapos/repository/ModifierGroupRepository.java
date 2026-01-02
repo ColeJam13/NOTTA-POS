@@ -16,11 +16,11 @@ import java.util.Optional;
 @Repository
 public interface ModifierGroupRepository extends JpaRepository<ModifierGroup, Long> {
 
-    Optional<ModifierGroup> findByName(String name);
+    Optional<ModifierGroup> findByName(String name);                        // Find modifiergroup by name
 
-    List<ModifierGroup> findByIsActive(Boolean isActive);
+    List<ModifierGroup> findByIsActive(Boolean isActive);                   // find modifiergroup by status
 
-    List<ModifierGroup> findByIsRequired(Boolean isRequired);
+    List<ModifierGroup> findByIsRequired(Boolean isRequired);               // find modifiergroup by requirement
 }
 
 

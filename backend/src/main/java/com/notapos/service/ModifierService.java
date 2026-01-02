@@ -23,31 +23,31 @@ public class ModifierService {
         this.modifierRepository = modifierRepository;
     }
 
-    public List<Modifier> getAllModifiers() {
+    public List<Modifier> getAllModifiers() {                           // Get all Modififers
         return modifierRepository.findAll();
     }
 
-    public List<Modifier> getActiveModifiers() {
+    public List<Modifier> getActiveModifiers() {                        // Get all active Modifiers
         return modifierRepository.findByIsActive(true);
     }
 
-    public Optional<Modifier> getModifierById(Long id) {
+    public Optional<Modifier> getModifierById(Long id) {                // Get all Modifers 
         return modifierRepository.findById(id);
     }
 
-    public List<Modifier> getModifiersByGroup(Long modifierGroupId) {
+    public List<Modifier> getModifiersByGroup(Long modifierGroupId) {               // Get modifiers by group
         return modifierRepository.findByModifierGroupId(modifierGroupId);
     }
 
-    public List<Modifier> getActiveModifiersByGroup(Long modifierGroupId) {
+    public List<Modifier> getActiveModifiersByGroup(Long modifierGroupId) {                     // Get active Modifiers by group
         return modifierRepository.findByModifierGroupIdAndIsActive(modifierGroupId, true);
     }
 
-    public Modifier createModifier(Modifier modifier) {
+    public Modifier createModifier(Modifier modifier) {                                             // Create new modifier
         return modifierRepository.save(modifier);
     }
 
-    public Modifier updateModifier(Long id, Modifier updatedModifier) {
+    public Modifier updateModifier(Long id, Modifier updatedModifier) {                             // Update existing Modifier
         Modifier existing = modifierRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Modifier not found with id: " + id));
 
@@ -58,7 +58,7 @@ public class ModifierService {
         return modifierRepository.save(existing);
     }
 
-    public void deleteModifier(Long id) {
+    public void deleteModifier(Long id) {                                           // Delete existing modifier
         modifierRepository.deleteById(id);
     }
 }

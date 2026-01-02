@@ -18,11 +18,11 @@ import java.util.Optional;
 @Repository                                                                                 // Tells spring this is a repository bean
 public interface TableRepository extends JpaRepository<RestaurantTable, Long> {
 
-    Optional<RestaurantTable> findByTableNumber(String tableNumber);
+    Optional<RestaurantTable> findByTableNumber(String tableNumber);            // Find table by table Number
 
-    List<RestaurantTable> findBySection(String section);
+    List<RestaurantTable> findBySection(String section);                        // Find table by section
 
-    List<RestaurantTable> findByStatus(String status);
+    List<RestaurantTable> findByStatus(String status);                          // Find table by section
 
-    List<RestaurantTable> findBySectionAndStatus(String section, String status);
+    List<RestaurantTable> findBySectionAndStatus(String section, String status);        // Find table by section and status
 }

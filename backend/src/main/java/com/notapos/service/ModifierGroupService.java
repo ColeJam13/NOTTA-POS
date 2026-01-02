@@ -23,27 +23,27 @@ public class ModifierGroupService {
         this.modifierGroupRepository = modifierGroupRepository;
     }
 
-    public List<ModifierGroup> getAllModifierGroups() {
+    public List<ModifierGroup> getAllModifierGroups() {                         // Get all ModifierGroups
         return modifierGroupRepository.findAll();
     }
 
-    public List<ModifierGroup> getActiveModifierGroups() {
+    public List<ModifierGroup> getActiveModifierGroups() {                      // Get all active ModifierGroups
         return modifierGroupRepository.findByIsActive(true);
     }
 
-    public Optional<ModifierGroup> getModifierGroupById(Long id) {
+    public Optional<ModifierGroup> getModifierGroupById(Long id) {              // Get ModifierGroup by ID
         return modifierGroupRepository.findById(id);
     }
 
-    public Optional<ModifierGroup> getModifierGroupByName(String name) {
+    public Optional<ModifierGroup> getModifierGroupByName(String name) {        // Get ModifierGroup by name
         return modifierGroupRepository.findByName(name);
     }
 
-    public ModifierGroup createModifierGroup(ModifierGroup modifierGroup) {
+    public ModifierGroup createModifierGroup(ModifierGroup modifierGroup) {     // Create new ModififerGroup
         return modifierGroupRepository.save(modifierGroup);
     }
 
-    public ModifierGroup updateModifierGroup(Long id, ModifierGroup updatedGroup) {
+    public ModifierGroup updateModifierGroup(Long id, ModifierGroup updatedGroup) {             // Update existing ModififerGroup
         ModifierGroup existing = modifierGroupRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Modifier group not found with id: " +id));
 
@@ -56,7 +56,7 @@ public class ModifierGroupService {
                 return modifierGroupRepository.save(existing);
     }
 
-    public void deleteModifierGroup(Long id) {
+    public void deleteModifierGroup(Long id) {                              // Delete existing ModifierGroup
         modifierGroupRepository.deleteById(id);
     }
 }

@@ -14,9 +14,9 @@ import java.util.List;
 @Repository
 public interface ModifierRepository extends JpaRepository<Modifier, Long> {
 
-    List<Modifier> findByModifierGroupId(Long modifierGroupId);
+    List<Modifier> findByModifierGroupId(Long modifierGroupId);                                 // Find modifier by group ID
 
-    List<Modifier> findByIsActive(Boolean isActive);
+    List<Modifier> findByIsActive(Boolean isActive);                                            // Find modifier by status
 
-    List<Modifier> findByModifierGroupIdAndIsActive(Long modifierGroupId, Boolean isActive);
+    List<Modifier> findByModifierGroupIdAndIsActive(Long modifierGroupId, Boolean isActive);    // Find modifier by group and status
 }
