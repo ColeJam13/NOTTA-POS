@@ -30,6 +30,7 @@
 /Users/cjamison/Projects/NotaPOS/backend/src/main/java/com/notapos/entity/MenuItem.java
 /Users/cjamison/Projects/NotaPOS/backend/src/main/java/com/notapos/controller/OrderController.java
 /Users/cjamison/Projects/NotaPOS/backend/src/main/java/com/notapos/controller/ModifierController.java
+/Users/cjamison/Projects/NotaPOS/backend/src/main/java/com/notapos/controller/TableStatusLogController.java
 /Users/cjamison/Projects/NotaPOS/backend/src/main/java/com/notapos/entity/Modifier.java
 /Users/cjamison/Projects/NotaPOS/backend/src/main/java/com/notapos/repository/TableRepository.java
 /Users/cjamison/Projects/NotaPOS/backend/src/main/java/com/notapos/controller/PaymentController.java
