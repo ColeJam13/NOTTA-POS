@@ -16,6 +16,7 @@ com/notapos/repository/ModifierRepository.class
 com/notapos/service/PrepStationService.class
 com/notapos/service/ModifierGroupService.class
 com/notapos/controller/PrepStationController.class
+com/notapos/entity/OrderItemModifier.class
 com/notapos/repository/TableStatusLogRepository.class
 com/notapos/entity/MenuItemModifierGroup.class
 com/notapos/controller/MenuItemController.class
