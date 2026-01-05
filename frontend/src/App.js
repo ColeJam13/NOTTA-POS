@@ -90,12 +90,9 @@ useEffect(() => {
 
   return (
     <div className="app">
-      <header className="app-header">
+      <div className="order-panel">
         <h1 className="logo">NOTA-POS</h1>
-      </header>
-
-    <div className="order-panel">
-      <h2>Current Order - Table F1</h2>
+        <h2>Current Order - Table F1</h2>
 
       {secondsLeft !== null && secondsLeft > 0 && (
         <div className="timer-display">
