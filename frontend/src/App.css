@@ -258,4 +258,12 @@
   text-align: center;
   margin-top: 20px;
   margin-bottom: 20px;
+  text-transform: uppercase;
+  color: #39ff14;
+  background: #16213e;
+  padding: 15px;
+  border: 2px solid #b026ff;
+  border-radius: 8px;
+  font-size: 18px;
+  letter-spacing: 2px;
 }
