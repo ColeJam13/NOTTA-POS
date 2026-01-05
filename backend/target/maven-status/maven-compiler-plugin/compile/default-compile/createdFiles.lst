@@ -29,6 +29,7 @@ com/notapos/service/OrderItemService.class
 com/notapos/NotaPosApplication.class
 com/notapos/service/PaymentService.class
 com/notapos/controller/OrderItemController.class
+com/notapos/scheduled/TimerScheduledTask.class
 com/notapos/service/TableService.class
 com/notapos/repository/TableRepository.class
 com/notapos/entity/Modifier.class
