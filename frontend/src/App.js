@@ -102,7 +102,7 @@ useEffect(() => {
 
       {secondsLeft === 0 && (
         <div className="timer-locked">
-          Items locked and sent to the kitchen
+          Items locked and sent to prep station
         </div>
       )}
 
@@ -163,7 +163,7 @@ useEffect(() => {
               sendOrder();
             }
           }}>
-            {timerExpires ? 'SEND NOW?' : 'SEND TO KITCHEN'}
+            {timerExpires ? 'SEND NOW?' : 'SEND ORDER'}
           </button>
         </div>
       </div>
