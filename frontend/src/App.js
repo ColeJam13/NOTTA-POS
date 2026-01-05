@@ -154,7 +154,20 @@ useEffect(() => {
       </div>
         <div className="order-actions">
           <button className="btn-save">SAVE DRAFT</button>
-          <button className="btn-send" onClick={sendOrder}>SEND TO KITCHEN</button>
+          <button className="btn-send" onClick={() => {
+            if (timerExpires) {
+              setSecondsLeft(0);
+              setTimerExpires(null);
+              setOrderItems(prevItems => prevItems.map(item => ({
+                ...item,
+                status: 'locked'
+              })));
+            } else {
+              sendOrder();
+            }
+          }}>
+            {timerExpires ? 'SEND NOW?' : 'SEND TO KITCHEN'}
+          </button>
         </div>
       </div>
 
