@@ -76,7 +76,7 @@ public class OrderItem {
         this.orderId = orderId;
     }
 
-    public Long getMenutItemId() {
+    public Long getMenuItemId() {
         return menuItemId;
     }
 
