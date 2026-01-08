@@ -470,3 +470,156 @@
   text-transform: uppercase;
 }
 
+.page-with-nav {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #1a1a2e;
+}
+
+.navbar {
+  background: #0f0f1e;
+  border-bottom: 3px solid #b026ff;
+  box-shadow: 0 4px 20px rgba(176, 38, 255, 0.3);
+}
+
+.navbar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 30px;
+  gap: 30px;
+}
+
+.navbar-search {
+  flex: 1;
+  max-width: 600px;
+}
+
+.navbar-search input {
+  width: 100%;
+  padding: 12px 20px;
+  background: #1a1a2e;
+  border: 2px solid #b026ff;
+  border-radius: 25px;
+  color: #e0e0e0;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+}
+
+.navbar-search input::placeholder {
+  color: #666;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.notifications-btn {
+  position: relative;
+  background: transparent;
+  border: 2px solid #b026ff;
+  color: #e0e0e0;
+  padding: 10px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.3s;
+}
+
+.notifications-btn:hover {
+  background: #b026ff;
+}
+
+.notifications-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #ff3366;
+  color: #fff;
+  font-size: 10px;
+  font-family: 'Press Start 2P', monospace;
+  padding: 3px 6px;
+  border-radius: 50%
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  background: #b026ff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: #1a1a2e;
+  font-weight: bold;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-name {
+  color: #e0e0e0;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+}
+
+.user-role {
+  color: #39ff14;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+}
+
+.navbar-bottom {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  padding: 15px 30px;
+  background: #16213e;
+}
+
+.navbar-bottom button {
+  padding: 10px 18px;
+  background: transparent;
+  border: 2px solid #39ff14;
+  color: #39ff14;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.navbar-bottom button:hover {
+  background: #39ff14;
+  color: #1a1a2e;
+}
+
+.navbar-bottom button.active {
+  background: #39ff14;
+  color: #1a1a2e;
+}
+
+.navbar-logo {
+  font-family: 'GothicByte', monospace;
+  font-size: 28px;
+  color: #b026ff;
+  text-shadow:
+    0 0 10px #b026ff,
+    0 0 20px #b026ff;
+  letter-spacing: 6px;
+  margin: 0;
+}

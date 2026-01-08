@@ -7,11 +7,11 @@ function App() {
   const [currentView, setCurrentView] = useState('home');
 
   if (currentView === 'createOrder') {
-    return <CreateOrder />
+    return <CreateOrder setCurrentView={setCurrentView} />;
   }
 
   if (currentView === 'activeOrders') {
-    return <ActiveOrders />;
+    return <ActiveOrders setCurrentView={setCurrentView} />;
   }
 
   return (

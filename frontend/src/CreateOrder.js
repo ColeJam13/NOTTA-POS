@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
+import NavBar from './NavBar'
 import './App.css';
 
 
-function CreateOrder() {
+function CreateOrder({ setCurrentView }) {
   const [menuItems, setMenuItems] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('Savory');
   const [orderItems, setOrderItems] = useState([])
@@ -89,160 +90,162 @@ useEffect(() => {
   };
 
   return (
-    <div className="app">
-      <div className="order-panel">
-        <h1 className="logo">NOTA-POS</h1>
-        <h2>Current Order - Table F1</h2>
+    <div className="page-with-nav">
+        <NavBar currentView="createOrder" setCurrentView={setCurrentView} />
+            <div className="app">
+            <div className="order-panel">
+                <h2>Current Order - Table F1</h2>
 
-      {secondsLeft !== null && secondsLeft > 0 && (
-        <div className="timer-display">
-          {secondsLeft} seconds to edit
-        </div>
-      )}
+            {secondsLeft !== null && secondsLeft > 0 && (
+                <div className="timer-display">
+                {secondsLeft} seconds to edit
+                </div>
+            )}
 
-      {secondsLeft === 0 && (
-        <div className="timer-locked">
-          Items locked and sent to prep station
-        </div>
-      )}
+            {secondsLeft === 0 && (
+                <div className="timer-locked">
+                Items locked and sent to prep station
+                </div>
+            )}
 
-        <div className="order-items-list">
-          {orderItems.map((item, index) => (
-            <div key={index} className={`order-item ${item.status === 'locked' ? 'locked' : ''}`}>
-              <span>{item.status === 'locked' && '🔒 '}{item.name}</span>
-              <span>${item.price.toFixed(2)}</span>
-              {item.status !== 'locked' && (
-              <button
-                className="btn-remove"
-                onClick={() => {
-                  setOrderItems(orderItems.filter((_, i) => i !== index));
+                <div className="order-items-list">
+                {orderItems.map((item, index) => (
+                    <div key={index} className={`order-item ${item.status === 'locked' ? 'locked' : ''}`}>
+                    <span>{item.status === 'locked' && '🔒 '}{item.name}</span>
+                    <span>${item.price.toFixed(2)}</span>
+                    {item.status !== 'locked' && (
+                    <button
+                        className="btn-remove"
+                        onClick={() => {
+                        setOrderItems(orderItems.filter((_, i) => i !== index));
 
-                  if (timerExpires) {
-                    const newExpires = new Date(Date.now() + 15000);
-                    setTimerExpires(newExpires);
-                    setSecondsLeft(15);
-                  }
-                }}
-              >
-                x
-              </button>
-              )}
+                        if (timerExpires) {
+                            const newExpires = new Date(Date.now() + 15000);
+                            setTimerExpires(newExpires);
+                            setSecondsLeft(15);
+                        }
+                        }}
+                    >
+                        x
+                    </button>
+                    )}
+                    </div>
+                ))}
+                </div>
+
+                {orderItems.length === 0 && (
+                <p className="empty-order">No items added yet</p>
+                )}
+
+            <div className="order-totals">
+                <div className="total-row">
+                <span>Subtotal:</span>
+                <span>${orderItems.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</span>
+                </div>
+                <div className="total-row">
+                <span>Tax (3%):</span>
+                <span>${(orderItems.reduce((sum, item) => sum + item.price, 0) * 0.03).toFixed(2)}</span>
+                </div>
+                <div className="total-row total">
+                <span>TOTAL:</span>
+                <span>${(orderItems.reduce((sum, item) => sum + item.price, 0) * 1.03).toFixed(2)}</span>
+                </div>
             </div>
-          ))}
-        </div>
+                <div className="order-actions">
+                <button className="btn-save">SAVE DRAFT</button>
+                <button className="btn-send" onClick={() => {
+                    if (timerExpires) {
+                    setSecondsLeft(0);
+                    setTimerExpires(null);
+                    setOrderItems(prevItems => prevItems.map(item => ({
+                        ...item,
+                        status: 'locked'
+                    })));
+                    } else {
+                    sendOrder();
+                    }
+                }}>
+                    {timerExpires ? 'SEND NOW?' : 'SEND ORDER'}
+                </button>
+                </div>
+            </div>
 
-        {orderItems.length === 0 && (
-          <p className="empty-order">No items added yet</p>
-        )}
+            <div className="menu-panel">
+                <div className="category-tabs">
+                <button
+                    className={`category-tab ${selectedCategory === 'Savory' ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory('Savory')}
+                >
+                    SAVORY
+                </button>
+                <button
+                    className={`category-tab ${selectedCategory === 'Sweet' ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory('Sweet')}
+                >
+                    SWEET
+                </button>
+                <button
+                    className={`category-tab ${selectedCategory === 'Build Your Own' ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory('Build Your Own')}
+                >
+                    BUILD YOUR OWN
+                </button>
+                <button
+                    className={`category-tab ${selectedCategory === 'Snacks & Sides' ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory('Snacks & Sides')}
+                >
+                    SNACKS & SIDES
+                </button>
+                <button
+                    className={`category-tab ${selectedCategory === 'Beverages' ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory('Beverages')}
+                >
+                    BEVERAGES
+                </button>
+                <button
+                    className={`category-tab ${selectedCategory === 'Cocktails' ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory('Cocktails')}
+                >
+                    COCKTAILS
+                </button>
+                <button
+                    className={`category-tab ${selectedCategory === 'Coffee' ? 'active' : ''}}`}
+                    onClick={() => setSelectedCategory('Coffee')}
+                >
+                    COFFEE
+                </button>
+                </div>
+                <div className="menu-grid">
+                {menuItems
+                    .filter(item => item.category === selectedCategory)
+                    .map(item => (
+                    <div key ={item.menuItemId} className="menu-item-card" onClick={() => {
+                        setOrderItems([...orderItems, {
+                        menuItemId: item.menuItemId,
+                        name: item.name,
+                        price: item.price,
+                        quantity: 1,
+                        status: 'draft'
+                        }]);
 
-      <div className="order-totals">
-        <div className="total-row">
-          <span>Subtotal:</span>
-          <span>${orderItems.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</span>
-        </div>
-        <div className="total-row">
-          <span>Tax (3%):</span>
-          <span>${(orderItems.reduce((sum, item) => sum + item.price, 0) * 0.03).toFixed(2)}</span>
-        </div>
-        <div className="total-row total">
-          <span>TOTAL:</span>
-          <span>${(orderItems.reduce((sum, item) => sum + item.price, 0) * 1.03).toFixed(2)}</span>
-        </div>
-      </div>
-        <div className="order-actions">
-          <button className="btn-save">SAVE DRAFT</button>
-          <button className="btn-send" onClick={() => {
-            if (timerExpires) {
-              setSecondsLeft(0);
-              setTimerExpires(null);
-              setOrderItems(prevItems => prevItems.map(item => ({
-                ...item,
-                status: 'locked'
-              })));
-            } else {
-              sendOrder();
-            }
-          }}>
-            {timerExpires ? 'SEND NOW?' : 'SEND ORDER'}
-          </button>
-        </div>
-      </div>
+                        if (timerExpires) {
+                        const newExpires = new Date(Date.now() + 15000);
+                        setTimerExpires(newExpires);
+                        setSecondsLeft(15);
+                        }
 
-      <div className="menu-panel">
-        <div className="category-tabs">
-          <button
-            className={`category-tab ${selectedCategory === 'Savory' ? 'active' : ''}`}
-            onClick={() => setSelectedCategory('Savory')}
-          >
-            SAVORY
-          </button>
-          <button
-            className={`category-tab ${selectedCategory === 'Sweet' ? 'active' : ''}`}
-            onClick={() => setSelectedCategory('Sweet')}
-          >
-            SWEET
-          </button>
-          <button
-            className={`category-tab ${selectedCategory === 'Build Your Own' ? 'active' : ''}`}
-            onClick={() => setSelectedCategory('Build Your Own')}
-          >
-            BUILD YOUR OWN
-          </button>
-          <button
-            className={`category-tab ${selectedCategory === 'Snacks & Sides' ? 'active' : ''}`}
-            onClick={() => setSelectedCategory('Snacks & Sides')}
-          >
-            SNACKS & SIDES
-          </button>
-          <button
-            className={`category-tab ${selectedCategory === 'Beverages' ? 'active' : ''}`}
-            onClick={() => setSelectedCategory('Beverages')}
-          >
-            BEVERAGES
-          </button>
-          <button
-            className={`category-tab ${selectedCategory === 'Cocktails' ? 'active' : ''}`}
-            onClick={() => setSelectedCategory('Cocktails')}
-          >
-            COCKTAILS
-          </button>
-          <button
-            className={`category-tab ${selectedCategory === 'Coffee' ? 'active' : ''}}`}
-            onClick={() => setSelectedCategory('Coffee')}
-          >
-            COFFEE
-          </button>
-        </div>
-        <div className="menu-grid">
-          {menuItems
-            .filter(item => item.category === selectedCategory)
-            .map(item => (
-              <div key ={item.menuItemId} className="menu-item-card" onClick={() => {
-                setOrderItems([...orderItems, {
-                  menuItemId: item.menuItemId,
-                  name: item.name,
-                  price: item.price,
-                  quantity: 1,
-                  status: 'draft'
-                }]);
-
-                if (timerExpires) {
-                  const newExpires = new Date(Date.now() + 15000);
-                  setTimerExpires(newExpires);
-                  setSecondsLeft(15);
+                        if (secondsLeft === 0) {
+                        setSecondsLeft(null);
+                        }
+                    }}>
+                        <h3>{item.name}</h3>
+                        <p className="price">${item.price.toFixed(2)}</p>
+                    </div>
+                    ))
                 }
-
-                if (secondsLeft === 0) {
-                  setSecondsLeft(null);
-                }
-              }}>
-                <h3>{item.name}</h3>
-                <p className="price">${item.price.toFixed(2)}</p>
-              </div>
-            ))
-          }
+                </div>
+            </div>
         </div>
-      </div>
     </div>
   );
 }
