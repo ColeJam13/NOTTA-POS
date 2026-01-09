@@ -360,10 +360,11 @@
 }
 
 .active-orders-page {
-  min-height: 100vh;
+  flex: 1;
   background: #1a1a2e;
   padding: 40px;
   color: #e0e0e0;
+  overflow-y: auto;
 }
 
 .active-orders-page h2:not(.logo) {
@@ -449,6 +450,8 @@
 .order-item-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 15px;
   padding: 10px;
   background: #0f0f1e;
   border-radius: 8px;
@@ -465,9 +468,14 @@
   flex: 1;
 }
 
-.order-item-row span:last-child {
+.status-fired,
+.status-completed,
+.status-pending,
+.status-limbo {
   color: #39ff14;
   text-transform: uppercase;
+  min-width: 80px;
+  text-align: right;
 }
 
 .page-with-nav {
@@ -622,4 +630,42 @@
     0 0 20px #b026ff;
   letter-spacing: 6px;
   margin: 0;
+}
+
+.btn-complete {
+  padding: 8px 15px;
+  background: #39ff14;
+  border: 2px solid #39ff14;
+  color: #1a1a2e;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-left: auto;
+}
+
+.btn-complete:hover {
+  background: #2ee00f;
+  box-shadow: 0 0 15px rgba(57, 255, 20, 0.6);
+  transform: scale(1.05);
+}
+
+.btn-start {
+  padding: 8px 15px;
+  background: #39ff14;
+  border: 2px solid #39ff14;
+  color: #1a1a2e;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-left: auto;
+}
+
+.btn-start:hover {
+  background: #2ee00f;
+  box-shadow: 0 0 15px rgba(57, 255, 20, 0.6);
+  transform: scale(1.05);
 }

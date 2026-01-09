@@ -134,7 +134,7 @@ class OrderItemServiceTest {
         when(orderItemRepository.save(any(OrderItem.class))).thenReturn(testItem);
 
         // When
-        List<OrderItem> lockedItems = orderItemService.lockAndFireExpiredItems();
+        List<OrderItem> lockedItems = orderItemService.lockAndSendExpiredItems();
 
         // Then
         assertEquals(1, lockedItems.size());
@@ -152,7 +152,7 @@ class OrderItemServiceTest {
         when(orderItemRepository.save(any(OrderItem.class))).thenReturn(testItem);
 
         // When
-        OrderItem fired = orderItemService.fireItemNow(1L);
+        OrderItem fired = orderItemService.sendItemNow(1L);
 
         // Then
         assertTrue(fired.getIsLocked());

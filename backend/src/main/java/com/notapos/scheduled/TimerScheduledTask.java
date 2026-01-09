@@ -33,6 +33,6 @@ public class TimerScheduledTask {
 
     @Scheduled(fixedRate = 1000)
     public void checkExpiredTimers() {
-        orderItemService.lockAndFireExpiredItems();
+        orderItemService.lockAndSendExpiredItems();
     }
 }

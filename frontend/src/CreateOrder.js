@@ -10,6 +10,7 @@ function CreateOrder({ setCurrentView }) {
   const [currentTableId, setCurrentTableId] = useState(1);
   const [timerExpires, setTimerExpires] = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(null);
+  const [currentOrderId, setCurrentOrderId] = useState(null);
 
 useEffect(() => {
   fetch('http://localhost:8080/api/menu-items')
@@ -35,7 +36,7 @@ useEffect(() => {
 
         setOrderItems(prevItems => prevItems.map(item => ({
           ...item,
-          status: 'locked'
+          status: item.status === 'limbo' ? 'pending' : item.status
         })));
 
       } else {
@@ -60,6 +61,7 @@ useEffect(() => {
       });
       const order = await orderResponse.json();
       console.log('Order created', order);
+      setCurrentOrderId(order.orderId);
 
       for (const item of orderItems) {
         await fetch('http://localhost:8080/api/order-items', {
@@ -153,13 +155,18 @@ useEffect(() => {
             </div>
                 <div className="order-actions">
                 <button className="btn-save">SAVE DRAFT</button>
-                <button className="btn-send" onClick={() => {
-                    if (timerExpires) {
+                <button className="btn-send" onClick={async () => {
+                    if (timerExpires && currentOrderId) {
+
+                      await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}/send-now`, {
+                        method: 'POST'
+                      });
+
                     setSecondsLeft(0);
                     setTimerExpires(null);
                     setOrderItems(prevItems => prevItems.map(item => ({
                         ...item,
-                        status: 'locked'
+                        status: item.status === 'limbo' ? 'pending' : item.status
                     })));
                     } else {
                     sendOrder();

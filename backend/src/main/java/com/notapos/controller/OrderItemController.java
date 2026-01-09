@@ -86,11 +86,39 @@ public class OrderItemController {
         return ResponseEntity.ok(sentItems);
     }
 
-    @PutMapping("/{id}/fire-now")                                                   // Fire Item Immediately, bypass timer
-    public ResponseEntity<OrderItem> fireItemNow(@PathVariable Long id) {
+    @PostMapping("/order/{orderId}/send-now")                                                   // Ensures items appear as pending when timer is bypassed
+    public ResponseEntity<List<OrderItem>> sendOrderNow(@PathVariable Long orderId) {
+        List<OrderItem> draftItems = orderItemService.getDraftItemsByOrder(orderId);
+        List<OrderItem> pendingItems = orderItemService.getPendingItemsByOrder(orderId);
+
+        List<OrderItem> sentItems = new java.util.ArrayList<>();
+
+        for (OrderItem item : draftItems) {
+            sentItems.add(orderItemService.sendItemNow(item.getOrderItemId()));
+        }
+
+        for (OrderItem item : pendingItems) {
+            sentItems.add(orderItemService.sendItemNow(item.getOrderItemId()));
+        }
+
+        return ResponseEntity.ok(sentItems);
+    }
+
+    @PutMapping("/{id}/send-now")                                                   // Send Item Immediately, bypass timer
+    public ResponseEntity<OrderItem> sendItemNow(@PathVariable Long id) {
         try {
-            OrderItem fired = orderItemService.fireItemNow(id);
-            return ResponseEntity.ok(fired);
+            OrderItem sent = orderItemService.sendItemNow(id);
+            return ResponseEntity.ok(sent);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/{id}/start")                                                    // start item in kitchen
+    public ResponseEntity<OrderItem> startItem(@PathVariable Long id) {
+        try {
+            OrderItem started = orderItemService.startItem(id);
+            return ResponseEntity.ok(started);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
@@ -118,7 +146,7 @@ public class OrderItemController {
 
     @PostMapping("/lock-expired")                                                       // Lock and fire items when delay timer hits zero
     public ResponseEntity<List<OrderItem>> lockExpiredItems() {
-        List<OrderItem> locked = orderItemService.lockAndFireExpiredItems();
+        List<OrderItem> locked = orderItemService.lockAndSendExpiredItems();
         return ResponseEntity.ok(locked);
     }
 }

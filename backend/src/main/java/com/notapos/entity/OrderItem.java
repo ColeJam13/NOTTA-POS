@@ -52,6 +52,9 @@ public class OrderItem {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "sent_at")
+    private LocalDateTime sentAt;
+
     @Column(name = "fired_at")
     private LocalDateTime firedAt;
 
@@ -142,6 +145,14 @@ public class OrderItem {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public LocalDateTime getSentAt() {
+        return sentAt;
+    }
+
+    public void setSentAt(LocalDateTime sentAt) {
+        this.sentAt = sentAt;
     }
 
     public LocalDateTime getFiredAt() {

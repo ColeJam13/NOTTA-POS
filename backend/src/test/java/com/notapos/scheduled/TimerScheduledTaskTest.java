@@ -43,7 +43,7 @@ class TimerScheduledTaskTest {
         timerScheduledTask.checkExpiredTimers();
 
         // Then - Service method should be called exactly once
-        verify(orderItemService, times(1)).lockAndFireExpiredItems();
+        verify(orderItemService, times(1)).lockAndSendExpiredItems();
     }
 
     @Test
@@ -59,7 +59,7 @@ class TimerScheduledTaskTest {
         }
 
         // Then - Service should be called 5 times
-        verify(orderItemService, times(5)).lockAndFireExpiredItems();
+        verify(orderItemService, times(5)).lockAndSendExpiredItems();
     }
 
     @Test
@@ -69,7 +69,7 @@ class TimerScheduledTaskTest {
         
         // Given - Service throws exception
         doThrow(new RuntimeException("Database connection lost"))
-                .when(orderItemService).lockAndFireExpiredItems();
+                .when(orderItemService).lockAndSendExpiredItems();
 
         // When/Then - Should not throw exception (scheduler catches it)
         // In production, Spring's @Scheduled handles exceptions gracefully
@@ -81,6 +81,6 @@ class TimerScheduledTaskTest {
         }
 
         // Verify the service was still called
-        verify(orderItemService, times(1)).lockAndFireExpiredItems();
+        verify(orderItemService, times(1)).lockAndSendExpiredItems();
     }
 }

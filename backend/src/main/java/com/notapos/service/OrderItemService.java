@@ -42,7 +42,11 @@ public class OrderItemService {
         return orderItemRepository.findByOrderIdAndStatus(orderId, "draft");
     }
 
-    public List<OrderItem> getPendingItemsByOrder(Long orderId) {               // Get pending items for an order (timer active)
+    public List<OrderItem> getLimboItemsByOrder(Long orderId) {                     // Get items in limbo (timer active)
+        return orderItemRepository.findByOrderIdAndStatus(orderId, "limbo");
+    }
+
+    public List<OrderItem> getPendingItemsByOrder(Long orderId) {               // Get pending items for an order 
         return orderItemRepository.findPendingItemsByOrder(orderId, "pending");
     }
 
@@ -82,15 +86,16 @@ public class OrderItemService {
         LocalDateTime now = LocalDateTime.now();
 
         for (OrderItem item : draftItems) {
-            item.setStatus("pending");
+            item.setStatus("limbo");
             item.setDelayExpiresAt(now.plusSeconds(item.getDelaySeconds()));
+            item.setSentAt(now);
             orderItemRepository.save(item);
         }
 
         return draftItems;
     }
 
-    public List<OrderItem> lockAndFireExpiredItems() {                                  // Lock and fire all items whos delay has expired
+    public List<OrderItem> lockAndSendExpiredItems() {                                  // Lock and fire all items whos delay has expired
         List<OrderItem> expiredItems = orderItemRepository.findExpiredUnlockedItems(
                 LocalDateTime.now(),
                 false
@@ -100,23 +105,31 @@ public class OrderItemService {
 
         for (OrderItem item : expiredItems) {
             item.setIsLocked(true);
-            item.setStatus("fired");
-            item.setFiredAt(now);
+            item.setStatus("pending");
             orderItemRepository.save(item);
         }
 
         return expiredItems;
     }
 
-    public OrderItem fireItemNow(Long id) {                             // Send order now (Bypass timer)
+    public OrderItem sendItemNow(Long id) {                             // Send order now (Bypass timer)
         OrderItem item = orderItemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order item not found with id: " + id));
 
         item.setIsLocked(true);
-        item.setStatus("fired");
-        item.setFiredAt(LocalDateTime.now());
+        item.setStatus("pending");
 
         return orderItemRepository.save(item);
+    }
+
+    public OrderItem startItem(Long id) {                                       // Start item (kitchen function - Pending ---> Fired)
+        OrderItem item = orderItemRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order item not found with id: " + id));
+        
+                item.setStatus("fired");
+                item.setFiredAt(LocalDateTime.now());
+
+                return orderItemRepository.save(item);
     }
 
     public OrderItem completeItem(Long id) {                            // Mark item as completed

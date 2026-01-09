@@ -253,7 +253,7 @@ class OrderItemControllerTest {
         // Given - Service fires item immediately
         testItem.setStatus("fired");
         testItem.setIsLocked(true);
-        when(orderItemService.fireItemNow(1L)).thenReturn(testItem);
+        when(orderItemService.sendItemNow(1L)).thenReturn(testItem);
 
         // When/Then - PUT request should return 200 OK
         mockMvc.perform(put("/api/order-items/1/fire-now"))
@@ -261,7 +261,7 @@ class OrderItemControllerTest {
                 .andExpect(jsonPath("$.status").value("fired"))
                 .andExpect(jsonPath("$.isLocked").value(true));
 
-        verify(orderItemService, times(1)).fireItemNow(1L);
+        verify(orderItemService, times(1)).sendItemNow(1L);
     }
 
     @Test

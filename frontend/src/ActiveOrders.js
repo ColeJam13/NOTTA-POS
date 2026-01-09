@@ -8,8 +8,9 @@ function ActiveOrders({ setCurrentView }) {
   const [orderItems, setOrderItems] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
 
+  
   useEffect(() => {
-    fetch('http://localhost:8080/api/orders')
+    fetch('http://localhost:8080/api/orders')                     // First useEffect - loads data on mount
       .then(response => response.json())
       .then(data => {
         console.log('Orders:', data);
@@ -29,6 +30,23 @@ function ActiveOrders({ setCurrentView }) {
       .then(response => response.json())
       .then(data => setMenuItems(data))
       .catch(error => console.error('Error fetching menu items:', error));
+  }, []);
+
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetch('http://localhost:8080/api/orders')                           // Second useEffect - polls every 3 seconds
+        .then(response => response.json())
+        .then(data => setOrders(data))
+        .catch(error => console.error('Error fetching orders:', error));
+
+      fetch('http://localhost:8080/api/order-items')
+        .then(response => response.json())
+        .then(data => setOrderItems(data))
+        .catch(error => console.error('Error fetching order items:', error));
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -59,8 +77,8 @@ function ActiveOrders({ setCurrentView }) {
                 orders.map(order => {
                     const items = orderItems.filter(item => item.orderId === order.orderId);
                     const filteredItems = view === 'BOH'
-                    ? items.filter(item => item.status === 'fired' || item.status === 'completed')
-                    : items;
+                    ? items.filter(item => item.status === 'pending' || item.status === 'fired' || item.status === 'completed')
+                    : items.filter(item => item.status !== 'draft');
 
                     if (filteredItems.length === 0) return null;
 
@@ -73,6 +91,48 @@ function ActiveOrders({ setCurrentView }) {
                             <span>{item.quantity}x</span>
                             <span>{menuItems.find(m => m.menuItemId === item.menuItemId)?.name || `Item ${item.menuItemId}`}</span>
                             <span className={`status-${item.status}`}>{item.status}</span>
+
+                            {view === 'BOH' && item.status === 'pending' && (
+                              <button
+                                className="btn-start"
+                                onClick={async () => {
+                                  await fetch(`http://localhost:8080/api/order-items/${item.orderItemId}/start`, {
+                                    method: 'PUT'
+                                  });
+
+                                  setOrderItems(prevItems =>
+                                    prevItems.map(i =>
+                                      i.orderItemId === item.orderItemId
+                                      ? { ...i, status: 'fired' }
+                                      : i
+                                    )
+                                  );
+                                }}
+                              >
+                                START
+                              </button>
+                            )}
+
+                            {view === 'BOH' && item.status === 'fired' && (
+                              <button
+                                className="btn-complete"
+                                onClick={async () => {
+                                  await fetch(`http://localhost:8080/api/order-items/${item.orderItemId}/complete`, {
+                                    method: 'PUT'
+                                  });
+
+                                  setOrderItems(prevItems =>
+                                    prevItems.map(i =>
+                                      i.orderItemId === item.orderItemId
+                                        ? {...i, status: 'completed' }
+                                        : i
+                                    )
+                                  );
+                                }}
+                              >
+                                COMPLETE
+                              </button>
+                            )}
                             </div>
                         ))}
                         </div>
