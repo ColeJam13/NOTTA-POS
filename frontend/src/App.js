@@ -6,9 +6,10 @@ import './App.css';
 
 function App() {
   const [currentView, setCurrentView] = useState('home');
+  const [selectedTable, setSelectedTable] = useState(null);
 
   if (currentView === 'createOrder') {
-    return <CreateOrder setCurrentView={setCurrentView} />;
+    return <CreateOrder setCurrentView={setCurrentView} selectedTable={selectedTable} />;
   }
 
   if (currentView === 'activeOrders') {
@@ -16,7 +17,7 @@ function App() {
   }
 
   if (currentView === 'floorMap') {
-    return <FloorMap setCurrentView={setCurrentView} />
+    return <FloorMap setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;
   }
 
   return (
@@ -24,6 +25,12 @@ function App() {
       <h1 className="landing-logo">NOTA-POS</h1>
 
       <div className="landing-buttons">
+                <button
+          className="landing-btn"
+          onClick={() => setCurrentView('createOrder')}
+        >
+          FLOOR MAP
+        </button>
         <button
           className="landing-btn"
           onClick={() => setCurrentView('createOrder')}

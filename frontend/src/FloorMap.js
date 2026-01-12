@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import NavBar from './NavBar';
 import './App.css';
 
-function FloorMap({ setCurrentView }) {
+function FloorMap({ setCurrentView, setSelectedTable }) {
     const [tables, setTables] = useState([]);
 
     useEffect(() => {
@@ -32,8 +32,8 @@ function FloorMap({ setCurrentView }) {
                                 top: `${table.yposition}px`
                             }}
                             onClick={() => {
-                                console.log('Clicked table:', table.tableNumber);
-
+                                setSelectedTable(table);
+                                setCurrentView('createOrder');
                             }}
                         >
                             <span className="table-label">{table.tableNumber}</span>

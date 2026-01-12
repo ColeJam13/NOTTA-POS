@@ -3,11 +3,11 @@ import NavBar from './NavBar'
 import './App.css';
 
 
-function CreateOrder({ setCurrentView }) {
+function CreateOrder({ setCurrentView, selectedTable }) {
   const [menuItems, setMenuItems] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('Savory');
   const [orderItems, setOrderItems] = useState([])
-  const [currentTableId, setCurrentTableId] = useState(1);
+  const [currentTableId, setCurrentTableId] = useState(selectedTable?.tableId || 1);
   const [timerExpires, setTimerExpires] = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(null);
   const [currentOrderId, setCurrentOrderId] = useState(null);
@@ -96,7 +96,7 @@ useEffect(() => {
         <NavBar currentView="createOrder" setCurrentView={setCurrentView} />
             <div className="app">
             <div className="order-panel">
-                <h2>Current Order - Table F1</h2>
+                <h2>Current Order - Table {selectedTable?.tableNumber || 'F1'}</h2>
 
             {secondsLeft !== null && secondsLeft > 0 && (
                 <div className="timer-display">
@@ -106,7 +106,7 @@ useEffect(() => {
 
             {secondsLeft === 0 && (
                 <div className="timer-locked">
-                Items locked and sent to prep station
+              Items locked and sent to prep station
                 </div>
             )}
 
