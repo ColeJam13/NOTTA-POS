@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import CreateOrder from './CreateOrder';
 import ActiveOrders from './ActiveOrders';
+import FloorMap from './FloorMap';
 import './App.css';
 
 function App() {
@@ -12,6 +13,10 @@ function App() {
 
   if (currentView === 'activeOrders') {
     return <ActiveOrders setCurrentView={setCurrentView} />;
+  }
+
+  if (currentView === 'floorMap') {
+    return <FloorMap setCurrentView={setCurrentView} />
   }
 
   return (

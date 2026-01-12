@@ -236,22 +236,22 @@ INSERT INTO menu_item_modifier_groups (menu_item_modifier_group_id, menu_item_id
 -- ============================================================================
 -- TABLES
 -- ============================================================================
-INSERT INTO tables (table_id, table_number, section, seat_count, status, created_at) VALUES
-(1, 'F1', 'Front', 2, 'available', CURRENT_TIMESTAMP),
-(2, 'F2', 'Front', 4, 'available', CURRENT_TIMESTAMP),
-(3, 'F3', 'Front', 4, 'available', CURRENT_TIMESTAMP),
-(4, 'F4', 'Front', 2, 'available', CURRENT_TIMESTAMP),
-(5, 'F5', 'Front', 3, 'available', CURRENT_TIMESTAMP),
-(6, 'F6', 'Front', 6, 'available', CURRENT_TIMESTAMP),
-(7, 'F7', 'Front', 4, 'available', CURRENT_TIMESTAMP),
-(8, 'F8', 'Front', 2, 'available', CURRENT_TIMESTAMP),
-(9, 'B1', 'Back', 4, 'available', CURRENT_TIMESTAMP),
-(10, 'B2', 'Back', 6, 'available', CURRENT_TIMESTAMP),
-(11, 'B3', 'Back', 2, 'available', CURRENT_TIMESTAMP),
-(12, 'BAR-1', 'Bar', 1, 'available', CURRENT_TIMESTAMP),
-(13, 'BAR-2', 'Bar', 1, 'available', CURRENT_TIMESTAMP),
-(14, 'BAR-3', 'Bar', 1, 'available', CURRENT_TIMESTAMP),
-(15, 'BAR-4', 'Bar', 1, 'available', CURRENT_TIMESTAMP);
+INSERT INTO tables (table_number, section, seat_count, status, x_position, y_position, shape, rotation, created_at) VALUES
+('F1', 'Front', 2, 'available', 100, 100, 'circle', 0, datetime('now')),
+('F2', 'Front', 2, 'available', 250, 100, 'circle', 0, datetime('now')),
+('F3', 'Front', 4, 'available', 400, 100, 'square', 0, datetime('now')),
+('F4', 'Front', 4, 'available', 550, 100, 'square', 0, datetime('now')),
+('F5', 'Front', 6, 'available', 700, 100, 'square', 0, datetime('now')),
+('B1', 'Back', 4, 'available', 100, 300, 'square', 0, datetime('now')),
+('B2', 'Back', 4, 'available', 250, 300, 'square', 0, datetime('now')),
+('B3', 'Back', 6, 'available', 400, 300, 'square', 0, datetime('now')),
+('B4', 'Back', 6, 'available', 550, 300, 'square', 0, datetime('now')),
+('B5', 'Back', 8, 'available', 700, 300, 'square', 0, datetime('now')),
+('P1', 'Patio', 2, 'available', 100, 500, 'circle', 0, datetime('now')),
+('P2', 'Patio', 2, 'available', 250, 500, 'circle', 0, datetime('now')),
+('P3', 'Patio', 4, 'available', 400, 500, 'square', 0, datetime('now')),
+('P4', 'Patio', 4, 'available', 550, 500, 'square', 0, datetime('now')),
+('P5', 'Patio', 6, 'available', 700, 500, 'square', 0, datetime('now'));
 
 -- ============================================================================
 -- SUMMARY
