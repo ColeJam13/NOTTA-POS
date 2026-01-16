@@ -127,6 +127,7 @@
   overflow-y: auto;
   margin-bottom: 20px;
   max-height: 35vh;
+  min-height: 35vh;
 }
 
 .order-item {
@@ -268,6 +269,39 @@
   font-size: 16px;
 }
 
+.notification-bar {
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-weight: bold;
+  text-align: center;
+  margin: 15px 0;
+  font-size: 16px;
+  transition: all 0.3s;
+}
+
+.notification-default {
+  background: #2a2a4a;
+  color: #e0e0e0;
+  border: 2px solid #b026ff;
+}
+
+.notification-success {
+  background: #39ff14;
+  color: #1a1a2e;
+  animation: pulse 1s infinite;
+}
+
+.notification-timer {
+  background: #39ff14;
+  color: #1a1a2e;
+  animation: pulse 1s infinite;
+}
+
+.notification-locked {
+  background: #ff3366;
+  color: #fff;
+}
+
 .order-item.locked {
   opacity: 0.5;
   background: #0f0f1e;
@@ -276,6 +310,15 @@
 
 .order-item.locked span {
   color: #888;
+}
+
+.order-item.saved-draft {
+  border-color: #ffd700;
+  background: #2a2419;
+}
+
+.order-item.saved-draft span {
+  color: #ffd700;
 }
 
 .order-panel h2 {

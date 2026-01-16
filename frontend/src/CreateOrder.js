@@ -13,6 +13,7 @@ function CreateOrder({ setCurrentView, selectedTable }) {
   const [secondsLeft, setSecondsLeft] = useState(null);
   const [currentOrderId, setCurrentOrderId] = useState(null);
   const orderItemsRef = useRef(null);
+  const [showDraftSaved, setShowDraftSaved] = useState(false);
 
 useEffect(() => {
   if (selectedTable && selectedTable.status === 'occupied') {
@@ -130,10 +131,12 @@ useEffect(() => {
         });
       }
 
-      // Add only the DRAFT items to the order
-      const draftItems = orderItems.filter(item => item.status === 'draft');
+    // Add only the DRAFT items that aren't already in the database
+    const draftItems = orderItems.filter(item => item.status === 'draft');
 
-      for (const item of draftItems) {
+    for (const item of draftItems) {
+      // Only create the item if it doesn't have an orderItemId (not yet in database)
+      if (!item.orderItemId) {
         await fetch('http://localhost:8080/api/order-items', {
           method: 'POST',
           headers: { 'Content-type': 'application/json' },
@@ -146,6 +149,7 @@ useEffect(() => {
           })
         });
       }
+    }
 
       // Now send ALL draft items for this order (backend will only send items with status 'draft')
       const sendResponse = await fetch(`http://localhost:8080/api/order-items/order/${orderId}/send`, {
@@ -184,21 +188,26 @@ useEffect(() => {
             <div className="order-panel">
                 <h2>Current Order - Table {selectedTable?.tableNumber || 'F1'}</h2>         
 
-            {secondsLeft !== null && secondsLeft > 0 && (                           // display timer
-                <div className="timer-display">
-                {secondsLeft} seconds to edit
+                <div className={`notification-bar ${
+                  showDraftSaved ? 'notification-success' : 
+                  secondsLeft !== null && secondsLeft > 0 ? 'notification-timer' : 
+                  secondsLeft === 0 ? 'notification-locked' : 
+                  'notification-default'
+                }`}>
+                  {showDraftSaved ? 'Draft saved! Items remain editable' :
+                  secondsLeft !== null && secondsLeft > 0 ? `${secondsLeft} seconds to edit` :
+                  secondsLeft === 0 ? 'Items locked and sent to prep station' :
+                  orderItems.length === 0 ? 'Add items to order' :
+                  'Ready to send or save as draft'}
                 </div>
-            )}
-
-            {secondsLeft === 0 && (                                                   // lock item
-                <div className="timer-locked">
-              Items locked and sent to prep station                                   
-                </div>
-            )}
 
                 <div className="order-items-list" ref={orderItemsRef}>
                 {orderItems.map((item, index) => (                                                              // lock item and change status
-                    <div key={index} className={`order-item ${(item.status === 'pending' || item.status === 'fired' || item.status === 'completed') ? 'locked' : ''}`}>               
+                    <div key={index} className={`order-item ${
+                      (item.status === 'pending' || item.status === 'fired' || item.status === 'completed') ? 'locked' : 
+                      (item.status === 'draft' && item.orderItemId) ? 'saved-draft' : 
+                      ''
+                    }`}>            
                     <span>
                       {(item.status === 'pending' || item.status === 'fired' || item.status === 'completed') && <Lock size={14} className="lock-icon" />}
                       {item.name}
@@ -223,10 +232,6 @@ useEffect(() => {
                     </div>
                 ))}
                 </div>
-
-                {orderItems.length === 0 && (                                             // show when no items on order / calculate totals (below)
-                <p className="empty-order">No items added yet</p>
-                )}
                                                                                                     
             <div className="order-totals">                                                          
                 <div className="total-row">
@@ -243,7 +248,66 @@ useEffect(() => {
                 </div>
             </div>
                 <div className="order-actions">
-                <button className="btn-save">SAVE DRAFT</button>
+                <button className="btn-save" onClick={async () => {
+                  try {
+                    let orderId = currentOrderId;
+
+                    // If no current order, create a new one
+                    if (!orderId) {
+                      const orderResponse = await fetch('http://localhost:8080/api/orders', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          tableId: currentTableId,
+                          orderType: 'dine_in',
+                          status: 'open'
+                        })
+                      });
+                      const order = await orderResponse.json();
+                      orderId = order.orderId;
+                      setCurrentOrderId(orderId);
+
+                      // Mark table as occupied
+                      await fetch(`http://localhost:8080/api/tables/${currentTableId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json'},
+                        body: JSON.stringify({ status: 'occupied' })
+                      });
+                    }
+
+                    // Save only draft items that don't have an orderItemId (not yet in database)
+                    const newDraftItems = orderItems.filter(item => item.status === 'draft' && !item.orderItemId);
+
+                    for (const item of newDraftItems) {
+                      const response = await fetch('http://localhost:8080/api/order-items', {
+                        method: 'POST',
+                        headers: { 'Content-type': 'application/json' },
+                        body: JSON.stringify({
+                          orderId: orderId,
+                          menuItemId: item.menuItemId,
+                          quantity: item.quantity,
+                          price: item.price,
+                          status: 'draft'
+                        })
+                      });
+                      const createdItem = await response.json();
+                      
+                      // Update the item in state with its orderItemId
+                      item.orderItemId = createdItem.orderItemId;
+                    }
+
+                    // Show success notification
+                    setShowDraftSaved(true);
+
+                    // Hide after 3 seconds
+                    setTimeout(() => {
+                      setShowDraftSaved(false);
+                    }, 3000);
+                  } catch (error) {
+                    console.error('Error saving draft:', error);
+                    alert('Failed to save draft');
+                  }
+                }}>SAVE DRAFT</button>
                 <button className="btn-send" onClick={async () => {
                   if (timerExpires && currentOrderId) {
                     // Call backend to send now

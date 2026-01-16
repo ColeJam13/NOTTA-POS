@@ -3,7 +3,7 @@ import NavBar from './NavBar';
 import './App.css';
 
 function ActiveOrders({ setCurrentView }) {
-  const [view, setView] = useState('BOH');
+  const [view, setView] = useState('FOH');
   const [orders, setOrders] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
