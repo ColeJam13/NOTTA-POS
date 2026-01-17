@@ -17,6 +17,12 @@ function Home({ setCurrentView }) {
         <button className="landing-btn" onClick={() => setCurrentView('activeOrders')}>
           ACTIVE ORDERS
         </button>
+        <button className="landing-btn" onClick={() => setCurrentView('financials')}>
+          FINANCIALS
+        </button>
+        <button className="landing-btn" onClick={() => setCurrentView('challenges')}>
+          CHALLENGES
+        </button>
       </div>
     </div>
   );

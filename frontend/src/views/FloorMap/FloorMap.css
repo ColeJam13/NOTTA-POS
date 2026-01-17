@@ -22,7 +22,7 @@
 .floor-canvas {
   position: relative;
   width: 100%;
-  height: calc(100vh - 200px);
+  height: 660px;
   background: #0f0f1e;
   border: 3px solid #b026ff;
   border-radius: 12px;
@@ -48,9 +48,14 @@
 }
 
 .table-visual.circle {
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
+}
+
+.table-visual.circle.large {
+  width: 90px;
+  height: 90px;
 }
 
 .table-visual.available {
@@ -80,4 +85,6 @@
   font-family: 'Press Start 2P', monospace;
   font-size: 8px;
   margin-top: 5px;
+  text-align: center;
+  width: 100%;
 }

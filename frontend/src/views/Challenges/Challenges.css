@@ -1,0 +1,254 @@
+.challenges-page {
+  flex: 1;
+  background: #1a1a2e;
+  padding: 40px;
+  color: #e0e0e0;
+  overflow-y: auto;
+}
+
+.challenges-page h2 {
+  text-align: center;
+  text-transform: uppercase;
+  color: #39ff14;
+  background: #16213e;
+  padding: 15px;
+  border: 2px solid #b026ff;
+  border-radius: 8px;
+  font-size: 18px;
+  letter-spacing: 2px;
+  margin-bottom: 30px;
+}
+
+.challenges-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-bottom: 40px;
+}
+
+.challenges-section {
+  background: #16213e;
+  border: 2px solid #b026ff;
+  border-radius: 12px;
+  padding: 30px;
+}
+
+.challenges-section.full-width {
+  grid-column: 1 / -1;
+}
+
+.section-title {
+  color: #39ff14;
+  font-size: 16px;
+  margin-bottom: 25px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.challenge-card {
+  background: #0f0f1e;
+  border: 2px solid #b026ff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.challenge-card.completed {
+  border-color: #39ff14;
+}
+
+.challenge-card.available {
+  border-color: #666;
+}
+
+.challenge-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.challenge-name {
+  color: #b026ff;
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.challenge-status {
+  font-size: 10px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  text-transform: uppercase;
+}
+
+.challenge-status.in-progress {
+  background: #b026ff;
+  color: #1a1a2e;
+}
+
+.challenge-status.completed {
+  background: #39ff14;
+  color: #1a1a2e;
+}
+
+.challenge-description {
+  color: #e0e0e0;
+  font-size: 12px;
+  margin-bottom: 15px;
+}
+
+.challenge-progress {
+  margin-bottom: 15px;
+}
+
+.progress-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.progress-bar-container {
+  background: #0f0f1e;
+  border: 1px solid #b026ff;
+  height: 20px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #b026ff, #39ff14);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #1a1a2e;
+  font-weight: bold;
+}
+
+.challenge-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.challenge-reward {
+  color: #39ff14;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.challenge-time {
+  color: #666;
+  font-size: 10px;
+}
+
+.challenge-btn {
+  padding: 10px 20px;
+  background: #39ff14;
+  border: 2px solid #39ff14;
+  color: #1a1a2e;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.challenge-btn:hover {
+  background: #2ee00f;
+  box-shadow: 0 0 15px rgba(57, 255, 20, 0.6);
+  transform: scale(1.05);
+}
+
+.challenge-btn.secondary {
+  background: transparent;
+  border-color: #b026ff;
+  color: #b026ff;
+}
+
+.challenge-btn.secondary:hover {
+  background: #b026ff;
+  color: #1a1a2e;
+}
+
+.challenge-btn.claimed {
+  background: #666;
+  border-color: #666;
+  color: #333;
+  cursor: not-allowed;
+}
+
+.challenge-btn.claimed:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.leaderboard-table {
+  width: 100%;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 150px 120px;
+  gap: 15px;
+  padding: 15px;
+  background: #0f0f1e;
+  border: 1px solid #b026ff;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.leaderboard-row.highlight {
+  background: #2a1a3e;
+  border-color: #39ff14;
+}
+
+.leaderboard-rank {
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.leaderboard-rank.gold {
+  color: #ffd700;
+}
+
+.leaderboard-rank.silver {
+  color: #c0c0c0;
+}
+
+.leaderboard-rank.bronze {
+  color: #cd7f32;
+}
+
+.leaderboard-name {
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.leaderboard-sales {
+  color: #39ff14;
+  font-size: 14px;
+  text-align: right;
+}
+
+.leaderboard-tips {
+  color: #b026ff;
+  font-size: 12px;
+  text-align: right;
+}
+
+.no-challenges {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 40px;
+}

@@ -4,6 +4,8 @@ import CreateOrder from './views/CreateOrder';
 import ActiveOrders from './views/ActiveOrders';
 import FloorMap from './views/FloorMap';
 import ActiveTables from './views/ActiveTables';
+import Financials from './views/Financials';
+import Challenges from './views/Challenges';
 import './App.css';
 
 function App() {
@@ -24,6 +26,14 @@ function App() {
 
   if (currentView === 'activeTables') {
     return <ActiveTables setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;
+  }
+
+  if (currentView === 'financials') {
+  return <Financials setCurrentView={setCurrentView} />;
+  }
+
+  if (currentView === 'challenges') {
+  return <Challenges setCurrentView={setCurrentView} />;
   }
 
   return <Home setCurrentView={setCurrentView} />;

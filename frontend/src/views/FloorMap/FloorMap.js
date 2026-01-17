@@ -37,7 +37,7 @@ function FloorMap({ setCurrentView, setSelectedTable }) {
                     {tables.map(table => (
                         <div
                             key={table.tableId}
-                            className={`table-visual ${table.shape} ${table.status}`}
+                            className={`table-visual ${table.shape} ${table.status} ${table.seatCount >= 6 ? 'large' : ''}`}
                             style={{
                                 left: `${table.xposition}px`,
                                 top: `${table.yposition}px`
