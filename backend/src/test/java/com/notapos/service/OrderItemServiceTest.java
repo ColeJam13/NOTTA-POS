@@ -17,6 +17,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -78,7 +79,7 @@ class OrderItemServiceTest {
         // Then
         assertEquals(1, sentItems.size());
         OrderItem sent = sentItems.get(0);
-        assertEquals("pending", sent.getStatus());
+        assertEquals("limbo", sent.getStatus());
         assertNotNull(sent.getDelayExpiresAt());
         assertFalse(sent.getIsLocked());
         verify(orderItemRepository, times(1)).save(testItem);
@@ -122,9 +123,9 @@ class OrderItemServiceTest {
     }
 
     @Test
-    void testLockAndFireExpiredItems_ShouldLockExpiredItems() {
+    void testLockAndSendExpiredItems_ShouldLockExpiredItems() {
         // Given
-        testItem.setStatus("pending");
+        testItem.setStatus("limbo");
         testItem.setDelayExpiresAt(LocalDateTime.now().minusSeconds(5)); // Already expired
         testItem.setIsLocked(false);
         
@@ -140,24 +141,22 @@ class OrderItemServiceTest {
         assertEquals(1, lockedItems.size());
         OrderItem locked = lockedItems.get(0);
         assertTrue(locked.getIsLocked());
-        assertEquals("fired", locked.getStatus());
-        assertNotNull(locked.getFiredAt());
+        assertEquals("pending", locked.getStatus());
         verify(orderItemRepository, times(1)).save(testItem);
     }
 
     @Test
-    void testFireItemNow_ShouldBypassTimer() {
+    void testSendItemNow_ShouldBypassTimer() {
         // Given
         when(orderItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
         when(orderItemRepository.save(any(OrderItem.class))).thenReturn(testItem);
 
         // When
-        OrderItem fired = orderItemService.sendItemNow(1L);
+        OrderItem sent = orderItemService.sendItemNow(1L);
 
         // Then
-        assertTrue(fired.getIsLocked());
-        assertEquals("fired", fired.getStatus());
-        assertNotNull(fired.getFiredAt());
+        assertTrue(sent.getIsLocked());
+        assertEquals("pending", sent.getStatus());
         verify(orderItemRepository, times(1)).save(testItem);
     }
 

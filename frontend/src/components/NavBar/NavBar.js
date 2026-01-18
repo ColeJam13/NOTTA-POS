@@ -26,7 +26,7 @@ function NavBar({ currentView, setCurrentView }) {
       
       <div className="navbar-bottom">
         <button className="nav-btn" onClick={() => setCurrentView('floorMap')}>FLOOR MAP</button>
-        <button className="nav-btn" onClick={() => setCurrentView('activeTables')}>ACTIVE TABLES</button>
+        <button className="nav-btn" onClick={() => setCurrentView('activeTables')}>TABLES</button>
         <button className={`nav-btn ${currentView === 'activeOrders' ? 'active' : ''}`} onClick={() => setCurrentView('activeOrders')}>ACTIVE ORDERS</button>
         <button className={`nav-btn ${currentView === 'createOrder' ? 'active' : ''}`} onClick={() => setCurrentView('createOrder')}>CREATE ORDER</button>
         <button className="nav-btn" onClick={() => setCurrentView('financials')}>FINANCIALS</button>

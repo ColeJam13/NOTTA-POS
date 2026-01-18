@@ -173,20 +173,20 @@ class OrderServiceTest {
     }
 
     @Test
-    void testCompleteOrder_ShouldSetStatusAndTimestamp() {
-        // WHAT: Test completing an order (guest pays and leaves)
+    void testCloseOrder_ShouldSetStatusAndTimestamp() {
+        // WHAT: Test closing an order (guest pays and leaves)
         // WHY: Need to close the check when guest is done
         
         // Given - Order exists and is open
         when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
-        when(orderRepository.save(any(Order.class))).thenReturn(testOrder);
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // When - Complete the order
-        Order completed = orderService.completeOrder(1L);
+        // When - Close the order
+        Order closed = orderService.closeOrder(1L);
 
-        // Then - Status should be "completed" with timestamp
-        assertEquals("completed", completed.getStatus());
-        assertNotNull(completed.getCompletedAt());
+        // Then - Status should be "closed" with timestamp
+        assertEquals("closed", closed.getStatus());
+        assertNotNull(closed.getClosedAt());
         verify(orderRepository, times(1)).save(testOrder);
     }
 

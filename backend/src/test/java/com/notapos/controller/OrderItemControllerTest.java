@@ -246,19 +246,19 @@ class OrderItemControllerTest {
     }
 
     @Test
-    void testFireItemNow_ShouldBypassTimer() throws Exception {
-        // WHAT: Test PUT /api/order-items/{id}/fire-now
+    void testSendItemNow_ShouldBypassTimer() throws Exception {
+        // WHAT: Test PUT /api/order-items/{id}/send-now
         // WHY: Manager override to send immediately
         
-        // Given - Service fires item immediately
-        testItem.setStatus("fired");
+        // Given - Service sends item immediately
+        testItem.setStatus("pending");
         testItem.setIsLocked(true);
         when(orderItemService.sendItemNow(1L)).thenReturn(testItem);
 
         // When/Then - PUT request should return 200 OK
-        mockMvc.perform(put("/api/order-items/1/fire-now"))
+        mockMvc.perform(put("/api/order-items/1/send-now"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("fired"))
+                .andExpect(jsonPath("$.status").value("pending"))
                 .andExpect(jsonPath("$.isLocked").value(true));
 
         verify(orderItemService, times(1)).sendItemNow(1L);

@@ -80,7 +80,7 @@ function ActiveOrders({ setCurrentView }) {
                 {orders.length === 0 ? (
                 <p className="no-orders">NO ACTIVE ORDERS</p>
                 ) : (
-                orders.map(order => {
+                orders.filter(order => order.status === 'open').map(order => {
                     const items = orderItems.filter(item => item.orderId === order.orderId);
                     const filteredItems = view === 'BOH'
                     ? items.filter(item => item.status === 'pending' || item.status === 'fired' || item.status === 'completed')         // FOH and BOH available state views

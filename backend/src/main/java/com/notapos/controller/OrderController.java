@@ -82,11 +82,11 @@ public ResponseEntity<List<Order>> getAllOrders(
         }
     }
 
-    @PutMapping("/{id}/complete")                                           // Mark order as complete
-    public ResponseEntity<Order> completeOrder(@PathVariable Long id) {
+    @PutMapping("/{id}/close")                                           // Mark order as closed
+    public ResponseEntity<Order> closeOrder(@PathVariable Long id) {
         try {
-            Order completed = orderService.completeOrder(id);
-            return ResponseEntity.ok(completed);
+            Order closed = orderService.closeOrder(id);
+            return ResponseEntity.ok(closed);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }

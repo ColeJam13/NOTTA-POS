@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import NavBar from '../../components/NavBar';
 import { Lock } from 'lucide-react';
+import PaymentModal from '../../components/PaymentModal';
 import './CreateOrder.css';
 
 
@@ -8,12 +9,13 @@ function CreateOrder({ setCurrentView, selectedTable }) {
   const [menuItems, setMenuItems] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('Savory');
   const [orderItems, setOrderItems] = useState([])
-  const [currentTableId, setCurrentTableId] = useState(selectedTable?.tableId || 1);
+  const [currentTableId] = useState(selectedTable?.tableId || 1);
   const [timerExpires, setTimerExpires] = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(null);
   const [currentOrderId, setCurrentOrderId] = useState(null);
   const orderItemsRef = useRef(null);
   const [showDraftSaved, setShowDraftSaved] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
 useEffect(() => {
   if (selectedTable && selectedTable.status === 'occupied') {
@@ -80,7 +82,7 @@ useEffect(() => {
       const diff = Math.floor((timerExpires - now) / 1000);
 
       if (diff <= 0) {
-        console.log('Timer expired! Current items:', orderItems);  // ADD THIS
+        console.log('Timer expired! Current items:', orderItems); 
         setSecondsLeft(0);
         setTimerExpires(null);
         clearInterval(interval);
@@ -116,7 +118,8 @@ useEffect(() => {
           body: JSON.stringify({
             tableId: currentTableId,
             orderType: 'dine_in',
-            status: 'open'
+            status: 'open',
+            serverName: selectedTable?.serverName || 'Unknown'
           })
         });
         const order = await orderResponse.json();
@@ -131,11 +134,11 @@ useEffect(() => {
         });
       }
 
-    // Add only the DRAFT items that aren't already in the database
+                                                                                // Add only the DRAFT items that aren't already in the database
     const draftItems = orderItems.filter(item => item.status === 'draft');
 
     for (const item of draftItems) {
-      // Only create the item if it doesn't have an orderItemId (not yet in database)
+                                                                            // Only create the item if it doesn't have an orderItemId (not yet in database)
       if (!item.orderItemId) {
         await fetch('http://localhost:8080/api/order-items', {
           method: 'POST',
@@ -151,7 +154,7 @@ useEffect(() => {
       }
     }
 
-      // Now send ALL draft items for this order (backend will only send items with status 'draft')
+                                                                                                          // Now send ALL draft items for this order (backend will only send items with status 'draft')
       const sendResponse = await fetch(`http://localhost:8080/api/order-items/order/${orderId}/send`, {
         method: 'POST'
       });
@@ -214,20 +217,32 @@ useEffect(() => {
                     </span>
                     <span>${item.price.toFixed(2)}</span>
                     {(item.status === 'draft' || item.status === 'limbo') &&(
-                    <button
-                        className="btn-remove"                                                      // remove item
-                        onClick={() => {
-                        setOrderItems(orderItems.filter((_, i) => i !== index));
+                      <button
+                          className="btn-remove"                                                      // remove item
+                          onClick={async () => {
+                                                                                      // If item has an orderItemId, delete it from database
+                          if (item.orderItemId) {
+                              try {
+                                  await fetch(`http://localhost:8080/api/order-items/${item.orderItemId}`, {
+                                      method: 'DELETE'
+                                  });
+                              } catch (error) {
+                                  console.error('Error deleting item:', error);
+                              }
+                          }
 
-                        if (timerExpires) {
-                            const newExpires = new Date(Date.now() + 15000);
-                            setTimerExpires(newExpires);
-                            setSecondsLeft(15);
-                        }
-                        }}
-                    >
-                        x
-                    </button>
+                                                                                          // Remove from local state
+                          setOrderItems(orderItems.filter((_, i) => i !== index));
+
+                          if (timerExpires) {
+                              const newExpires = new Date(Date.now() + 15000);
+                              setTimerExpires(newExpires);
+                              setSecondsLeft(15);
+                          }
+                          }}
+                      >
+                          x
+                      </button>
                     )}
                     </div>
                 ))}
@@ -247,102 +262,115 @@ useEffect(() => {
                 <span>${(orderItems.reduce((sum, item) => sum + item.price, 0) * 1.03).toFixed(2)}</span>
                 </div>
             </div>
+
                 <div className="order-actions">
-                <button className="btn-save" onClick={async () => {
-                  try {
-                    let orderId = currentOrderId;
+                  <div className="action-row">
+                    <button className="btn-save" onClick={async () => {
+                      try {
+                        let orderId = currentOrderId;
 
-                    // If no current order, create a new one
-                    if (!orderId) {
-                      const orderResponse = await fetch('http://localhost:8080/api/orders', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          tableId: currentTableId,
-                          orderType: 'dine_in',
-                          status: 'open'
-                        })
-                      });
-                      const order = await orderResponse.json();
-                      orderId = order.orderId;
-                      setCurrentOrderId(orderId);
+                                                                                                      // If no current order, create a new one
+                        if (!orderId) {
+                          const orderResponse = await fetch('http://localhost:8080/api/orders', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              tableId: currentTableId,
+                              orderType: 'dine_in',
+                              status: 'open',
+                              serverName: selectedTable?.serverName || 'Unknown'
+                            })
+                          });
+                          const order = await orderResponse.json();
+                          orderId = order.orderId;
+                          setCurrentOrderId(orderId);
 
-                      // Mark table as occupied
-                      await fetch(`http://localhost:8080/api/tables/${currentTableId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json'},
-                        body: JSON.stringify({ status: 'occupied' })
-                      });
-                    }
+                                                                                                  // Mark table as occupied
+                          await fetch(`http://localhost:8080/api/tables/${currentTableId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json'},
+                            body: JSON.stringify({ status: 'occupied' })
+                          });
+                        }
 
-                    // Save only draft items that don't have an orderItemId (not yet in database)
-                    const newDraftItems = orderItems.filter(item => item.status === 'draft' && !item.orderItemId);
+                                                                                                                        // Save only draft items that don't have an orderItemId (not yet in database)
+                        const newDraftItems = orderItems.filter(item => item.status === 'draft' && !item.orderItemId);
 
-                    for (const item of newDraftItems) {
-                      const response = await fetch('http://localhost:8080/api/order-items', {
-                        method: 'POST',
-                        headers: { 'Content-type': 'application/json' },
-                        body: JSON.stringify({
-                          orderId: orderId,
+                        for (const item of newDraftItems) {
+                          const response = await fetch('http://localhost:8080/api/order-items', {
+                            method: 'POST',
+                            headers: { 'Content-type': 'application/json' },
+                            body: JSON.stringify({
+                              orderId: orderId,
+                              menuItemId: item.menuItemId,
+                              quantity: item.quantity,
+                              price: item.price,
+                              status: 'draft'
+                            })
+                          });
+                          const createdItem = await response.json();
+                          
+                                                                              // Update the item in state with its orderItemId
+                          item.orderItemId = createdItem.orderItemId;
+                        }
+
+                                                                              // Show success notification
+                        setShowDraftSaved(true);
+
+                                                                              // Hide after 3 seconds
+                        setTimeout(() => {
+                          setShowDraftSaved(false);
+                        }, 3000);
+                      } catch (error) {
+                        console.error('Error saving draft:', error);
+                        alert('Failed to save draft');
+                      }
+                    }}>SAVE DRAFT</button>
+
+                    <button className="btn-send" onClick={async () => {
+                      if (timerExpires && currentOrderId) {
+                                                                                                                    // Call backend to send now
+                        await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}/send-now`, {
+                          method: 'POST'
+                        });
+
+                                                                            // Stop the timer
+                        setSecondsLeft(0);
+                        setTimerExpires(null);
+
+                                                                                                        // Refetch the order items to get updated status from backend
+                        const response = await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}`);
+                        const updatedItems = await response.json();
+                        
+                                                                                              // Fetch menu items to format properly
+                        const menuResponse = await fetch('http://localhost:8080/api/menu-items');
+                        const menuData = await menuResponse.json();
+                        
+                        const formattedItems = updatedItems.map(item => ({
+                          orderItemId: item.orderItemId,
                           menuItemId: item.menuItemId,
-                          quantity: item.quantity,
+                          name: menuData.find(m => m.menuItemId === item.menuItemId)?.name,
                           price: item.price,
-                          status: 'draft'
-                        })
-                      });
-                      const createdItem = await response.json();
-                      
-                      // Update the item in state with its orderItemId
-                      item.orderItemId = createdItem.orderItemId;
-                    }
+                          quantity: item.quantity,
+                          status: item.status
+                        }));
+                        
+                        setOrderItems(formattedItems);
+                      } else {
+                        sendOrder();
+                      }
+                    }}>
+                        {timerExpires ? 'SEND NOW?' : 'SEND ORDER'}
+                    </button>
+                  </div>
 
-                    // Show success notification
-                    setShowDraftSaved(true);
-
-                    // Hide after 3 seconds
-                    setTimeout(() => {
-                      setShowDraftSaved(false);
-                    }, 3000);
-                  } catch (error) {
-                    console.error('Error saving draft:', error);
-                    alert('Failed to save draft');
-                  }
-                }}>SAVE DRAFT</button>
-                <button className="btn-send" onClick={async () => {
-                  if (timerExpires && currentOrderId) {
-                    // Call backend to send now
-                    await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}/send-now`, {
-                      method: 'POST'
-                    });
-
-                    // Stop the timer
-                    setSecondsLeft(0);
-                    setTimerExpires(null);
-
-                    // Refetch the order items to get updated status from backend
-                    const response = await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}`);
-                    const updatedItems = await response.json();
-                    
-                    // Fetch menu items to format properly
-                    const menuResponse = await fetch('http://localhost:8080/api/menu-items');
-                    const menuData = await menuResponse.json();
-                    
-                    const formattedItems = updatedItems.map(item => ({
-                      orderItemId: item.orderItemId,
-                      menuItemId: item.menuItemId,
-                      name: menuData.find(m => m.menuItemId === item.menuItemId)?.name,
-                      price: item.price,
-                      quantity: item.quantity,
-                      status: item.status
-                    }));
-                    
-                    setOrderItems(formattedItems);
-                  } else {
-                    sendOrder();
-                  }
-                }}>
-                    {timerExpires ? 'SEND NOW?' : 'SEND ORDER'}
-                </button>
+                  <button 
+                    className="btn-close-order" 
+                    onClick={() => setShowPaymentModal(true)}
+                    disabled={orderItems.length === 0}
+                  >
+                    CLOSE ORDER
+                  </button>
                 </div>
             </div>
                                                                                   
@@ -422,6 +450,20 @@ useEffect(() => {
                 </div>
             </div>
         </div>
+
+        {showPaymentModal && (
+          <PaymentModal
+            order={{ orderId: currentOrderId }}
+            orderItems={orderItems}
+            onClose={() => setShowPaymentModal(false)}
+            onPaymentSuccess={() => {
+              setShowPaymentModal(false);
+              alert('Payment processed successfully!');
+              setOrderItems([]);
+              setCurrentView('home');
+            }}
+          />
+        )}
     </div>
   );
 }

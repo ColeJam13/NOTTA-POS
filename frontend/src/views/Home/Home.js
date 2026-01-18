@@ -9,7 +9,7 @@ function Home({ setCurrentView }) {
           FLOOR MAP
         </button>
         <button className="landing-btn" onClick={() => setCurrentView('activeTables')}>
-          ACTIVE TABLES
+          TABLES
         </button>
         <button className="landing-btn" onClick={() => setCurrentView('createOrder')}>
           CREATE ORDER

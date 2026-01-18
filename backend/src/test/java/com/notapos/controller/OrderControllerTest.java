@@ -196,20 +196,20 @@ class OrderControllerTest {
     }
 
     @Test
-    void testCompleteOrder_ShouldReturnCompleted() throws Exception {
-        // WHAT: Test PUT /api/orders/{id}complete to close check
-        // WHY: Mark order as completed when guest pays
+    void testCloseOrder_ShouldReturnClosed() throws Exception {
+        // WHAT: Test PUT /api/orders/{id}/close to close check
+        // WHY: Mark order as closed when guest pays
         
-        // Given - Service returns completed order
-        testOrder.setStatus("completed");
-        when(orderService.completeOrder(1L)).thenReturn(testOrder);
+        // Given - Service returns closed order
+        testOrder.setStatus("closed");
+        when(orderService.closeOrder(1L)).thenReturn(testOrder);
 
         // When/Then - PUT request should return 200 OK
-        mockMvc.perform(put("/api/orders/1/complete"))
+        mockMvc.perform(put("/api/orders/1/close"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("completed"));
+                .andExpect(jsonPath("$.status").value("closed"));
 
-        verify(orderService, times(1)).completeOrder(1L);
+        verify(orderService, times(1)).closeOrder(1L);
     }
 
     @Test

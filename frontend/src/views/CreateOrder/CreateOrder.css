@@ -9,25 +9,25 @@
 
 .order-panel h2 {
   text-align: center;
-  margin-top: 20px;
-  margin-bottom: 20px;
+  margin-top: 10px;
+  margin-bottom: 10px;
   text-transform: uppercase;
   color: #39ff14;
   background: #16213e;
-  padding: 15px;
+  padding: 10px;
   border: 2px solid #b026ff;
   border-radius: 8px;
-  font-size: 18px;
+  font-size: 16px;
   letter-spacing: 2px;
 }
 
 .notification-bar {
-  padding: 10px 15px;
+  padding: 8px 12px;
   border-radius: 8px;
   font-weight: bold;
   text-align: center;
-  margin: 15px 0;
-  font-size: 16px;
+  margin: 10px 0;
+  font-size: 12px;
   transition: all 0.3s;
 }
 
@@ -133,7 +133,7 @@
 }
 
 .order-totals {
-  padding-top: 20px;
+  padding-top: 12px;
   border-top: 2px solid #b026ff;
   flex-shrink: 0;
 }
@@ -156,11 +156,17 @@
 
 .order-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 20px;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
 }
 
-.order-actions button {
+.action-row {
+  display: flex;
+  gap: 8px;
+}
+
+.action-row button {
   flex: 1;
   padding: 15px;
   font-family: 'Press Start 2P', monospace;
@@ -170,6 +176,32 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
+}
+
+.btn-close-order {
+  width: 100%;
+  padding: 15px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  font-weight: bold;
+  background: #ff3366;
+  color: #fff;
+  border: 2px solid #ff3366;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-close-order:hover:not(:disabled) {
+  background: #ff0044;
+  box-shadow: 0 0 20px rgba(255, 51, 102, 0.5);
+}
+
+.btn-close-order:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #666;
+  border-color: #666;
 }
 
 .btn-save {

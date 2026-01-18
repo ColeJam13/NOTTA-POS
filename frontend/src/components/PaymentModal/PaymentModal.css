@@ -1,0 +1,227 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #1a1a2e;
+  border: 3px solid #b026ff;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 30px;
+  border-bottom: 2px solid #b026ff;
+}
+
+.modal-header h2 {
+  color: #39ff14;
+  font-size: 24px;
+  margin: 0;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: #e0e0e0;
+  font-size: 32px;
+  cursor: pointer;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.modal-close:hover {
+  color: #ff3366;
+  transform: scale(1.2);
+}
+
+.modal-body {
+  padding: 30px;
+}
+
+.order-summary {
+  background: #16213e;
+  border: 2px solid #b026ff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  color: #e0e0e0;
+  font-size: 14px;
+}
+
+.summary-row.total {
+  border-top: 2px solid #b026ff;
+  margin-top: 10px;
+  padding-top: 15px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #39ff14;
+}
+
+.form-group {
+  margin-bottom: 25px;
+}
+
+.form-group label {
+  display: block;
+  color: #b026ff;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.payment-methods {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.payment-method-btn {
+  padding: 15px;
+  background: #16213e;
+  border: 2px solid #b026ff;
+  color: #e0e0e0;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.payment-method-btn:hover {
+  background: #2a2a4a;
+}
+
+.payment-method-btn.active {
+  background: #b026ff;
+  color: #1a1a2e;
+}
+
+.tip-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.tip-btn {
+  padding: 12px;
+  background: #16213e;
+  border: 2px solid #39ff14;
+  color: #39ff14;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.tip-btn:hover {
+  background: #2a2a4a;
+}
+
+.tip-btn.active {
+  background: #39ff14;
+  color: #1a1a2e;
+}
+
+.tip-input {
+  width: 100%;
+  padding: 12px;
+  background: #16213e;
+  border: 2px solid #b026ff;
+  color: #e0e0e0;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  border-radius: 8px;
+}
+
+.tip-input::placeholder {
+  color: #666;
+}
+
+.grand-total {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+  background: #16213e;
+  border: 2px solid #39ff14;
+  border-radius: 8px;
+  margin-bottom: 30px;
+  font-size: 24px;
+  font-weight: bold;
+  color: #39ff14;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 15px;
+}
+
+.btn-cancel,
+.btn-process {
+  flex: 1;
+  padding: 15px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: none;
+}
+
+.btn-cancel {
+  background: transparent;
+  border: 2px solid #ff3366;
+  color: #ff3366;
+}
+
+.btn-cancel:hover {
+  background: #ff3366;
+  color: #1a1a2e;
+}
+
+.btn-process {
+  background: #39ff14;
+  color: #1a1a2e;
+  border: 2px solid #39ff14;
+}
+
+.btn-process:hover:not(:disabled) {
+  background: #2ee00f;
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.5);
+}
+
+.btn-process:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

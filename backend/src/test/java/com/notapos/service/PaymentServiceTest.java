@@ -1,7 +1,10 @@
 package com.notapos.service;
 
 import com.notapos.entity.Payment;
+import com.notapos.repository.OrderRepository;
 import com.notapos.repository.PaymentRepository;
+import com.notapos.repository.TableRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +34,12 @@ class PaymentServiceTest {
     @Mock
     private PaymentRepository paymentRepository;
 
+    @Mock
+    private OrderRepository orderRepository;
+
+    @Mock
+    private TableRepository tableRepository;
+
     @InjectMocks
     private PaymentService paymentService;
 
@@ -54,8 +63,9 @@ class PaymentServiceTest {
         // WHAT: Test processing a new payment
         // WHY: Guest pays for their meal
         
-        // Given - Mock returns saved payment
+        // Given - Mock returns saved payment and order doesn't exist (payment succeeds anyway)
         when(paymentRepository.save(any(Payment.class))).thenReturn(testPayment);
+        when(orderRepository.findById(1L)).thenReturn(Optional.empty());
 
         // When - Process payment
         Payment created = paymentService.createPayment(testPayment);

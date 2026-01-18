@@ -3,7 +3,7 @@ import Home from './views/Home';
 import CreateOrder from './views/CreateOrder';
 import ActiveOrders from './views/ActiveOrders';
 import FloorMap from './views/FloorMap';
-import ActiveTables from './views/ActiveTables';
+import Tables from './views/Tables';
 import Financials from './views/Financials';
 import Challenges from './views/Challenges';
 import './App.css';
@@ -25,7 +25,7 @@ function App() {
   }
 
   if (currentView === 'activeTables') {
-    return <ActiveTables setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;
+    return <Tables setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;
   }
 
   if (currentView === 'financials') {

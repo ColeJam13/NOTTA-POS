@@ -68,13 +68,11 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    public Order completeOrder(Long id) {                                       // Complete (close out) an order
+    public Order closeOrder(Long id) {                                       // Close out an order
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + id));
-        
-        order.setStatus("completed");
-        order.setCompletedAt(LocalDateTime.now());
-
+        order.setStatus("closed");
+        order.setClosedAt(LocalDateTime.now());
         return orderRepository.save(order);
     }
 
