@@ -1,4 +1,4 @@
-.landing-page {
+.home-page {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -7,19 +7,24 @@
   background: #1a1a2e;
 }
 
-.landing-logo {
-  font-family: 'GothicByte', monospace;
-  font-size: 96px;
-  font-weight: bold;
-  color: #b026ff;
-  text-shadow:
-    0 0 15px #b026ff,
-    0 0 25px #b026ff;
-  letter-spacing: 12px;
+.logo-container {
   margin-bottom: 60px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.landing-buttons {
+.home-logo {
+  max-width: 800px;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  mix-blend-mode: screen;
+}
+
+.home-buttons {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 30px;

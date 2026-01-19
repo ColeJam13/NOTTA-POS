@@ -1,4 +1,5 @@
 import NavBar from '../../components/NavBar';
+import { Medal } from 'lucide-react';
 import './Challenges.css';
 
 function Challenges({ setCurrentView }) {
@@ -67,10 +68,10 @@ function Challenges({ setCurrentView }) {
     ]
   };
 
-  const getRankEmoji = (rank) => {
-    if (rank === 1) return '🥇';
-    if (rank === 2) return '🥈';
-    if (rank === 3) return '🥉';
+  const getRankIcon = (rank) => {
+    if (rank <= 3) {
+      return <Medal size={20} />;
+    }
     return `${rank}.`;
   };
 
@@ -90,7 +91,7 @@ function Challenges({ setCurrentView }) {
         <div className="challenges-grid">
           {/* Active Challenges */}
           <div className="challenges-section">
-            <h3 className="section-title">🔥 Active Challenges</h3>
+            <h3 className="section-title">Active Challenges</h3>
             {mockData.activeChallenges.length > 0 ? (
               mockData.activeChallenges.map(challenge => (
                 <div key={challenge.id} className="challenge-card">
@@ -126,7 +127,7 @@ function Challenges({ setCurrentView }) {
 
           {/* Completed Challenges */}
           <div className="challenges-section">
-            <h3 className="section-title">✅ Completed Challenges</h3>
+            <h3 className="section-title">Completed Challenges</h3>
             {mockData.completedChallenges.length > 0 ? (
               mockData.completedChallenges.map(challenge => (
                 <div key={challenge.id} className="challenge-card completed">
@@ -153,7 +154,7 @@ function Challenges({ setCurrentView }) {
 
           {/* Available Challenges */}
           <div className="challenges-section">
-            <h3 className="section-title">📋 Available Challenges</h3>
+            <h3 className="section-title">Available Challenges</h3>
             {mockData.availableChallenges.map(challenge => (
               <div key={challenge.id} className="challenge-card available">
                 <div className="challenge-header">
@@ -170,7 +171,7 @@ function Challenges({ setCurrentView }) {
 
           {/* Leaderboard */}
           <div className="challenges-section">
-            <h3 className="section-title">🏆 Top Servers - This Week</h3>
+            <h3 className="section-title">Top Servers - This Week</h3>
             <div className="leaderboard-table">
               {mockData.leaderboard.map(entry => (
                 <div 
@@ -178,11 +179,10 @@ function Challenges({ setCurrentView }) {
                   className={`leaderboard-row ${entry.name.includes('YOU') ? 'highlight' : ''}`}
                 >
                   <div className={`leaderboard-rank ${getRankClass(entry.rank)}`}>
-                    {getRankEmoji(entry.rank)}
+                    {getRankIcon(entry.rank)}
                   </div>
                   <div className="leaderboard-name">
                     {entry.name}
-                    {entry.streak > 0 && ' ' + '⚡'.repeat(entry.streak)}
                   </div>
                   <div className="leaderboard-sales">
                     ${entry.sales.toFixed(2)}

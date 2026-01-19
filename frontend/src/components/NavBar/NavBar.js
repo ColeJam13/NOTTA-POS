@@ -1,4 +1,5 @@
 import './NavBar.css';
+import { AlertCircle } from 'lucide-react';
 
 function NavBar({ currentView, setCurrentView }) {
   return (
@@ -12,7 +13,7 @@ function NavBar({ currentView, setCurrentView }) {
         
         <div className="navbar-right">
           <button className="notifications-btn">
-            🔔 <span className="notification-badge">2</span>
+            <AlertCircle size={20} /> <span className="notification-badge">2</span>
           </button>
           <div className="user-info">
             <div className="user-avatar">CJ</div>
@@ -25,12 +26,12 @@ function NavBar({ currentView, setCurrentView }) {
       </div>
       
       <div className="navbar-bottom">
-        <button className="nav-btn" onClick={() => setCurrentView('floorMap')}>FLOOR MAP</button>
-        <button className="nav-btn" onClick={() => setCurrentView('activeTables')}>TABLES</button>
+        <button className={`nav-btn ${currentView === 'floorMap' ? 'active' : ''}`} onClick={() => setCurrentView('floorMap')}>FLOOR MAP</button>
+        <button className={`nav-btn ${currentView === 'activeTables' ? 'active' : ''}`} onClick={() => setCurrentView('activeTables')}>TABLES</button>
         <button className={`nav-btn ${currentView === 'activeOrders' ? 'active' : ''}`} onClick={() => setCurrentView('activeOrders')}>ACTIVE ORDERS</button>
         <button className={`nav-btn ${currentView === 'createOrder' ? 'active' : ''}`} onClick={() => setCurrentView('createOrder')}>CREATE ORDER</button>
-        <button className="nav-btn" onClick={() => setCurrentView('financials')}>FINANCIALS</button>
-        <button className="nav-btn" onClick={() => setCurrentView('challenges')}>CHALLENGES</button>
+        <button className={`nav-btn ${currentView === 'financials' ? 'active' : ''}`} onClick={() => setCurrentView('financials')}>FINANCIALS</button>
+        <button className={`nav-btn ${currentView === 'challenges' ? 'active' : ''}`} onClick={() => setCurrentView('challenges')}>CHALLENGES</button>
       </div>
     </div>
   );

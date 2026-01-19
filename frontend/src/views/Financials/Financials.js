@@ -72,7 +72,6 @@ function Financials({ setCurrentView }) {
           <h3>Payment Breakdown</h3>
           
           <div className="payment-row">
-            <div className="payment-icon">💳</div>
             <div className="payment-label">Credit Card:</div>
             <div className="payment-amount">${mockData.paymentBreakdown.creditCard.amount.toFixed(2)}</div>
             <div className="payment-bar-container">
@@ -83,7 +82,6 @@ function Financials({ setCurrentView }) {
           </div>
           
           <div className="payment-row">
-            <div className="payment-icon">💵</div>
             <div className="payment-label">Cash:</div>
             <div className="payment-amount">${mockData.paymentBreakdown.cash.amount.toFixed(2)}</div>
             <div className="payment-bar-container">
@@ -94,7 +92,6 @@ function Financials({ setCurrentView }) {
           </div>
           
           <div className="payment-row">
-            <div className="payment-icon">🎁</div>
             <div className="payment-label">Gift Card:</div>
             <div className="payment-amount">${mockData.paymentBreakdown.giftCard.amount.toFixed(2)}</div>
             <div className="payment-bar-container">

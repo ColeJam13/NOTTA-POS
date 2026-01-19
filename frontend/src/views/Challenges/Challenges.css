@@ -252,3 +252,15 @@
   font-style: italic;
   padding: 40px;
 }
+
+.leaderboard-rank.gold {
+  color: #ffd700;
+}
+
+.leaderboard-rank.silver {
+  color: #c0c0c0;
+}
+
+.leaderboard-rank.bronze {
+  color: #cd7f32;
+}

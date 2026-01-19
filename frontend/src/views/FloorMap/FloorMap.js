@@ -28,7 +28,7 @@ function FloorMap({ setCurrentView, setSelectedTable }) {
 
     return (
         <div className="page-with-nav">
-            <NavBar currentView="floor-map-page" setCurrentView={setCurrentView} />
+            <NavBar currentView="floorMap" setCurrentView={setCurrentView} />
 
             <div className="floor-map-page">
                 <h2>FLOOR MAP</h2>
