@@ -1,4 +1,4 @@
-import logo from '../../assets/nota-logo.png';
+import logo from '../../assets/NOTTA LOGO.png';
 import './Home.css';
 
 function Home({ setCurrentView }) {
@@ -7,7 +7,7 @@ function Home({ setCurrentView }) {
       <div className="logo-container">
         <img 
           src={logo} 
-          alt="NOTA-POS Logo" 
+          alt="NOTTA-POS Logo"
           className="home-logo"
         />
       </div>

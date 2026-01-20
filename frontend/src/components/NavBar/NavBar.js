@@ -5,7 +5,7 @@ function NavBar({ currentView, setCurrentView }) {
   return (
     <div className="navbar">
       <div className="navbar-top">
-        <h1 className="navbar-logo" onClick={() => setCurrentView('home')} style={{cursor: 'pointer'}}>NOTA-POS</h1>
+        <h1 className="navbar-logo" onClick={() => setCurrentView('home')} style={{cursor: 'pointer'}}>NOTTA-POS</h1>
         
         <div className="navbar-search">
           <input type="text" placeholder="Find table, order, item..." />

@@ -16,17 +16,16 @@
 }
 
 .app {
-  display: flex;
-  height: 100vh;
-  background: #1a1a2e;
-  color: #e0e0e0;
-  font-family: 'Courier New', monospace;
-  overflow: hidden;
+display: flex;
+height: 100vh;
+background: #1a1a2e;
+color: #e0e0e0;
+font-family: 'Courier New', monospace;
+overflow: hidden;
 }
-
 .page-with-nav {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background: #1a1a2e;
+display: flex;
+flex-direction: column;
+height: 100vh;
+background: #1a1a2e;
 }
