@@ -426,25 +426,60 @@ useEffect(() => {
                 {menuItems
                     .filter(item => item.category === selectedCategory)                             // maps the items to their buttons
                     .map(item => (
-                    <div key ={item.menuItemId} className="menu-item-card" onClick={() => {
-                        setOrderItems([...orderItems, {
-                        menuItemId: item.menuItemId,
-                        name: item.name,
-                        price: item.price,
-                        quantity: 1,
-                        status: 'draft'
-                        }]);
+                      <div key ={item.menuItemId} className="menu-item-card" onClick={async () => {
+                          // Add item to local state
+                          const newItem = {
+                            menuItemId: item.menuItemId,
+                            name: item.name,
+                            price: item.price,
+                            quantity: 1,
+                            status: 'draft'
+                          };
+                          
+                          setOrderItems([...orderItems, newItem]);
 
-                        if (timerExpires) {
-                        const newExpires = new Date(Date.now() + 15000);
-                        setTimerExpires(newExpires);
-                        setSecondsLeft(15);
-                        }
+                              // If timer is running, immediately create and send the item
+                              if (timerExpires && currentOrderId) {
+                                try {
+                                  // Create the item in database
+                                  const createResponse = await fetch('http://localhost:8080/api/order-items', {
+                                    method: 'POST',
+                                    headers: { 'Content-type': 'application/json' },
+                                    body: JSON.stringify({
+                                      orderId: currentOrderId,
+                                      menuItemId: item.menuItemId,
+                                      quantity: 1,
+                                      price: item.price,
+                                      status: 'draft'
+                                    })
+                                  });
+                                  const createdItem = await createResponse.json();
+                                  
+                                  // Immediately send it (puts it in limbo)
+                                  await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}/send`, {
+                                    method: 'POST'
+                                  });
+                                  
+                                  // Update the item in state with orderItemId and limbo status
+                                  setOrderItems(prev => prev.map(i => 
+                                    i.menuItemId === item.menuItemId && !i.orderItemId 
+                                      ? { ...i, orderItemId: createdItem.orderItemId, status: 'limbo' }
+                                      : i
+                                  ));
+                                  
+                                  // Reset timer to 15 seconds
+                                  const newExpires = new Date(Date.now() + 15000);
+                                  setTimerExpires(newExpires);
+                                  setSecondsLeft(15);
+                                } catch (error) {
+                                  console.error('Error adding item during timer:', error);
+                                }
+                              }
 
-                        if (secondsLeft === 0) {
-                        setSecondsLeft(null);
-                        }
-                    }}>
+                              if (secondsLeft === 0) {
+                                setSecondsLeft(null);
+                              }
+                          }}>
                         <h3>{item.name}</h3>
                         <p className="price">${item.price.toFixed(2)}</p>
                     </div>
