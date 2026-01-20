@@ -1,6 +1,6 @@
 #NotaPOS
 
-**NotaPOS**
+**NottaPOS**
 - Designed to be a no-frills Point of Sale system that prioritizes the work-flow of the people on the floor and recognize
 pain points not addressed in other systems.
 

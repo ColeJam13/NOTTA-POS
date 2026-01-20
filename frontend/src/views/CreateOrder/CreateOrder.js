@@ -134,27 +134,30 @@ useEffect(() => {
         });
       }
 
-                                                                                // Add only the DRAFT items that aren't already in the database
-    const draftItems = orderItems.filter(item => item.status === 'draft');
+      // Add only the DRAFT items that aren't already in the database
+      const draftItems = orderItems.filter(item => item.status === 'draft');
 
-    for (const item of draftItems) {
-                                                                            // Only create the item if it doesn't have an orderItemId (not yet in database)
-      if (!item.orderItemId) {
-        await fetch('http://localhost:8080/api/order-items', {
-          method: 'POST',
-          headers: { 'Content-type': 'application/json' },
-          body: JSON.stringify({
-            orderId: orderId,
-            menuItemId: item.menuItemId,
-            quantity: item.quantity,
-            price: item.price,
-            status: 'draft'
+      // Create all items in parallel and wait for ALL to complete
+      const createPromises = draftItems
+        .filter(item => !item.orderItemId)
+        .map(item =>
+          fetch('http://localhost:8080/api/order-items', {
+            method: 'POST',
+            headers: { 'Content-type': 'application/json' },
+            body: JSON.stringify({
+              orderId: orderId,
+              menuItemId: item.menuItemId,
+              quantity: item.quantity,
+              price: item.price,
+              status: 'draft'
+            })
           })
-        });
-      }
-    }
+        );
 
-                                                                                                          // Now send ALL draft items for this order (backend will only send items with status 'draft')
+      // Wait for ALL items to be created before sending
+      await Promise.all(createPromises);
+
+      // Now send ALL draft items for this order (backend will only send items with status 'draft')
       const sendResponse = await fetch(`http://localhost:8080/api/order-items/order/${orderId}/send`, {
         method: 'POST'
       });
