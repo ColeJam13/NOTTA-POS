@@ -87,7 +87,7 @@ public class OrderItemService {
 
         for (OrderItem item : draftItems) {
             item.setStatus("limbo");
-            item.setDelayExpiresAt(now.plusSeconds(item.getDelaySeconds()));
+            item.setDelayExpiresAt(now.plusSeconds(item.getDelaySeconds() + 1));  // Add 1 extra second to compensate for frontend rendering
             item.setSentAt(now);
             orderItemRepository.save(item);
         }

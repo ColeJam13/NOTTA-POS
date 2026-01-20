@@ -75,7 +75,7 @@ useEffect(() => {
   }, []);
 
   useEffect(() => {
-    if (!timerExpires) return;                                       
+    if (!timerExpires) return;
 
     const interval = setInterval(() => {                              // timer logic
       const now = new Date();
@@ -108,6 +108,7 @@ useEffect(() => {
 
   const sendOrder = async () => {
     try {
+      setShowDraftSaved(false);  // Clear the draft notification when sending
       let orderId = currentOrderId;
 
                                                                                     // If no current order, create a new one
@@ -165,15 +166,15 @@ useEffect(() => {
 
       console.log('Sent items response:', sentItems);
 
-      if (sentItems && sentItems.length > 0) {
-        const expiresAt = new Date(sentItems[0].delayExpiresAt);
-        console.log('Timer expires at:', expiresAt);
-        console.log('Current time:', new Date());
-        console.log('Seconds until expiration:', Math.floor((expiresAt - new Date()) / 1000));
-        
-        setTimerExpires(expiresAt);
-        setSecondsLeft(15);
-      }
+        if (sentItems && sentItems.length > 0) {
+          const expiresAt = new Date(sentItems[0].delayExpiresAt);
+          
+          console.log('Timer expires at:', expiresAt);
+          console.log('Current time:', new Date());
+          
+          setTimerExpires(expiresAt);
+          setSecondsLeft(15);  // Start at 15, let interval handle countdown
+        }
 
                                                                                             // Change only draft items to limbo
       setOrderItems(prevItems => prevItems.map(item => {
@@ -237,11 +238,11 @@ useEffect(() => {
                                                                                           // Remove from local state
                           setOrderItems(orderItems.filter((_, i) => i !== index));
 
-                          if (timerExpires) {
-                              const newExpires = new Date(Date.now() + 15000);
-                              setTimerExpires(newExpires);
-                              setSecondsLeft(15);
-                          }
+                            if (timerExpires) {
+                                const newExpires = new Date(Date.now() + 16000);
+                                setTimerExpires(newExpires);
+                                setSecondsLeft(15);
+                            }
                           }}
                       >
                           x
@@ -434,63 +435,62 @@ useEffect(() => {
                 {menuItems
                     .filter(item => item.category === selectedCategory)                             // maps the items to their buttons
                     .map(item => (
+                        <div key ={item.menuItemId} className="menu-item-card" onClick={async () => {     // <-------- PROBLEM CHILD
+                            // If timer is active and we have an order, create and send immediately
+                            if (timerExpires && currentOrderId) {
+                              try {
+                                // Create item
+                                const createRes = await fetch('http://localhost:8080/api/order-items', {
+                                  method: 'POST',
+                                  headers: { 'Content-type': 'application/json' },
+                                  body: JSON.stringify({
+                                    orderId: currentOrderId,
+                                    menuItemId: item.menuItemId,
+                                    quantity: 1,
+                                    price: item.price,
+                                    status: 'draft'
+                                  })
+                                });
+                                const created = await createRes.json();
+                                
+                                // Send it immediately
+                                await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}/send`, {
+                                  method: 'POST'
+                                });
+                                
+                                // Add to state as 'limbo' with orderItemId
+                                setOrderItems([...orderItems, {
+                                  orderItemId: created.orderItemId,
+                                  menuItemId: item.menuItemId,
+                                  name: item.name,
+                                  price: item.price,
+                                  quantity: 1,
+                                  status: 'limbo'
+                                }]);
+                                
+                                // Reset timer
+                                const newExpires = new Date(Date.now() + 16000);
+                                setTimerExpires(newExpires);
+                                setSecondsLeft(15);
+                              } catch (error) {
+                                console.error('Error adding item during timer:', error);
+                              }
+                            } else {
+                              // No timer - normal behavior (add as draft)
+                              setOrderItems([...orderItems, {
+                                menuItemId: item.menuItemId,
+                                name: item.name,
+                                price: item.price,
+                                quantity: 1,
+                                status: 'draft'
+                              }]);
+                            }
 
-<div key ={item.menuItemId} className="menu-item-card" onClick={async () => {
-    // If timer is active and we have an order, create and send immediately
-    if (timerExpires && currentOrderId) {
-      try {
-        // Create item
-        const createRes = await fetch('http://localhost:8080/api/order-items', {
-          method: 'POST',
-          headers: { 'Content-type': 'application/json' },
-          body: JSON.stringify({
-            orderId: currentOrderId,
-            menuItemId: item.menuItemId,
-            quantity: 1,
-            price: item.price,
-            status: 'draft'
-          })
-        });
-        const created = await createRes.json();
-        
-        // Send it immediately
-        await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}/send`, {
-          method: 'POST'
-        });
-        
-        // Add to state as 'limbo' with orderItemId
-        setOrderItems([...orderItems, {
-          orderItemId: created.orderItemId,
-          menuItemId: item.menuItemId,
-          name: item.name,
-          price: item.price,
-          quantity: 1,
-          status: 'limbo'
-        }]);
-        
-        // Reset timer
-        const newExpires = new Date(Date.now() + 15000);
-        setTimerExpires(newExpires);
-        setSecondsLeft(15);
-      } catch (error) {
-        console.error('Error adding item during timer:', error);
-      }
-    } else {
-      // No timer - normal behavior (add as draft)
-      setOrderItems([...orderItems, {
-        menuItemId: item.menuItemId,
-        name: item.name,
-        price: item.price,
-        quantity: 1,
-        status: 'draft'
-      }]);
-    }
-
-    if (secondsLeft === 0) {
-      setSecondsLeft(null);
-    }
-}}>
-
+                            if (secondsLeft === 0) {
+                              setSecondsLeft(null);                     // <---------- END OF PROBLEM CHILD
+                            }
+                        }}>                                                 
+                                                                    
                         <h3>{item.name}</h3>
                         <p className="price">${item.price.toFixed(2)}</p>
                     </div>
