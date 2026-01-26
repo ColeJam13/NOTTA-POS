@@ -9,7 +9,7 @@ function CreateOrder({ setCurrentView, selectedTable }) {
   const [menuItems, setMenuItems] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('Savory');
   const [orderItems, setOrderItems] = useState([])
-  const [currentTableId] = useState(selectedTable?.tableId || 1);
+  const [currentTable, setCurrentTable] = useState(selectedTable); // Changed: store entire table object instead of just ID
   const [timerExpires, setTimerExpires] = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(null);
   const [currentOrderId, setCurrentOrderId] = useState(null);
@@ -17,31 +17,93 @@ function CreateOrder({ setCurrentView, selectedTable }) {
   const [showDraftSaved, setShowDraftSaved] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
+// Set initial table state - if selectedTable exists, use it. Otherwise null (Quick Order will be created on Save/Send)
 useEffect(() => {
-  if (selectedTable && selectedTable.status === 'occupied') {
-    fetch(`http://localhost:8080/api/orders?tableId=${selectedTable.tableId}`)
+  if (selectedTable) {
+    setCurrentTable(selectedTable);
+  } else {
+    // No table selected - will create Quick Order when user saves/sends
+    setCurrentTable(null);
+  }
+}, [selectedTable]);
+
+// Helper function to create a Quick Order table
+const createQuickOrderTable = async () => {
+  try {
+    console.log('Creating Quick Order table...');
+    
+    // 1. Get all existing tables to find highest QO number
+    const tablesResponse = await fetch('http://localhost:8080/api/tables');
+    const allTables = await tablesResponse.json();
+    
+    // 2. Filter for Quick Order tables (starting with "QO")
+    const quickOrders = allTables.filter(t => t.tableNumber && t.tableNumber.startsWith('QO'));
+    
+    // 3. Find the highest number and increment
+    let nextQONumber = 1;
+    if (quickOrders.length > 0) {
+      const qoNumbers = quickOrders.map(t => {
+        const num = parseInt(t.tableNumber.substring(2)); // Remove "QO" prefix
+        return isNaN(num) ? 0 : num;
+      });
+      nextQONumber = Math.max(...qoNumbers) + 1;
+    }
+    
+    const newTableNumber = `QO${nextQONumber}`;
+    console.log('Creating Quick Order:', newTableNumber);
+    
+    // 4. Create the new Quick Order table
+    const createResponse = await fetch('http://localhost:8080/api/tables', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tableNumber: newTableNumber,
+        section: 'Quick Orders',
+        seatCount: 0,
+        status: 'available'
+      })
+    });
+    
+    if (!createResponse.ok) {
+      throw new Error('Failed to create Quick Order table');
+    }
+    
+    const newTable = await createResponse.json();
+    console.log('Successfully created Quick Order table:', newTable);
+    return newTable;
+    
+  } catch (error) {
+    console.error('Error creating Quick Order:', error);
+    throw error;
+  }
+};
+
+// Load existing order if table is occupied
+useEffect(() => {
+  if (currentTable && currentTable.status === 'occupied') {
+    fetch(`http://localhost:8080/api/orders?tableId=${currentTable.tableId}`)
       .then(response => response.json())
       .then(orders => {
         if (orders.length > 0) {
           const openOrders = orders.filter(o => o.status === 'open');
           
           if (openOrders.length > 0) {
-                                                                                          // Use the FIRST order as the "current" order for adding new items
+            // Use the FIRST order as the "current" order for adding new items
             setCurrentOrderId(openOrders[0].orderId);
 
-                                                                                          // Fetch menu items first
+            // Fetch menu items first
             fetch('http://localhost:8080/api/menu-items')
               .then(response => response.json())
               .then(menuData => {
-                                                                                          // Fetch items from ALL open orders
+                // Fetch items from ALL open orders
                 const itemPromises = openOrders.map(order =>
                   fetch(`http://localhost:8080/api/order-items/order/${order.orderId}`)
                     .then(response => response.json())
                 );
 
-                                                                                          // Wait for all item fetches to complete
+                // Wait for all item fetches to complete
                 Promise.all(itemPromises).then(allItemArrays => {
-                                                                                          // Flatten all items into one array
+                  // Flatten all items into one array
                   const allItems = allItemArrays.flat();
                   
                   const formattedItems = allItems.map(item => ({
@@ -62,7 +124,7 @@ useEffect(() => {
       })
       .catch(error => console.error('Error loading order:', error));
   }
-}, [selectedTable]);
+}, [currentTable]); // Changed dependency from selectedTable to currentTable
 
 useEffect(() => {
   fetch('http://localhost:8080/api/menu-items')                             // fetch menu items
@@ -110,17 +172,24 @@ useEffect(() => {
     try {
       setShowDraftSaved(false);  // Clear the draft notification when sending
       let orderId = currentOrderId;
+      let tableToUse = currentTable;
 
-                                                                                    // If no current order, create a new one
+      // If no table exists yet (Quick Order scenario), create one now
+      if (!tableToUse) {
+        tableToUse = await createQuickOrderTable();
+        setCurrentTable(tableToUse);
+      }
+
+      // If no current order, create a new one
       if (!orderId) {
         const orderResponse = await fetch('http://localhost:8080/api/orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            tableId: currentTableId,
+            tableId: tableToUse.tableId, // Changed: use tableToUse instead of currentTable
             orderType: 'dine_in',
             status: 'open',
-            serverName: selectedTable?.serverName || 'Unknown'
+            serverName: tableToUse.serverName || 'Unknown'
           })
         });
         const order = await orderResponse.json();
@@ -128,7 +197,7 @@ useEffect(() => {
         orderId = order.orderId;
         setCurrentOrderId(orderId);
 
-        await fetch(`http://localhost:8080/api/tables/${currentTableId}`, {
+        await fetch(`http://localhost:8080/api/tables/${tableToUse.tableId}`, { // Changed: use tableToUse
           method: 'PUT',
           headers: { 'Content-Type': 'application/json'},
           body: JSON.stringify({ status: 'occupied' })
@@ -176,7 +245,7 @@ useEffect(() => {
           setSecondsLeft(15);  // Start at 15, let interval handle countdown
         }
 
-                                                                                            // Change only draft items to limbo
+      // Change only draft items to limbo
       setOrderItems(prevItems => prevItems.map(item => {
         if (item.status === 'draft') return { ...item, status: 'limbo' };
         return item;
@@ -188,12 +257,12 @@ useEffect(() => {
     }
   };
 
-  return (                                                                          // change table in create order tab
+  return (
     <div className="page-with-nav">
         <NavBar currentView="createOrder" setCurrentView={setCurrentView} />                      
             <div className="app">
             <div className="order-panel">
-                <h2>Current Order - Table {selectedTable?.tableNumber || 'F1'}</h2>         
+                <h2>Current Order - {currentTable ? `Table ${currentTable.tableNumber}` : 'New Quick Order'}</h2> {/* Show "New Quick Order" if no table yet */}
 
                 <div className={`notification-bar ${
                   showDraftSaved ? 'notification-success' : 
@@ -209,7 +278,7 @@ useEffect(() => {
                 </div>
 
                 <div className="order-items-list" ref={orderItemsRef}>
-                {orderItems.map((item, index) => (                                                              // lock item and change status
+                {orderItems.map((item, index) => (
                     <div key={index} className={`order-item ${
                       (item.status === 'pending' || item.status === 'fired' || item.status === 'completed') ? 'locked' : 
                       (item.status === 'draft' && item.orderItemId) ? 'saved-draft' : 
@@ -222,9 +291,9 @@ useEffect(() => {
                     <span>${item.price.toFixed(2)}</span>
                     {(item.status === 'draft' || item.status === 'limbo') &&(
                       <button
-                          className="btn-remove"                                                      // remove item
+                          className="btn-remove"
                           onClick={async () => {
-                                                                                      // If item has an orderItemId, delete it from database
+                          // If item has an orderItemId, delete it from database
                           if (item.orderItemId) {
                               try {
                                   await fetch(`http://localhost:8080/api/order-items/${item.orderItemId}`, {
@@ -235,7 +304,7 @@ useEffect(() => {
                               }
                           }
 
-                                                                                          // Remove from local state
+                          // Remove from local state
                           setOrderItems(orderItems.filter((_, i) => i !== index));
 
                             if (timerExpires) {
@@ -252,7 +321,7 @@ useEffect(() => {
                 ))}
                 </div>
                                                                                                     
-            <div className="order-totals">                                                          
+            <div className="order-totals">
                 <div className="total-row">
                 <span>Subtotal:</span>
                 <span>${orderItems.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</span>
@@ -272,25 +341,32 @@ useEffect(() => {
                     <button className="btn-save" onClick={async () => {
                       try {
                         let orderId = currentOrderId;
+                        let tableToUse = currentTable;
 
-                                                                                                      // If no current order, create a new one
+                        // If no table exists yet (Quick Order scenario), create one now
+                        if (!tableToUse) {
+                          tableToUse = await createQuickOrderTable();
+                          setCurrentTable(tableToUse);
+                        }
+
+                        // If no current order, create a new one
                         if (!orderId) {
                           const orderResponse = await fetch('http://localhost:8080/api/orders', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                              tableId: currentTableId,
+                              tableId: tableToUse.tableId, // Changed: use tableToUse
                               orderType: 'dine_in',
                               status: 'open',
-                              serverName: selectedTable?.serverName || 'Unknown'
+                              serverName: tableToUse.serverName || 'Unknown'
                             })
                           });
                           const order = await orderResponse.json();
                           orderId = order.orderId;
                           setCurrentOrderId(orderId);
 
-                                                                                                  // Mark table as occupied
-                          await fetch(`http://localhost:8080/api/tables/${currentTableId}`, {
+                          // Mark table as occupied
+                          await fetch(`http://localhost:8080/api/tables/${tableToUse.tableId}`, { // Changed: use tableToUse
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json'},
                             body: JSON.stringify({ status: 'occupied' })
@@ -341,20 +417,20 @@ useEffect(() => {
 
                     <button className="btn-send" onClick={async () => {
                       if (timerExpires && currentOrderId) {
-                                                                                                                    // Call backend to send now
+                        // Call backend to send now
                         await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}/send-now`, {
                           method: 'POST'
                         });
 
-                                                                            // Stop the timer
+                        // Stop the timer
                         setSecondsLeft(0);
                         setTimerExpires(null);
 
-                                                                                                        // Refetch the order items to get updated status from backend
+                        // Refetch the order items to get updated status from backend
                         const response = await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}`);
                         const updatedItems = await response.json();
                         
-                                                                                              // Fetch menu items to format properly
+                        // Fetch menu items to format properly
                         const menuResponse = await fetch('http://localhost:8080/api/menu-items');
                         const menuData = await menuResponse.json();
                         
@@ -386,11 +462,11 @@ useEffect(() => {
                 </div>
             </div>
                                                                                   
-            <div className="menu-panel">                                                          
+            <div className="menu-panel">
                 <div className="category-tabs">
                 <button
                     className={`category-tab ${selectedCategory === 'Savory' ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory('Savory')}                                       // Menu Category panel and buttons
+                    onClick={() => setSelectedCategory('Savory')}
                 >
                     SAVORY
                 </button>
@@ -433,9 +509,9 @@ useEffect(() => {
                 </div>
                 <div className="menu-grid">
                 {menuItems
-                    .filter(item => item.category === selectedCategory)                             // maps the items to their buttons
+                    .filter(item => item.category === selectedCategory)
                     .map(item => (
-                        <div key ={item.menuItemId} className="menu-item-card" onClick={async () => {     // <-------- PROBLEM CHILD
+                        <div key ={item.menuItemId} className="menu-item-card" onClick={async () => {
                             // If timer is active and we have an order, create and send immediately
                             if (timerExpires && currentOrderId) {
                               try {
@@ -487,7 +563,7 @@ useEffect(() => {
                             }
 
                             if (secondsLeft === 0) {
-                              setSecondsLeft(null);                     // <---------- END OF PROBLEM CHILD
+                              setSecondsLeft(null);
                             }
                         }}>                                                 
                                                                     

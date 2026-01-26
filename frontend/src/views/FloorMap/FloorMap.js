@@ -34,7 +34,9 @@ function FloorMap({ setCurrentView, setSelectedTable }) {
                 <h2>FLOOR MAP</h2>
 
                 <div className="floor-canvas">
-                    {tables.map(table => (
+                    {tables
+                        .filter(table => table.section !== 'Quick Orders' && !table.tableNumber?.startsWith('QO')) // Filter out Quick Orders
+                        .map(table => (
                         <div
                             key={table.tableId}
                             className={`table-visual ${table.shape} ${table.status} ${table.seatCount >= 6 ? 'large' : ''}`}
