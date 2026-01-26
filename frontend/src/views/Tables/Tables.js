@@ -180,7 +180,7 @@ function Tables({ setCurrentView, setSelectedTable }) {
 
     return (
         <div className="page-with-nav">
-            <NavBar currentView="activeTables" setCurrentView={setCurrentView} />
+        <NavBar currentView="activeTables" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />
             <div className="tables-page">
                 <h2>TABLES</h2>
 

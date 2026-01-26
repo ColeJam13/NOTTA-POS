@@ -5,7 +5,7 @@ import PaymentModal from '../../components/PaymentModal';
 import './CreateOrder.css';
 
 
-function CreateOrder({ setCurrentView, selectedTable }) {
+function CreateOrder({ setCurrentView, selectedTable, setSelectedTable }) {
   const [menuItems, setMenuItems] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('Savory');
   const [orderItems, setOrderItems] = useState([])
@@ -259,7 +259,7 @@ useEffect(() => {
 
   return (
     <div className="page-with-nav">
-        <NavBar currentView="createOrder" setCurrentView={setCurrentView} />                      
+      <NavBar currentView="createOrder" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />                    
             <div className="app">
             <div className="order-panel">
                 <h2>Current Order - {currentTable ? `Table ${currentTable.tableNumber}` : 'New Quick Order'}</h2> {/* Show "New Quick Order" if no table yet */}

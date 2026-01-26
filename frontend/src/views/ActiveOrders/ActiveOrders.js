@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import NavBar from '../../components/NavBar/NavBar';
 import './ActiveOrders.css';
 
-function ActiveOrders({ setCurrentView }) {
+function ActiveOrders({ setCurrentView, setSelectedTable }) {
   const [view, setView] = useState('FOH');
   const [orders, setOrders] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
@@ -57,7 +57,7 @@ function ActiveOrders({ setCurrentView }) {
 
   return (
     <div className="page-with-nav">
-        <NavBar currentView="activeOrders" setCurrentView={setCurrentView} />
+      <NavBar currentView="activeOrders" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />
             <div className="active-orders-page">
             <h2>ACTIVE ORDERS</h2>
 

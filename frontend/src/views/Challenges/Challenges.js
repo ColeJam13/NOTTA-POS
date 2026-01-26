@@ -2,7 +2,7 @@ import NavBar from '../../components/NavBar';
 import { Medal } from 'lucide-react';
 import './Challenges.css';
 
-function Challenges({ setCurrentView }) {
+function Challenges({ setCurrentView, setSelectedTable }) {
   // Mock data - will be replaced with API calls later
   const mockData = {
     activeChallenges: [
@@ -84,7 +84,7 @@ function Challenges({ setCurrentView }) {
 
   return (
     <div className="page-with-nav">
-      <NavBar currentView="challenges" setCurrentView={setCurrentView} />
+      <NavBar currentView="challenges" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />
       <div className="challenges-page">
         <h2>CHALLENGES</h2>
 

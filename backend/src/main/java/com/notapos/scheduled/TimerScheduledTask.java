@@ -31,7 +31,7 @@ public class TimerScheduledTask {
         this.orderItemService = orderItemService;
     }
 
-    @Scheduled(fixedRate = 1000)
+    @Scheduled(fixedRate = 1000, initialDelay = 5000)
     public void checkExpiredTimers() {
         orderItemService.lockAndSendExpiredItems();
     }

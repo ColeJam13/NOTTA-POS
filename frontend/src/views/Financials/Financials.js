@@ -1,7 +1,7 @@
 import NavBar from '../../components/NavBar';
 import './Financials.css';
 
-function Financials({ setCurrentView }) {
+function Financials({ setCurrentView, setSelectedTable }) {
   // Mock data - will be replaced with API call later
   const mockData = {
     shiftStart: '4:30 PM',
@@ -28,7 +28,7 @@ function Financials({ setCurrentView }) {
 
   return (
     <div className="page-with-nav">
-      <NavBar currentView="financials" setCurrentView={setCurrentView} />
+      <NavBar currentView="financials" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />
       <div className="financials-page">
         <h2>FINANCIALS</h2>
         

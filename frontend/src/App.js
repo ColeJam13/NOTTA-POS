@@ -13,11 +13,11 @@ function App() {
   const [selectedTable, setSelectedTable] = useState(null);
 
   if (currentView === 'createOrder') {
-    return <CreateOrder setCurrentView={setCurrentView} selectedTable={selectedTable} />;
+    return <CreateOrder setCurrentView={setCurrentView} selectedTable={selectedTable} setSelectedTable={setSelectedTable} />;  
   }
 
   if (currentView === 'activeOrders') {
-    return <ActiveOrders setCurrentView={setCurrentView} />;
+    return <ActiveOrders setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;  
   }
 
   if (currentView === 'floorMap') {
@@ -29,14 +29,14 @@ function App() {
   }
 
   if (currentView === 'financials') {
-  return <Financials setCurrentView={setCurrentView} />;
+    return <Financials setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;  
   }
 
   if (currentView === 'challenges') {
-  return <Challenges setCurrentView={setCurrentView} />;
+    return <Challenges setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;  
   }
 
-  return <Home setCurrentView={setCurrentView} />;
+  return <Home setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;  
 }
 
 export default App;

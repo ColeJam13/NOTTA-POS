@@ -1,7 +1,7 @@
 import './NavBar.css';
 import { AlertCircle } from 'lucide-react';
 
-function NavBar({ currentView, setCurrentView }) {
+function NavBar({ currentView, setCurrentView, setSelectedTable }) {  // Add setSelectedTable prop
   return (
     <div className="navbar">
       <div className="navbar-top">
@@ -29,7 +29,10 @@ function NavBar({ currentView, setCurrentView }) {
         <button className={`nav-btn ${currentView === 'floorMap' ? 'active' : ''}`} onClick={() => setCurrentView('floorMap')}>FLOOR MAP</button>
         <button className={`nav-btn ${currentView === 'activeTables' ? 'active' : ''}`} onClick={() => setCurrentView('activeTables')}>TABLES</button>
         <button className={`nav-btn ${currentView === 'activeOrders' ? 'active' : ''}`} onClick={() => setCurrentView('activeOrders')}>ACTIVE ORDERS</button>
-        <button className={`nav-btn ${currentView === 'createOrder' ? 'active' : ''}`} onClick={() => setCurrentView('createOrder')}>CREATE ORDER</button>
+        <button className={`nav-btn ${currentView === 'createOrder' ? 'active' : ''}`} onClick={() => {
+          setSelectedTable(null);  // Clear selected table
+          setCurrentView('createOrder');
+        }}>CREATE ORDER</button>
         <button className={`nav-btn ${currentView === 'financials' ? 'active' : ''}`} onClick={() => setCurrentView('financials')}>FINANCIALS</button>
         <button className={`nav-btn ${currentView === 'challenges' ? 'active' : ''}`} onClick={() => setCurrentView('challenges')}>CHALLENGES</button>
       </div>
