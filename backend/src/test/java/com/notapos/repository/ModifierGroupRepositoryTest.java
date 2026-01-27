@@ -4,10 +4,6 @@ import com.notapos.entity.ModifierGroup;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase.Replace;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,15 +13,16 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Repository tests for ModifierGroupRepository.
  * 
- * Tests database queries for modifier group management.
+ * Tests database queries for modifier group management using PostgreSQL Testcontainer.
+ * 
+ * CHANGES FROM ORIGINAL:
+ * - Now extends BaseRepositoryTest (provides PostgreSQL container)
+ * - Removed @DataJpaTest, @AutoConfigureTestDatabase, @ActiveProfiles (inherited from base)
+ * - Tests now run against real PostgreSQL 16 in Docker
  * 
  * @author CJ
  */
-
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = Replace.NONE)
-@ActiveProfiles("test")
-class ModifierGroupRepositoryTest {
+class ModifierGroupRepositoryTest extends BaseRepositoryTest {
 
     @Autowired
     private ModifierGroupRepository modifierGroupRepository;

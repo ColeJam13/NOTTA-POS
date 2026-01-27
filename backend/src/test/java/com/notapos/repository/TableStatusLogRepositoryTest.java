@@ -1,13 +1,10 @@
 package com.notapos.repository;
 
 import com.notapos.entity.TableStatusLog;
+import com.notapos.entity.RestaurantTable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase.Replace;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.test.context.ActiveProfiles;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -16,31 +13,63 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Repository tests for TableStatusLogRepository.
  * 
- * Tests database queries for table status change audit trail.
+ * Tests database queries for table status change audit trail using PostgreSQL Testcontainer.
+ * 
+ * CHANGES FROM ORIGINAL:
+ * - Now extends BaseRepositoryTest (provides PostgreSQL container)
+ * - Removed @DataJpaTest, @AutoConfigureTestDatabase, @ActiveProfiles (inherited from base)
+ * - Creates actual RestaurantTable entities first (proper foreign key handling)
+ * - Tests now run against real PostgreSQL 16 in Docker
  * 
  * @author CJ
  */
-
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = Replace.NONE)
-@ActiveProfiles("test")
-class TableStatusLogRepositoryTest {
+class TableStatusLogRepositoryTest extends BaseRepositoryTest {
 
     @Autowired
     private TableStatusLogRepository tableStatusLogRepository;
+    
+    @Autowired
+    private TableRepository tableRepository;
 
+    private RestaurantTable table1;
+    private RestaurantTable table2;
+    private RestaurantTable table3;
     private TableStatusLog log1;
     private TableStatusLog log2;
     private TableStatusLog log3;
 
     @BeforeEach
     void setUp() {
-        // Clear database before each test
+        // Clear database before each test (in proper order due to foreign keys)
         tableStatusLogRepository.deleteAll();
+        tableRepository.deleteAll();
 
+        // Create tables first (foreign key dependency)
+        table1 = new RestaurantTable();
+        table1.setTableNumber("F1");
+        table1.setSection("Front");
+        table1.setSeatCount(2);
+        table1.setStatus("cleaning");
+        table1 = tableRepository.save(table1);
+
+        table2 = new RestaurantTable();
+        table2.setTableNumber("F2");
+        table2.setSection("Front");
+        table2.setSeatCount(4);
+        table2.setStatus("occupied");
+        table2 = tableRepository.save(table2);
+
+        table3 = new RestaurantTable();
+        table3.setTableNumber("B1");
+        table3.setSection("Back");
+        table3.setSeatCount(4);
+        table3.setStatus("available");
+        table3 = tableRepository.save(table3);
+
+        // Now create log entries with valid table foreign keys
         // Create log entry 1: Table 1 available -> occupied
         log1 = new TableStatusLog();
-        log1.setTableId(1L);
+        log1.setTableId(table1.getTableId());
         log1.setOldStatus("available");
         log1.setNewStatus("occupied");
         log1.setChangedBy("Server Alice");
@@ -48,7 +77,7 @@ class TableStatusLogRepositoryTest {
 
         // Create log entry 2: Table 1 occupied -> cleaning
         log2 = new TableStatusLog();
-        log2.setTableId(1L);
+        log2.setTableId(table1.getTableId());
         log2.setOldStatus("occupied");
         log2.setNewStatus("cleaning");
         log2.setChangedBy("Server Alice");
@@ -56,7 +85,7 @@ class TableStatusLogRepositoryTest {
 
         // Create log entry 3: Table 2 available -> occupied
         log3 = new TableStatusLog();
-        log3.setTableId(2L);
+        log3.setTableId(table2.getTableId());
         log3.setOldStatus("available");
         log3.setNewStatus("occupied");
         log3.setChangedBy("Server Bob");
@@ -68,9 +97,9 @@ class TableStatusLogRepositoryTest {
         // WHAT: Test saving a new log entry to database
         // WHY: Ensure basic create operation works
         
-        // Given - New log entry
+        // Given - New log entry for table 3
         TableStatusLog newLog = new TableStatusLog();
-        newLog.setTableId(3L);
+        newLog.setTableId(table3.getTableId());
         newLog.setOldStatus("cleaning");
         newLog.setNewStatus("available");
         newLog.setChangedBy("Busser Charlie");
@@ -80,7 +109,7 @@ class TableStatusLogRepositoryTest {
 
         // Then - Should persist with generated ID
         assertNotNull(saved.getLogId());
-        assertEquals(3L, saved.getTableId());
+        assertEquals(table3.getTableId(), saved.getTableId());
         assertEquals("available", saved.getNewStatus());
     }
 
@@ -136,11 +165,11 @@ class TableStatusLogRepositoryTest {
         // Given - Table 1 has 2 logs, Table 2 has 1 log (from setUp)
         
         // When - Find logs for Table 1
-        List<TableStatusLog> table1Logs = tableStatusLogRepository.findByTableId(1L);
+        List<TableStatusLog> table1Logs = tableStatusLogRepository.findByTableId(table1.getTableId());
 
         // Then - Should get 2 logs for Table 1
         assertEquals(2, table1Logs.size());
-        assertTrue(table1Logs.stream().allMatch(log -> log.getTableId().equals(1L)));
+        assertTrue(table1Logs.stream().allMatch(log -> log.getTableId().equals(table1.getTableId())));
     }
 
     @Test
@@ -151,7 +180,7 @@ class TableStatusLogRepositoryTest {
         // Given - Table 1 has 2 logs created at different times (from setUp)
         
         // When - Find logs for Table 1
-        List<TableStatusLog> logs = tableStatusLogRepository.findByTableId(1L);
+        List<TableStatusLog> logs = tableStatusLogRepository.findByTableId(table1.getTableId());
 
         // Then - Should get 2 logs
         assertEquals(2, logs.size());
@@ -239,7 +268,7 @@ class TableStatusLogRepositoryTest {
         // Given - Table 1 has 2 status changes (from setUp)
         
         // When - Get all logs for Table 1
-        List<TableStatusLog> history = tableStatusLogRepository.findByTableId(1L);
+        List<TableStatusLog> history = tableStatusLogRepository.findByTableId(table1.getTableId());
 
         // Then - Should have 2 separate log entries
         assertEquals(2, history.size());

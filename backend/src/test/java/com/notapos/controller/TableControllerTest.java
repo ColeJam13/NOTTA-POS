@@ -152,4 +152,43 @@ class TableControllerTest {
 
         verify(tableService).updateTableStatus(999L, "occupied");
     }
+
+    @Test
+    void testUpdateTable_ShouldReturnUpdated() throws Exception {
+        // WHAT: Test PUT /api/tables/{id} to update table
+        // WHY: Update table details
+        
+        // Given
+        testTable.setStatus("occupied");
+        testTable.setSeatCount(6);
+        when(tableService.updateTable(eq(1L), any(RestaurantTable.class))).thenReturn(testTable);
+
+        // When/Then
+        mockMvc.perform(put("/api/tables/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"occupied\",\"seatCount\":6}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("occupied"))
+                .andExpect(jsonPath("$.seatCount").value(6));
+
+        verify(tableService).updateTable(eq(1L), any(RestaurantTable.class));
+    }
+
+    @Test
+    void testUpdateTable_WhenNotFound_ShouldReturn404() throws Exception {
+        // WHAT: Test PUT /api/tables/{id} when table doesn't exist
+        // WHY: Handle updates to missing tables
+        
+        // Given
+        when(tableService.updateTable(eq(999L), any(RestaurantTable.class)))
+                .thenThrow(new RuntimeException("Table not found"));
+
+        // When/Then
+        mockMvc.perform(put("/api/tables/999")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"occupied\"}"))
+                .andExpect(status().isNotFound());
+
+        verify(tableService).updateTable(eq(999L), any(RestaurantTable.class));
+    }
 }

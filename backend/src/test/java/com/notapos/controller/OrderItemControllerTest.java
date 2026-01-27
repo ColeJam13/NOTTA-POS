@@ -280,4 +280,182 @@ class OrderItemControllerTest {
 
         verify(orderItemService, times(1)).completeItem(1L);
     }
+
+    @Test
+    void testSendOrderNow_ShouldSendAllDraftAndLimboItems() throws Exception {
+        // WHAT: Test POST /api/order-items/order/{orderId}/send-now
+        // WHY: Send all draft and limbo items immediately (manager override)
+        
+        // Given - Service returns draft and limbo items
+        OrderItem draftItem = new OrderItem();
+        draftItem.setOrderItemId(1L);
+        draftItem.setStatus("draft");
+        
+        OrderItem limboItem = new OrderItem();
+        limboItem.setOrderItemId(2L);
+        limboItem.setStatus("limbo");
+        
+        when(orderItemService.getDraftItemsByOrder(1L)).thenReturn(Arrays.asList(draftItem));
+        when(orderItemService.getLimboItemsByOrder(1L)).thenReturn(Arrays.asList(limboItem));
+        
+        // Mock sendItemNow to return sent items
+        OrderItem sentDraft = new OrderItem();
+        sentDraft.setOrderItemId(1L);
+        sentDraft.setStatus("pending");
+        sentDraft.setIsLocked(true);
+        
+        OrderItem sentLimbo = new OrderItem();
+        sentLimbo.setOrderItemId(2L);
+        sentLimbo.setStatus("pending");
+        sentLimbo.setIsLocked(true);
+        
+        when(orderItemService.sendItemNow(1L)).thenReturn(sentDraft);
+        when(orderItemService.sendItemNow(2L)).thenReturn(sentLimbo);
+
+        // When/Then - POST request should return 200 OK with sent items
+        mockMvc.perform(post("/api/order-items/order/1/send-now"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+
+        verify(orderItemService, times(1)).getDraftItemsByOrder(1L);
+        verify(orderItemService, times(1)).getLimboItemsByOrder(1L);
+        verify(orderItemService, times(1)).sendItemNow(1L);
+        verify(orderItemService, times(1)).sendItemNow(2L);
+    }
+
+    @Test
+    void testStartItem_WhenSuccessful_ShouldReturnStartedItem() throws Exception {
+        // WHAT: Test PUT /api/order-items/{id}/start
+        // WHY: Kitchen marks item as started
+        
+        // Given - Service starts the item
+        testItem.setStatus("fired");
+        when(orderItemService.startItem(1L)).thenReturn(testItem);
+
+        // When/Then - PUT request should return 200 OK
+        mockMvc.perform(put("/api/order-items/1/start"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderItemId").value(1))
+                .andExpect(jsonPath("$.status").value("fired"));
+
+        verify(orderItemService, times(1)).startItem(1L);
+    }
+
+    @Test
+    void testStartItem_WhenItemNotFound_ShouldReturn404() throws Exception {
+        // WHAT: Test PUT /api/order-items/{id}/start when item doesn't exist
+        // WHY: Handle missing items gracefully
+        
+        // Given - Service throws exception
+        when(orderItemService.startItem(999L)).thenThrow(new RuntimeException("Item not found"));
+
+        // When/Then - PUT request should return 404 Not Found
+        mockMvc.perform(put("/api/order-items/999/start"))
+                .andExpect(status().isNotFound());
+
+        verify(orderItemService, times(1)).startItem(999L);
+    }
+
+    @Test
+    void testLockExpiredItems_ShouldReturnLockedItems() throws Exception {
+        // WHAT: Test POST /api/order-items/lock-expired
+        // WHY: Background job locks items when delay timer expires
+        
+        // Given - Service returns locked items
+        testItem.setStatus("pending");
+        testItem.setIsLocked(true);
+        List<OrderItem> lockedItems = Arrays.asList(testItem);
+        when(orderItemService.lockAndSendExpiredItems()).thenReturn(lockedItems);
+
+        // When/Then - POST request should return 200 OK with locked items
+        mockMvc.perform(post("/api/order-items/lock-expired"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].isLocked").value(true));
+
+        verify(orderItemService, times(1)).lockAndSendExpiredItems();
+    }
+
+    // ========== ERROR SCENARIO TESTS ==========
+
+    @Test
+    void testUpdateOrderItem_WhenServiceThrowsException_ShouldReturnBadRequest() throws Exception {
+        // WHAT: Test PUT /api/order-items/{id} when update fails
+        // WHY: Handle locked items or validation errors
+        
+        // Given - Service throws exception
+        when(orderItemService.updateOrderItem(eq(1L), any(OrderItem.class)))
+                .thenThrow(new RuntimeException("Item is locked"));
+
+        // When/Then - PUT request should return 400 Bad Request
+        mockMvc.perform(put("/api/order-items/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderId\":1,\"menuItemId\":1,\"quantity\":2,\"price\":17.00}"))
+                .andExpect(status().isBadRequest());
+
+        verify(orderItemService, times(1)).updateOrderItem(eq(1L), any(OrderItem.class));
+    }
+
+    @Test
+    void testSendItemNow_WhenServiceThrowsException_ShouldReturn404() throws Exception {
+        // WHAT: Test PUT /api/order-items/{id}/send-now when item doesn't exist
+        // WHY: Handle missing items
+        
+        // Given - Service throws exception
+        when(orderItemService.sendItemNow(999L)).thenThrow(new RuntimeException("Item not found"));
+
+        // When/Then - PUT request should return 404 Not Found
+        mockMvc.perform(put("/api/order-items/999/send-now"))
+                .andExpect(status().isNotFound());
+
+        verify(orderItemService, times(1)).sendItemNow(999L);
+    }
+
+    @Test
+    void testCompleteItem_WhenServiceThrowsException_ShouldReturn404() throws Exception {
+        // WHAT: Test PUT /api/order-items/{id}/complete when item doesn't exist
+        // WHY: Handle missing items
+        
+        // Given - Service throws exception
+        when(orderItemService.completeItem(999L)).thenThrow(new RuntimeException("Item not found"));
+
+        // When/Then - PUT request should return 404 Not Found
+        mockMvc.perform(put("/api/order-items/999/complete"))
+                .andExpect(status().isNotFound());
+
+        verify(orderItemService, times(1)).completeItem(999L);
+    }
+
+    @Test
+    void testDeleteOrderItem_WhenServiceThrowsException_ShouldReturnBadRequest() throws Exception {
+        // WHAT: Test DELETE /api/order-items/{id} when delete fails
+        // WHY: Handle locked items that can't be deleted
+        
+        // Given - Service throws exception
+        doThrow(new RuntimeException("Item is locked")).when(orderItemService).deleteOrderItem(1L);
+
+        // When/Then - DELETE request should return 400 Bad Request
+        mockMvc.perform(delete("/api/order-items/1"))
+                .andExpect(status().isBadRequest());
+
+        verify(orderItemService, times(1)).deleteOrderItem(1L);
+    }
+
+    @Test
+    void testGetItemsByOrder_WithUnsupportedStatus_ShouldReturnAllItems() throws Exception {
+        // WHAT: Test GET /api/order-items/order/{orderId}?status=fired (not draft/pending)
+        // WHY: Fallback to all items when status is not draft or pending
+        
+        // Given - Service returns all items
+        List<OrderItem> allItems = Arrays.asList(testItem);
+        when(orderItemService.getItemsByOrder(1L)).thenReturn(allItems);
+
+        // When/Then - GET with unsupported status should return all items
+        mockMvc.perform(get("/api/order-items/order/1").param("status", "fired"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].orderId").value(1));
+
+        verify(orderItemService, times(1)).getItemsByOrder(1L);
+        verify(orderItemService, never()).getDraftItemsByOrder(any());
+        verify(orderItemService, never()).getPendingItemsByOrder(any());
+    }
 }

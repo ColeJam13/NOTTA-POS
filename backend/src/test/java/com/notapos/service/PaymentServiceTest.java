@@ -273,4 +273,68 @@ class PaymentServiceTest {
         // Then - Repository delete should be called
         verify(paymentRepository, times(1)).deleteById(1L);
     }
+
+    @Test
+    void testCreatePayment_WhenOrderAndTableExist_ShouldCloseOrderAndFreeTable() {
+        // WHAT: Test payment processing with order and table closure
+        // WHY: When payment is made, close the order and free up the table
+        
+        // Given - Payment, order, and table all exist
+        com.notapos.entity.Order order = new com.notapos.entity.Order();
+        order.setOrderId(1L);
+        order.setTableId(5L);
+        order.setStatus("open");
+        
+        com.notapos.entity.RestaurantTable table = new com.notapos.entity.RestaurantTable();
+        table.setTableId(5L);
+        table.setStatus("occupied");
+        
+        when(paymentRepository.save(any(Payment.class))).thenReturn(testPayment);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(tableRepository.findById(5L)).thenReturn(Optional.of(table));
+        when(orderRepository.save(any(com.notapos.entity.Order.class))).thenReturn(order);
+        when(tableRepository.save(any(com.notapos.entity.RestaurantTable.class))).thenReturn(table);
+
+        // When - Create payment
+        Payment created = paymentService.createPayment(testPayment);
+
+        // Then - Payment saved, order closed, table freed
+        assertNotNull(created);
+        assertEquals("closed", order.getStatus());
+        assertNotNull(order.getClosedAt());
+        assertEquals("available", table.getStatus());
+        
+        verify(paymentRepository, times(1)).save(testPayment);
+        verify(orderRepository, times(1)).save(order);
+        verify(tableRepository, times(1)).save(table);
+    }
+
+    @Test
+    void testCreatePayment_WhenOrderExistsButTableDoesNot_ShouldCloseOrderOnly() {
+        // WHAT: Test payment processing when table doesn't exist
+        // WHY: Handle edge case where table is missing but order exists
+        
+        // Given - Payment and order exist, but table doesn't
+        com.notapos.entity.Order order = new com.notapos.entity.Order();
+        order.setOrderId(1L);
+        order.setTableId(5L);
+        order.setStatus("open");
+        
+        when(paymentRepository.save(any(Payment.class))).thenReturn(testPayment);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(tableRepository.findById(5L)).thenReturn(Optional.empty());
+        when(orderRepository.save(any(com.notapos.entity.Order.class))).thenReturn(order);
+
+        // When - Create payment
+        Payment created = paymentService.createPayment(testPayment);
+
+        // Then - Payment saved, order closed, but no table update
+        assertNotNull(created);
+        assertEquals("closed", order.getStatus());
+        assertNotNull(order.getClosedAt());
+        
+        verify(paymentRepository, times(1)).save(testPayment);
+        verify(orderRepository, times(1)).save(order);
+        verify(tableRepository, never()).save(any());
+    }
 }

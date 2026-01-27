@@ -1,13 +1,10 @@
 package com.notapos.repository;
 
 import com.notapos.entity.Modifier;
+import com.notapos.entity.ModifierGroup;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase.Replace;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.test.context.ActiveProfiles;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -16,19 +13,26 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Repository tests for ModifierRepository.
  * 
- * Tests database queries for modifier management.
+ * Tests database queries for modifier management using PostgreSQL Testcontainer.
+ * 
+ * CHANGES FROM ORIGINAL:
+ * - Now extends BaseRepositoryTest (provides PostgreSQL container)
+ * - Removed @DataJpaTest, @AutoConfigureTestDatabase, @ActiveProfiles (inherited from base)
+ * - Creates actual ModifierGroup entities first (proper foreign key handling)
+ * - Tests now run against real PostgreSQL 16 in Docker
  * 
  * @author CJ
  */
-
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = Replace.NONE)
-@ActiveProfiles("test")
-class ModifierRepositoryTest {
+class ModifierRepositoryTest extends BaseRepositoryTest {
 
     @Autowired
     private ModifierRepository modifierRepository;
+    
+    @Autowired
+    private ModifierGroupRepository modifierGroupRepository;
 
+    private ModifierGroup sidesGroup;
+    private ModifierGroup proteinGroup;
     private Modifier fries;
     private Modifier salad;
     private Modifier addBacon;
@@ -36,12 +40,31 @@ class ModifierRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        // Clear database before each test
+        // Clear database before each test (in proper order due to foreign keys)
         modifierRepository.deleteAll();
+        modifierGroupRepository.deleteAll();
 
+        // Create modifier groups first (foreign key dependency)
+        sidesGroup = new ModifierGroup();
+        sidesGroup.setName("Choose a Side");
+        sidesGroup.setDescription("Select one side dish");
+        sidesGroup.setIsRequired(true);
+        sidesGroup.setMaxSelections(1);
+        sidesGroup.setIsActive(true);
+        sidesGroup = modifierGroupRepository.save(sidesGroup);
+
+        proteinGroup = new ModifierGroup();
+        proteinGroup.setName("Add Protein");
+        proteinGroup.setDescription("Optional protein additions");
+        proteinGroup.setIsRequired(false);
+        proteinGroup.setMaxSelections(2);
+        proteinGroup.setIsActive(true);
+        proteinGroup = modifierGroupRepository.save(proteinGroup);
+
+        // Now create modifiers with valid foreign keys
         // Create active modifier with no price adjustment (Fries)
         fries = new Modifier();
-        fries.setModifierGroupId(1L);
+        fries.setModifierGroupId(sidesGroup.getModifierGroupId());
         fries.setName("Fries");
         fries.setPriceAdjustment(BigDecimal.ZERO);
         fries.setIsActive(true);
@@ -49,7 +72,7 @@ class ModifierRepositoryTest {
 
         // Create active modifier with no price adjustment (Salad)
         salad = new Modifier();
-        salad.setModifierGroupId(1L);
+        salad.setModifierGroupId(sidesGroup.getModifierGroupId());
         salad.setName("Salad");
         salad.setPriceAdjustment(BigDecimal.ZERO);
         salad.setIsActive(true);
@@ -57,7 +80,7 @@ class ModifierRepositoryTest {
 
         // Create active modifier with price adjustment (Add Bacon)
         addBacon = new Modifier();
-        addBacon.setModifierGroupId(2L);
+        addBacon.setModifierGroupId(proteinGroup.getModifierGroupId());
         addBacon.setName("Add Bacon");
         addBacon.setPriceAdjustment(new BigDecimal("2.00"));
         addBacon.setIsActive(true);
@@ -65,7 +88,7 @@ class ModifierRepositoryTest {
 
         // Create inactive modifier
         inactiveModifier = new Modifier();
-        inactiveModifier.setModifierGroupId(1L);
+        inactiveModifier.setModifierGroupId(sidesGroup.getModifierGroupId());
         inactiveModifier.setName("Old Option");
         inactiveModifier.setPriceAdjustment(BigDecimal.ZERO);
         inactiveModifier.setIsActive(false);
@@ -79,7 +102,7 @@ class ModifierRepositoryTest {
         
         // Given - New modifier
         Modifier newModifier = new Modifier();
-        newModifier.setModifierGroupId(2L);
+        newModifier.setModifierGroupId(proteinGroup.getModifierGroupId());
         newModifier.setName("Add Avocado");
         newModifier.setPriceAdjustment(new BigDecimal("1.50"));
         newModifier.setIsActive(true);
@@ -142,14 +165,14 @@ class ModifierRepositoryTest {
         // WHAT: Test finding all modifiers in a modifier group
         // WHY: Show all options for "Choose a Side" group
         
-        // Given - Group 1 has 3 modifiers (Fries, Salad, Old Option from setUp)
+        // Given - sidesGroup has 3 modifiers (Fries, Salad, Old Option from setUp)
         
-        // When - Find modifiers for group 1
-        List<Modifier> group1Modifiers = modifierRepository.findByModifierGroupId(1L);
+        // When - Find modifiers for sidesGroup
+        List<Modifier> group1Modifiers = modifierRepository.findByModifierGroupId(sidesGroup.getModifierGroupId());
 
         // Then - Should get 3 modifiers
         assertEquals(3, group1Modifiers.size());
-        assertTrue(group1Modifiers.stream().allMatch(m -> m.getModifierGroupId().equals(1L)));
+        assertTrue(group1Modifiers.stream().allMatch(m -> m.getModifierGroupId().equals(sidesGroup.getModifierGroupId())));
     }
 
     @Test
@@ -157,10 +180,10 @@ class ModifierRepositoryTest {
         // WHAT: Test finding only active modifiers in a group
         // WHY: Show available options for "Choose a Side" (not 86'd items)
         
-        // Given - Group 1 has 2 active modifiers (Fries, Salad from setUp)
+        // Given - sidesGroup has 2 active modifiers (Fries, Salad from setUp)
         
-        // When - Find active modifiers for group 1
-        List<Modifier> activeGroup1 = modifierRepository.findByModifierGroupIdAndIsActive(1L, true);
+        // When - Find active modifiers for sidesGroup
+        List<Modifier> activeGroup1 = modifierRepository.findByModifierGroupIdAndIsActive(sidesGroup.getModifierGroupId(), true);
 
         // Then - Should get 2 active modifiers
         assertEquals(2, activeGroup1.size());

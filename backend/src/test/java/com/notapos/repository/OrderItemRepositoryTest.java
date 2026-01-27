@@ -1,12 +1,12 @@
 package com.notapos.repository;
 
 import com.notapos.entity.OrderItem;
+import com.notapos.entity.Order;
+import com.notapos.entity.MenuItem;
+import com.notapos.entity.RestaurantTable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase.Replace;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,30 +17,154 @@ import static org.junit.jupiter.api.Assertions.*;
  * Repository tests for OrderItemRepository.
  * 
  * Tests database queries for order items - the signature delay timer feature.
+ * Uses PostgreSQL Testcontainer.
+ * 
+ * CHANGES FROM ORIGINAL:
+ * - Now extends BaseRepositoryTest (provides PostgreSQL container)
+ * - Removed @DataJpaTest, @AutoConfigureTestDatabase (inherited from base)
+ * - Creates actual Order, MenuItem, and RestaurantTable entities first (proper foreign key handling)
+ * - Tests now run against real PostgreSQL 16 in Docker
  * 
  * @author CJ
  */
-
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = Replace.NONE)
-class OrderItemRepositoryTest {
+class OrderItemRepositoryTest extends BaseRepositoryTest {
 
     @Autowired
     private OrderItemRepository orderItemRepository;
+    
+    @Autowired
+    private OrderRepository orderRepository;
+    
+    @Autowired
+    private MenuItemRepository menuItemRepository;
+    
+    @Autowired
+    private TableRepository tableRepository;
 
+    private RestaurantTable table1;
+    private RestaurantTable table2;
+    private RestaurantTable table3;
+    private Order order1;
+    private Order order2;
+    private Order order3;
+    private MenuItem menuItem1;
+    private MenuItem menuItem2;
+    private MenuItem menuItem3;
+    private MenuItem menuItem4;
+    private MenuItem menuItem5;
     private OrderItem draftItem;
     private OrderItem pendingItem;
     private OrderItem firedItem;
 
     @BeforeEach
     void setUp() {
-        // Clear database before each test
+        // Clear database before each test (in proper order due to foreign keys)
         orderItemRepository.deleteAll();
+        orderRepository.deleteAll();
+        menuItemRepository.deleteAll();
+        tableRepository.deleteAll();
 
+        // Create tables first
+        table1 = new RestaurantTable();
+        table1.setTableNumber("F1");
+        table1.setSection("Front");
+        table1.setSeatCount(2);
+        table1.setStatus("occupied");
+        table1 = tableRepository.save(table1);
+
+        table2 = new RestaurantTable();
+        table2.setTableNumber("F2");
+        table2.setSection("Front");
+        table2.setSeatCount(4);
+        table2.setStatus("occupied");
+        table2 = tableRepository.save(table2);
+
+        table3 = new RestaurantTable();
+        table3.setTableNumber("B1");
+        table3.setSection("Back");
+        table3.setSeatCount(4);
+        table3.setStatus("available");
+        table3 = tableRepository.save(table3);
+
+        // Create menu items
+        menuItem1 = new MenuItem();
+        menuItem1.setName("Burger");
+        menuItem1.setDescription("Classic burger");
+        menuItem1.setPrice(new BigDecimal("12.99"));
+        menuItem1.setCategory("Savory");
+        menuItem1.setPrepStationId(null);
+        menuItem1.setIsActive(true);
+        menuItem1 = menuItemRepository.save(menuItem1);
+
+        menuItem2 = new MenuItem();
+        menuItem2.setName("Fries");
+        menuItem2.setDescription("French fries");
+        menuItem2.setPrice(new BigDecimal("8.99"));
+        menuItem2.setCategory("Savory");
+        menuItem2.setPrepStationId(null);
+        menuItem2.setIsActive(true);
+        menuItem2 = menuItemRepository.save(menuItem2);
+
+        menuItem3 = new MenuItem();
+        menuItem3.setName("Salad");
+        menuItem3.setDescription("Garden salad");
+        menuItem3.setPrice(new BigDecimal("15.99"));
+        menuItem3.setCategory("Savory");
+        menuItem3.setPrepStationId(null);
+        menuItem3.setIsActive(true);
+        menuItem3 = menuItemRepository.save(menuItem3);
+
+        menuItem4 = new MenuItem();
+        menuItem4.setName("Pizza");
+        menuItem4.setDescription("Cheese pizza");
+        menuItem4.setPrice(new BigDecimal("6.99"));
+        menuItem4.setCategory("Savory");
+        menuItem4.setPrepStationId(null);
+        menuItem4.setIsActive(true);
+        menuItem4 = menuItemRepository.save(menuItem4);
+
+        menuItem5 = new MenuItem();
+        menuItem5.setName("Soda");
+        menuItem5.setDescription("Soft drink");
+        menuItem5.setPrice(new BigDecimal("10.99"));
+        menuItem5.setCategory("Beverage");
+        menuItem5.setPrepStationId(null);
+        menuItem5.setIsActive(true);
+        menuItem5 = menuItemRepository.save(menuItem5);
+
+        // Create orders
+        order1 = new Order();
+        order1.setTableId(table1.getTableId());
+        order1.setOrderType("dine_in");
+        order1.setStatus("open");
+        order1.setSubtotal(new BigDecimal("25.00"));
+        order1.setTax(new BigDecimal("2.00"));
+        order1.setTotal(new BigDecimal("27.00"));
+        order1 = orderRepository.save(order1);
+
+        order2 = new Order();
+        order2.setTableId(table2.getTableId());
+        order2.setOrderType("dine_in");
+        order2.setStatus("open");
+        order2.setSubtotal(new BigDecimal("15.99"));
+        order2.setTax(new BigDecimal("1.28"));
+        order2.setTotal(new BigDecimal("17.27"));
+        order2 = orderRepository.save(order2);
+
+        order3 = new Order();
+        order3.setTableId(table3.getTableId());
+        order3.setOrderType("takeout");
+        order3.setStatus("open");
+        order3.setSubtotal(new BigDecimal("10.99"));
+        order3.setTax(new BigDecimal("0.88"));
+        order3.setTotal(new BigDecimal("11.87"));
+        order3 = orderRepository.save(order3);
+
+        // Now create order items with valid foreign keys
         // Create draft item (not sent yet)
         draftItem = new OrderItem();
-        draftItem.setOrderId(1L);
-        draftItem.setMenuItemId(1L);
+        draftItem.setOrderId(order1.getOrderId());
+        draftItem.setMenuItemId(menuItem1.getMenuItemId());
         draftItem.setQuantity(1);
         draftItem.setPrice(new BigDecimal("12.99"));
         draftItem.setStatus("draft");
@@ -50,8 +174,8 @@ class OrderItemRepositoryTest {
 
         // Create pending item (sent, timer running)
         pendingItem = new OrderItem();
-        pendingItem.setOrderId(1L);
-        pendingItem.setMenuItemId(2L);
+        pendingItem.setOrderId(order1.getOrderId());
+        pendingItem.setMenuItemId(menuItem2.getMenuItemId());
         pendingItem.setQuantity(2);
         pendingItem.setPrice(new BigDecimal("8.99"));
         pendingItem.setStatus("pending");
@@ -62,8 +186,8 @@ class OrderItemRepositoryTest {
 
         // Create fired item (locked, sent to kitchen)
         firedItem = new OrderItem();
-        firedItem.setOrderId(2L);
-        firedItem.setMenuItemId(3L);
+        firedItem.setOrderId(order2.getOrderId());
+        firedItem.setMenuItemId(menuItem3.getMenuItemId());
         firedItem.setQuantity(1);
         firedItem.setPrice(new BigDecimal("15.99"));
         firedItem.setStatus("fired");
@@ -81,8 +205,8 @@ class OrderItemRepositoryTest {
         
         // Given - New order item
         OrderItem newItem = new OrderItem();
-        newItem.setOrderId(3L);
-        newItem.setMenuItemId(4L);
+        newItem.setOrderId(order3.getOrderId());
+        newItem.setMenuItemId(menuItem4.getMenuItemId());
         newItem.setQuantity(3);
         newItem.setPrice(new BigDecimal("6.99"));
         newItem.setStatus("draft");
@@ -94,7 +218,7 @@ class OrderItemRepositoryTest {
 
         // Then - Should persist with generated ID
         assertNotNull(saved.getOrderItemId());
-        assertEquals(3L, saved.getOrderId());
+        assertEquals(order3.getOrderId(), saved.getOrderId());
         assertEquals("draft", saved.getStatus());
     }
 
@@ -111,7 +235,7 @@ class OrderItemRepositoryTest {
         // Then - Should find the item
         assertTrue(result.isPresent());
         assertEquals("draft", result.get().getStatus());
-        assertEquals(1L, result.get().getOrderId());
+        assertEquals(order1.getOrderId(), result.get().getOrderId());
     }
 
     @Test
@@ -150,11 +274,11 @@ class OrderItemRepositoryTest {
         // Given - Order 1 has 2 items, Order 2 has 1 item (from setUp)
         
         // When - Find items for Order 1
-        List<OrderItem> order1Items = orderItemRepository.findByOrderId(1L);
+        List<OrderItem> order1Items = orderItemRepository.findByOrderId(order1.getOrderId());
 
         // Then - Should get 2 items for Order 1
         assertEquals(2, order1Items.size());
-        assertTrue(order1Items.stream().allMatch(item -> item.getOrderId().equals(1L)));
+        assertTrue(order1Items.stream().allMatch(item -> item.getOrderId().equals(order1.getOrderId())));
     }
 
     @Test
@@ -212,12 +336,12 @@ class OrderItemRepositoryTest {
         // Given - Order 1 has 1 draft and 1 pending (from setUp)
         
         // When - Find draft items for Order 1
-        List<OrderItem> draftItems = orderItemRepository.findByOrderIdAndStatus(1L, "draft");
+        List<OrderItem> draftItems = orderItemRepository.findByOrderIdAndStatus(order1.getOrderId(), "draft");
 
         // Then - Should get only the draft item
         assertEquals(1, draftItems.size());
         assertEquals("draft", draftItems.get(0).getStatus());
-        assertEquals(1L, draftItems.get(0).getOrderId());
+        assertEquals(order1.getOrderId(), draftItems.get(0).getOrderId());
     }
 
     @Test
@@ -227,8 +351,8 @@ class OrderItemRepositoryTest {
         
         // Given - Create an expired but unlocked item
         OrderItem expiredItem = new OrderItem();
-        expiredItem.setOrderId(3L);
-        expiredItem.setMenuItemId(5L);
+        expiredItem.setOrderId(order3.getOrderId());
+        expiredItem.setMenuItemId(menuItem5.getMenuItemId());
         expiredItem.setQuantity(1);
         expiredItem.setPrice(new BigDecimal("10.99"));
         expiredItem.setStatus("pending");

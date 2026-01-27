@@ -1,12 +1,10 @@
 package com.notapos.repository;
 
 import com.notapos.entity.Order;
+import com.notapos.entity.RestaurantTable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase.Replace;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,29 +14,62 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Repository tests for OrderRepository.
  * 
- * Tests database queries for order management.
+ * Tests database queries for order management using PostgreSQL Testcontainer.
+ * 
+ * CHANGES FROM ORIGINAL:
+ * - Now extends BaseRepositoryTest (provides PostgreSQL container)
+ * - Removed @DataJpaTest, @AutoConfigureTestDatabase (inherited from base)
+ * - Creates actual RestaurantTable entities first (proper foreign key handling)
+ * - Tests now run against real PostgreSQL 16 in Docker
  * 
  * @author CJ
  */
-
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = Replace.NONE)
-class OrderRepositoryTest {
+class OrderRepositoryTest extends BaseRepositoryTest {
 
     @Autowired
     private OrderRepository orderRepository;
+    
+    @Autowired
+    private TableRepository tableRepository;
 
+    private RestaurantTable table1;
+    private RestaurantTable table2;
+    private RestaurantTable table3;
     private Order openOrder;
     private Order completedOrder;
 
     @BeforeEach
     void setUp() {
-        // Clear database before each test
+        // Clear database before each test (in proper order due to foreign keys)
         orderRepository.deleteAll();
+        tableRepository.deleteAll();
 
+        // Create tables first (foreign key dependency)
+        table1 = new RestaurantTable();
+        table1.setTableNumber("F1");
+        table1.setSection("Front");
+        table1.setSeatCount(2);
+        table1.setStatus("occupied");
+        table1 = tableRepository.save(table1);
+
+        table2 = new RestaurantTable();
+        table2.setTableNumber("F2");
+        table2.setSection("Front");
+        table2.setSeatCount(4);
+        table2.setStatus("occupied");
+        table2 = tableRepository.save(table2);
+
+        table3 = new RestaurantTable();
+        table3.setTableNumber("B1");
+        table3.setSection("Back");
+        table3.setSeatCount(4);
+        table3.setStatus("available");
+        table3 = tableRepository.save(table3);
+
+        // Now create orders with valid table foreign keys
         // Create open order for table 1
         openOrder = new Order();
-        openOrder.setTableId(1L);
+        openOrder.setTableId(table1.getTableId());
         openOrder.setOrderType("dine_in");
         openOrder.setStatus("open");
         openOrder.setSubtotal(new BigDecimal("25.00"));
@@ -48,7 +79,7 @@ class OrderRepositoryTest {
 
         // Create completed order for table 2
         completedOrder = new Order();
-        completedOrder.setTableId(2L);
+        completedOrder.setTableId(table2.getTableId());
         completedOrder.setOrderType("dine_in");
         completedOrder.setStatus("completed");
         completedOrder.setSubtotal(new BigDecimal("45.00"));
@@ -62,9 +93,9 @@ class OrderRepositoryTest {
         // WHAT: Test saving a new order to database
         // WHY: Ensure basic create operation works
         
-        // Given - New order
+        // Given - New order for table 3
         Order newOrder = new Order();
-        newOrder.setTableId(3L);
+        newOrder.setTableId(table3.getTableId());
         newOrder.setOrderType("takeout");
         newOrder.setStatus("open");
         newOrder.setSubtotal(new BigDecimal("15.00"));
@@ -76,7 +107,7 @@ class OrderRepositoryTest {
 
         // Then - Should persist with generated ID
         assertNotNull(saved.getOrderId());
-        assertEquals(3L, saved.getTableId());
+        assertEquals(table3.getTableId(), saved.getTableId());
         assertEquals("open", saved.getStatus());
     }
 
@@ -93,7 +124,7 @@ class OrderRepositoryTest {
         // Then - Should find the order
         assertTrue(result.isPresent());
         assertEquals("open", result.get().getStatus());
-        assertEquals(1L, result.get().getTableId());
+        assertEquals(table1.getTableId(), result.get().getTableId());
     }
 
     @Test
@@ -132,11 +163,11 @@ class OrderRepositoryTest {
         // Given - Table 1 has 1 order, Table 2 has 1 order (from setUp)
         
         // When - Find orders for Table 1
-        List<Order> table1Orders = orderRepository.findByTableId(1L);
+        List<Order> table1Orders = orderRepository.findByTableId(table1.getTableId());
 
         // Then - Should get 1 order for Table 1
         assertEquals(1, table1Orders.size());
-        assertEquals(1L, table1Orders.get(0).getTableId());
+        assertEquals(table1.getTableId(), table1Orders.get(0).getTableId());
     }
 
     @Test
@@ -177,11 +208,11 @@ class OrderRepositoryTest {
         // Given - Table 1 has 1 open order (from setUp)
         
         // When - Find open orders for Table 1
-        List<Order> table1Open = orderRepository.findByTableIdAndStatus(1L, "open");
+        List<Order> table1Open = orderRepository.findByTableIdAndStatus(table1.getTableId(), "open");
 
         // Then - Should get the matching order
         assertEquals(1, table1Open.size());
-        assertEquals(1L, table1Open.get(0).getTableId());
+        assertEquals(table1.getTableId(), table1Open.get(0).getTableId());
         assertEquals("open", table1Open.get(0).getStatus());
     }
 

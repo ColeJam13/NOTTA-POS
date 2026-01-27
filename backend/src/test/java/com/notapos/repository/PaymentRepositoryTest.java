@@ -1,13 +1,11 @@
 package com.notapos.repository;
 
 import com.notapos.entity.Payment;
+import com.notapos.entity.Order;
+import com.notapos.entity.RestaurantTable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase.Replace;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.test.context.ActiveProfiles;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,31 +15,98 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Repository tests for PaymentRepository.
  * 
- * Tests database queries for payment management.
+ * Tests database queries for payment management using PostgreSQL Testcontainer.
+ * 
+ * CHANGES FROM ORIGINAL:
+ * - Now extends BaseRepositoryTest (provides PostgreSQL container)
+ * - Removed @DataJpaTest, @AutoConfigureTestDatabase, @ActiveProfiles (inherited from base)
+ * - Creates actual Order and RestaurantTable entities first (proper foreign key handling)
+ * - Tests now run against real PostgreSQL 16 in Docker
  * 
  * @author CJ
  */
-
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = Replace.NONE)
-@ActiveProfiles("test")
-class PaymentRepositoryTest {
+class PaymentRepositoryTest extends BaseRepositoryTest {
 
     @Autowired
     private PaymentRepository paymentRepository;
+    
+    @Autowired
+    private OrderRepository orderRepository;
+    
+    @Autowired
+    private TableRepository tableRepository;
 
+    private RestaurantTable table1;
+    private RestaurantTable table2;
+    private RestaurantTable table3;
+    private Order order1;
+    private Order order2;
+    private Order order3;
     private Payment cashPayment;
     private Payment cardPayment;
     private Payment refundedPayment;
 
     @BeforeEach
     void setUp() {
-        // Clear database before each test
+        // Clear database before each test (in proper order due to foreign keys)
         paymentRepository.deleteAll();
+        orderRepository.deleteAll();
+        tableRepository.deleteAll();
 
+        // Create tables first
+        table1 = new RestaurantTable();
+        table1.setTableNumber("F1");
+        table1.setSection("Front");
+        table1.setSeatCount(2);
+        table1.setStatus("occupied");
+        table1 = tableRepository.save(table1);
+
+        table2 = new RestaurantTable();
+        table2.setTableNumber("F2");
+        table2.setSection("Front");
+        table2.setSeatCount(4);
+        table2.setStatus("occupied");
+        table2 = tableRepository.save(table2);
+
+        table3 = new RestaurantTable();
+        table3.setTableNumber("B1");
+        table3.setSection("Back");
+        table3.setSeatCount(4);
+        table3.setStatus("available");
+        table3 = tableRepository.save(table3);
+
+        // Create orders
+        order1 = new Order();
+        order1.setTableId(table1.getTableId());
+        order1.setOrderType("dine_in");
+        order1.setStatus("open");
+        order1.setSubtotal(new BigDecimal("80.00"));
+        order1.setTax(new BigDecimal("6.40"));
+        order1.setTotal(new BigDecimal("86.40"));
+        order1 = orderRepository.save(order1);
+
+        order2 = new Order();
+        order2.setTableId(table2.getTableId());
+        order2.setOrderType("dine_in");
+        order2.setStatus("open");
+        order2.setSubtotal(new BigDecimal("25.00"));
+        order2.setTax(new BigDecimal("2.00"));
+        order2.setTotal(new BigDecimal("27.00"));
+        order2 = orderRepository.save(order2);
+
+        order3 = new Order();
+        order3.setTableId(table3.getTableId());
+        order3.setOrderType("takeout");
+        order3.setStatus("open");
+        order3.setSubtotal(new BigDecimal("45.00"));
+        order3.setTax(new BigDecimal("3.60"));
+        order3.setTotal(new BigDecimal("48.60"));
+        order3 = orderRepository.save(order3);
+
+        // Now create payments with valid order foreign keys
         // Create cash payment for order 1
         cashPayment = new Payment();
-        cashPayment.setOrderId(1L);
+        cashPayment.setOrderId(order1.getOrderId());
         cashPayment.setAmount(new BigDecimal("50.00"));
         cashPayment.setPaymentMethod("cash");
         cashPayment.setTipAmount(new BigDecimal("10.00"));
@@ -49,9 +114,9 @@ class PaymentRepositoryTest {
         cashPayment.setTransactionReference("CASH-001");
         cashPayment = paymentRepository.save(cashPayment);
 
-        // Create credit card payment for order 1
+        // Create credit card payment for order 1 (split check)
         cardPayment = new Payment();
-        cardPayment.setOrderId(1L);
+        cardPayment.setOrderId(order1.getOrderId());
         cardPayment.setAmount(new BigDecimal("30.00"));
         cardPayment.setPaymentMethod("credit_card");
         cardPayment.setTipAmount(new BigDecimal("5.00"));
@@ -61,7 +126,7 @@ class PaymentRepositoryTest {
 
         // Create refunded payment for order 2
         refundedPayment = new Payment();
-        refundedPayment.setOrderId(2L);
+        refundedPayment.setOrderId(order2.getOrderId());
         refundedPayment.setAmount(new BigDecimal("25.00"));
         refundedPayment.setPaymentMethod("credit_card");
         refundedPayment.setTipAmount(new BigDecimal("3.00"));
@@ -75,9 +140,9 @@ class PaymentRepositoryTest {
         // WHAT: Test saving a new payment to database
         // WHY: Ensure basic create operation works
         
-        // Given - New payment
+        // Given - New payment for order 3
         Payment newPayment = new Payment();
-        newPayment.setOrderId(3L);
+        newPayment.setOrderId(order3.getOrderId());
         newPayment.setAmount(new BigDecimal("45.00"));
         newPayment.setPaymentMethod("debit_card");
         newPayment.setTipAmount(new BigDecimal("7.00"));
@@ -144,11 +209,11 @@ class PaymentRepositoryTest {
         // Given - Order 1 has 2 payments, Order 2 has 1 payment (from setUp)
         
         // When - Find payments for Order 1
-        List<Payment> order1Payments = paymentRepository.findByOrderId(1L);
+        List<Payment> order1Payments = paymentRepository.findByOrderId(order1.getOrderId());
 
         // Then - Should get 2 payments for Order 1
         assertEquals(2, order1Payments.size());
-        assertTrue(order1Payments.stream().allMatch(p -> p.getOrderId().equals(1L)));
+        assertTrue(order1Payments.stream().allMatch(p -> p.getOrderId().equals(order1.getOrderId())));
     }
 
     @Test

@@ -25,7 +25,22 @@
     <properties>
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <testcontainers.version>1.19.3</testcontainers.version>
     </properties>
+    
+    <!-- Dependency Management - Testcontainers BOM -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+    
        <!-- Dependencies -->
     <dependencies>
         <!-- Spring Boot Web - REST API support -->
@@ -61,7 +76,7 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- H2 Database - In-memory database for testing -->
+        <!-- H2 Database - In-memory database for testing (keeping for backward compatibility) -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
@@ -74,7 +89,29 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        
+        <!-- Testcontainers Core - Docker container management for tests -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- Testcontainers JUnit 5 - Integration with JUnit 5 -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- Testcontainers PostgreSQL - PostgreSQL-specific container -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+    
         <!-- Build Configuration -->
     <build>
         <plugins>

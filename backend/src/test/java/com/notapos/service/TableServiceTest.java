@@ -200,4 +200,66 @@ class TableServiceTest {
         // Then - Repository delete should be called
         verify(tableRepository, times(1)).deleteById(1L);
     }
+
+    @Test
+    void testUpdateTable_ShouldUpdateTableFields() {
+        // WHAT: Test updating table details
+        // WHY: Need to modify table properties (status, etc.)
+        
+        // Given - Table exists
+        RestaurantTable updateData = new RestaurantTable();
+        updateData.setStatus("occupied");
+        
+        when(tableRepository.findById(1L)).thenReturn(Optional.of(testTable));
+        when(tableRepository.save(any(RestaurantTable.class))).thenReturn(testTable);
+
+        // When - Update table
+        RestaurantTable result = tableService.updateTable(1L, updateData);
+
+        // Then - Status should be updated
+        assertEquals("occupied", result.getStatus());
+        verify(tableRepository, times(1)).findById(1L);
+        verify(tableRepository, times(1)).save(testTable);
+    }
+
+    @Test
+    void testUpdateTable_WhenNotFound_ShouldThrowException() {
+        // WHAT: Test updating non-existent table
+        // WHY: Handle missing tables gracefully
+        
+        // Given - Table doesn't exist
+        RestaurantTable updateData = new RestaurantTable();
+        updateData.setStatus("occupied");
+        
+        when(tableRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // When & Then - Should throw exception
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            tableService.updateTable(999L, updateData);
+        });
+        
+        assertTrue(exception.getMessage().contains("Table not found"));
+        verify(tableRepository, never()).save(any());
+    }
+
+    @Test
+    void testUpdateTable_WhenStatusIsNull_ShouldNotUpdateStatus() {
+        // WHAT: Test updating table when status is null
+        // WHY: Only update fields that are provided
+        
+        // Given - Table exists, update has null status
+        RestaurantTable updateData = new RestaurantTable();
+        updateData.setStatus(null);
+        
+        String originalStatus = testTable.getStatus();
+        when(tableRepository.findById(1L)).thenReturn(Optional.of(testTable));
+        when(tableRepository.save(any(RestaurantTable.class))).thenReturn(testTable);
+
+        // When - Update table
+        RestaurantTable result = tableService.updateTable(1L, updateData);
+
+        // Then - Status should remain unchanged
+        assertEquals(originalStatus, result.getStatus());
+        verify(tableRepository, times(1)).save(testTable);
+    }
 }

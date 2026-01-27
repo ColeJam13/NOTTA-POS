@@ -270,4 +270,54 @@ class MenuItemControllerTest {
 
         verify(menuItemService).deleteMenuItem(1L);
     }
+
+    @Test
+    void testUpdateMenuItem_WhenNotFound_ShouldReturn404() throws Exception {
+        // WHAT: Test PUT /api/menu-items/{id} when item doesn't exist
+        // WHY: Handle updates to missing items
+        
+        // Given
+        when(menuItemService.updateMenuItem(eq(999L), any(MenuItem.class)))
+                .thenThrow(new RuntimeException("Menu item not found"));
+
+        // When/Then
+        mockMvc.perform(put("/api/menu-items/999")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Test Item\",\"price\":10.00}"))
+                .andExpect(status().isNotFound());
+
+        verify(menuItemService).updateMenuItem(eq(999L), any(MenuItem.class));
+    }
+
+    @Test
+    void testDeactivateMenuItem_WhenNotFound_ShouldReturn404() throws Exception {
+        // WHAT: Test PUT /api/menu-items/{id}/deactivate when item doesn't exist
+        // WHY: Handle deactivating missing items
+        
+        // Given
+        when(menuItemService.deactivateMenuItem(999L))
+                .thenThrow(new RuntimeException("Menu item not found"));
+
+        // When/Then
+        mockMvc.perform(put("/api/menu-items/999/deactivate"))
+                .andExpect(status().isNotFound());
+
+        verify(menuItemService).deactivateMenuItem(999L);
+    }
+
+    @Test
+    void testActivateMenuItem_WhenNotFound_ShouldReturn404() throws Exception {
+        // WHAT: Test PUT /api/menu-items/{id}/activate when item doesn't exist
+        // WHY: Handle activating missing items
+        
+        // Given
+        when(menuItemService.activateMenuItem(999L))
+                .thenThrow(new RuntimeException("Menu item not found"));
+
+        // When/Then
+        mockMvc.perform(put("/api/menu-items/999/activate"))
+                .andExpect(status().isNotFound());
+
+        verify(menuItemService).activateMenuItem(999L);
+    }
 }
