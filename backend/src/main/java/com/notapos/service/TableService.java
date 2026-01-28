@@ -48,6 +48,10 @@ public class TableService {
         return tableRepository.findByStatus(status);
     }
 
+    public List<RestaurantTable> getTablesByQuickOrder(Boolean isQuickOrder) {      // Get tables filtered by Quick Order flag (true = Quick Orders only, false = regular tables only)
+        return tableRepository.findByIsQuickOrder(isQuickOrder);
+    }
+
     public RestaurantTable createTable(RestaurantTable table) {             // Create new table
         return tableRepository.save(table);
     }

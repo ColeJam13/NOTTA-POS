@@ -68,6 +68,50 @@ class TableControllerTest {
     }
 
     @Test
+    void testGetAllTables_WithQuickOrdersFalse_ShouldFilterOutQuickOrders() throws Exception {
+        // WHAT: Test GET /api/tables?quickOrders=false endpoint
+        // WHY: Filter out Quick Orders from floor map display
+        
+        // Given - Regular tables only
+        List<RestaurantTable> regularTables = Arrays.asList(testTable);
+        when(tableService.getTablesByQuickOrder(false)).thenReturn(regularTables);
+
+        // When/Then
+        mockMvc.perform(get("/api/tables").param("quickOrders", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].tableNumber").value(101))
+                .andExpect(jsonPath("$[0].status").value("available"));
+
+        verify(tableService).getTablesByQuickOrder(false);
+        verify(tableService, never()).getAllTables();
+    }
+
+    @Test
+    void testGetAllTables_WithQuickOrdersTrue_ShouldReturnOnlyQuickOrders() throws Exception {
+        // WHAT: Test GET /api/tables?quickOrders=true endpoint
+        // WHY: Get only Quick Order tables (QO1, QO2, etc.)
+        
+        // Given - Quick Order table
+        RestaurantTable quickOrder = new RestaurantTable();
+        quickOrder.setTableId(100L);
+        quickOrder.setTableNumber("QO1");
+        quickOrder.setSection("Quick Orders");
+        quickOrder.setSeatCount(1);
+        quickOrder.setIsQuickOrder(true);
+        
+        List<RestaurantTable> quickOrders = Arrays.asList(quickOrder);
+        when(tableService.getTablesByQuickOrder(true)).thenReturn(quickOrders);
+
+        // When/Then
+        mockMvc.perform(get("/api/tables").param("quickOrders", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].tableNumber").value("QO1"));
+
+        verify(tableService).getTablesByQuickOrder(true);
+        verify(tableService, never()).getAllTables();
+    }
+
+    @Test
     void testGetTableById_WhenExists_ShouldReturnTable() throws Exception {
         // WHAT: Test GET /api/tables/{id} when table exists
         // WHY: Retrieve specific table details

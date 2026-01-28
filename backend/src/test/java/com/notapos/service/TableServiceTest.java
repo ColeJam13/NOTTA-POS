@@ -154,6 +154,47 @@ class TableServiceTest {
     }
 
     @Test
+    void testGetTablesByQuickOrder_ShouldFilterByQuickOrderFlag() {
+        // WHAT: Test getting tables filtered by Quick Order flag
+        // WHY: Separate Quick Orders (QO1, QO2) from physical tables on floor map
+        
+        // Given - Mock returns regular tables (not Quick Orders)
+        List<RestaurantTable> regularTables = Arrays.asList(testTable);
+        when(tableRepository.findByIsQuickOrder(false)).thenReturn(regularTables);
+
+        // When - Get regular tables (exclude Quick Orders)
+        List<RestaurantTable> result = tableService.getTablesByQuickOrder(false);
+
+        // Then - Should get only regular tables
+        assertEquals(1, result.size());
+        verify(tableRepository, times(1)).findByIsQuickOrder(false);
+    }
+
+    @Test
+    void testGetTablesByQuickOrder_ShouldReturnQuickOrders() {
+        // WHAT: Test getting only Quick Order tables
+        // WHY: Filter for Quick Orders when needed
+        
+        // Given - Create Quick Order tables
+        RestaurantTable quickOrder1 = new RestaurantTable();
+        quickOrder1.setTableId(100L);
+        quickOrder1.setTableNumber("QO1");
+        quickOrder1.setSection("Quick Orders");
+        quickOrder1.setIsQuickOrder(true);
+        
+        List<RestaurantTable> quickOrders = Arrays.asList(quickOrder1);
+        when(tableRepository.findByIsQuickOrder(true)).thenReturn(quickOrders);
+
+        // When - Get Quick Order tables
+        List<RestaurantTable> result = tableService.getTablesByQuickOrder(true);
+
+        // Then - Should get only Quick Orders
+        assertEquals(1, result.size());
+        assertEquals("QO1", result.get(0).getTableNumber());
+        verify(tableRepository, times(1)).findByIsQuickOrder(true);
+    }
+
+    @Test
     void testUpdateTableStatus_ShouldChangeStatus() {
         // WHAT: Test updating table status
         // WHY: Mark table as occupied when guests sit, available when they leave

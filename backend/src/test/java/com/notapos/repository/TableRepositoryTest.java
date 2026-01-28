@@ -203,6 +203,80 @@ class TableRepositoryTest extends BaseRepositoryTest {
     }
 
     @Test
+    void testFindByIsQuickOrder_False_ShouldReturnRegularTables() {
+        // WHAT: Test finding regular tables (not Quick Orders)
+        // WHY: Filter out Quick Orders from floor map display
+        
+        // Given - All existing tables are regular tables (isQuickOrder defaults to false)
+        
+        // When - Find regular tables
+        List<RestaurantTable> regularTables = tableRepository.findByIsQuickOrder(false);
+
+        // Then - Should get all 3 regular tables (F1, B1, F2)
+        assertEquals(3, regularTables.size());
+        assertTrue(regularTables.stream().allMatch(t -> !t.getIsQuickOrder()));
+    }
+
+    @Test
+    void testFindByIsQuickOrder_True_ShouldReturnQuickOrders() {
+        // WHAT: Test finding Quick Order tables
+        // WHY: Get only Quick Orders (QO1, QO2, etc.)
+        
+        // Given - Create Quick Order tables
+        RestaurantTable quickOrder1 = new RestaurantTable();
+        quickOrder1.setTableNumber("QO1");
+        quickOrder1.setSection("Quick Orders");
+        quickOrder1.setSeatCount(1);
+        quickOrder1.setStatus("available");
+        quickOrder1.setIsQuickOrder(true);
+        tableRepository.save(quickOrder1);
+
+        RestaurantTable quickOrder2 = new RestaurantTable();
+        quickOrder2.setTableNumber("QO2");
+        quickOrder2.setSection("Quick Orders");
+        quickOrder2.setSeatCount(1);
+        quickOrder2.setStatus("available");
+        quickOrder2.setIsQuickOrder(true);
+        tableRepository.save(quickOrder2);
+
+        // When - Find Quick Order tables
+        List<RestaurantTable> quickOrders = tableRepository.findByIsQuickOrder(true);
+
+        // Then - Should get only the 2 Quick Orders
+        assertEquals(2, quickOrders.size());
+        assertTrue(quickOrders.stream().allMatch(RestaurantTable::getIsQuickOrder));
+        assertTrue(quickOrders.stream().anyMatch(t -> "QO1".equals(t.getTableNumber())));
+        assertTrue(quickOrders.stream().anyMatch(t -> "QO2".equals(t.getTableNumber())));
+    }
+
+    @Test
+    void testFindByIsQuickOrder_Mixed_ShouldSeparateCorrectly() {
+        // WHAT: Test that Quick Orders and regular tables are properly separated
+        // WHY: Ensure filtering works correctly with mixed table types
+        
+        // Given - Add Quick Orders alongside existing regular tables
+        RestaurantTable quickOrder = new RestaurantTable();
+        quickOrder.setTableNumber("QO1");
+        quickOrder.setSection("Quick Orders");
+        quickOrder.setSeatCount(1);
+        quickOrder.setStatus("available");
+        quickOrder.setIsQuickOrder(true);
+        tableRepository.save(quickOrder);
+
+        // When - Query both types
+        List<RestaurantTable> regularTables = tableRepository.findByIsQuickOrder(false);
+        List<RestaurantTable> quickOrders = tableRepository.findByIsQuickOrder(true);
+
+        // Then - Should separate correctly
+        assertEquals(3, regularTables.size()); // F1, B1, F2
+        assertEquals(1, quickOrders.size());   // QO1
+        
+        // Verify no overlap
+        assertTrue(regularTables.stream().noneMatch(RestaurantTable::getIsQuickOrder));
+        assertTrue(quickOrders.stream().allMatch(RestaurantTable::getIsQuickOrder));
+    }
+
+    @Test
     void testDeleteById_ShouldRemoveTable() {
         // WHAT: Test deleting a table
         // WHY: Remove tables during restaurant layout changes

@@ -27,9 +27,17 @@ public class TableController {
         this.tableService = tableService;
     }
 
-    @GetMapping                                                             // Get all tables
-    public ResponseEntity<List<RestaurantTable>> getAllTables() {
-        List<RestaurantTable> tables = tableService.getAllTables();
+    @GetMapping
+    public ResponseEntity<List<RestaurantTable>> getAllTables(
+            @RequestParam(required = false) Boolean quickOrders) {
+        
+        List<RestaurantTable> tables;
+        if (quickOrders != null) {
+            tables = tableService.getTablesByQuickOrder(quickOrders);
+        } else {
+            tables = tableService.getAllTables();
+        }
+        
         return ResponseEntity.ok(tables);
     }
 

@@ -25,4 +25,6 @@ public interface TableRepository extends JpaRepository<RestaurantTable, Long> {
     List<RestaurantTable> findByStatus(String status);                          // Find table by section
 
     List<RestaurantTable> findBySectionAndStatus(String section, String status);        // Find table by section and status
+
+    List<RestaurantTable> findByIsQuickOrder(Boolean isQuickOrder);             // Find tables by Quick Order flag (true = Quick Orders, false = regular tables)
 }
