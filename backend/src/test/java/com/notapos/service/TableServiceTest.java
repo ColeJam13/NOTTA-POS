@@ -153,21 +153,21 @@ class TableServiceTest {
         verify(tableRepository, times(1)).findByStatus("available");
     }
 
-    @Test
+@Test
     void testGetTablesByQuickOrder_ShouldFilterByQuickOrderFlag() {
         // WHAT: Test getting tables filtered by Quick Order flag
         // WHY: Separate Quick Orders (QO1, QO2) from physical tables on floor map
         
         // Given - Mock returns regular tables (not Quick Orders)
         List<RestaurantTable> regularTables = Arrays.asList(testTable);
-        when(tableRepository.findByIsQuickOrder(false)).thenReturn(regularTables);
+        when(tableRepository.findByIsQuickOrder(Boolean.FALSE)).thenReturn(regularTables);
 
         // When - Get regular tables (exclude Quick Orders)
-        List<RestaurantTable> result = tableService.getTablesByQuickOrder(false);
+        List<RestaurantTable> result = tableService.getTablesByQuickOrder(Boolean.FALSE);
 
         // Then - Should get only regular tables
         assertEquals(1, result.size());
-        verify(tableRepository, times(1)).findByIsQuickOrder(false);
+        verify(tableRepository, times(1)).findByIsQuickOrder(Boolean.FALSE);
     }
 
     @Test
@@ -183,15 +183,15 @@ class TableServiceTest {
         quickOrder1.setIsQuickOrder(true);
         
         List<RestaurantTable> quickOrders = Arrays.asList(quickOrder1);
-        when(tableRepository.findByIsQuickOrder(true)).thenReturn(quickOrders);
+        when(tableRepository.findByIsQuickOrder(Boolean.TRUE)).thenReturn(quickOrders);
 
         // When - Get Quick Order tables
-        List<RestaurantTable> result = tableService.getTablesByQuickOrder(true);
+        List<RestaurantTable> result = tableService.getTablesByQuickOrder(Boolean.TRUE);
 
         // Then - Should get only Quick Orders
         assertEquals(1, result.size());
         assertEquals("QO1", result.get(0).getTableNumber());
-        verify(tableRepository, times(1)).findByIsQuickOrder(true);
+        verify(tableRepository, times(1)).findByIsQuickOrder(Boolean.TRUE);
     }
 
     @Test
