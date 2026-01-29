@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import NavBar from '../../components/NavBar/NavBar';
+import { formatTableName } from '../../utils/formatters';
 import './ActiveOrders.css';
 
 function ActiveOrders({ setCurrentView, setSelectedTable }) {
@@ -88,9 +89,11 @@ function ActiveOrders({ setCurrentView, setSelectedTable }) {
 
                     if (filteredItems.length === 0) return null;
 
+                    const table = tables.find(t => t.tableId === order.tableId);
+
                     return (
                     <div key={order.orderId} className="order-card">
-                        <h3>Table {tables.find(t => t.tableId === order.tableId)?.tableNumber || order.tableId} - Order #{order.orderId}</h3>
+                        <h3>{formatTableName(table)} - Order #{order.orderId}</h3>
                         <div className="order-items">
                         {filteredItems.map(item => (
                             <div key={item.orderItemId} className="order-item-row">

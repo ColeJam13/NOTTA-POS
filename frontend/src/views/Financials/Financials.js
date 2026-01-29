@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import NavBar from '../../components/NavBar/NavBar';
+import { formatTableName, formatTimeAgo, formatPaymentMethod } from '../../utils/formatters';
 import './Financials.css';
 
 function Financials({ setCurrentView, setSelectedTable }) {
@@ -144,7 +145,7 @@ function Financials({ setCurrentView, setSelectedTable }) {
                 
                 return {
                     orderId: order.orderId,
-                    tableNumber: table?.tableNumber || 'Unknown',
+                    table: table,
                     serverName: order.serverName || 'N/A',
                     closedAt: order.closedAt,
                     total: orderTotal,
@@ -165,23 +166,6 @@ function Financials({ setCurrentView, setSelectedTable }) {
             paymentBreakdown,
             recentTransactions
         };
-    };
-
-                                                                            // Format time ago
-    const getTimeAgo = (timestamp) => {
-        const now = Date.now();
-        const closed = new Date(timestamp).getTime();
-        const diff = Math.floor((now - closed) / 1000 / 60); // minutes
-        if (diff < 60) return `${diff}m ago`;
-        const hours = Math.floor(diff / 60);
-        if (hours < 24) return `${hours}h ${diff % 60}m ago`;
-        const days = Math.floor(hours / 24);
-        return `${days}d ago`;
-    };
-
-                                                                            // Format payment method for display
-    const formatPaymentMethod = (method) => {
-        return method.replace(/_/g, ' ').toUpperCase();
     };
 
     const metrics = calculateMetrics();
@@ -272,24 +256,30 @@ function Financials({ setCurrentView, setSelectedTable }) {
                     </div>
                 </div>
 
-                <div className="payment-breakdown">
-                    <h3>Payment Method Breakdown</h3>
-                    {Object.keys(metrics.paymentBreakdown).length > 0 ? (
-                        Object.keys(metrics.paymentBreakdown).map(method => (
-                            <div key={method} className="payment-row">
-                                <div className="payment-label">{formatPaymentMethod(method)}:</div>
-                                <div className="payment-amount">${metrics.paymentBreakdown[method].amount.toFixed(2)}</div>
-                                <div className="payment-bar-container">
-                                    <div className="payment-bar" style={{ width: `${metrics.paymentBreakdown[method].percent}%` }}>
-                                        <span className="payment-percent">{metrics.paymentBreakdown[method].percent}%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <p className="no-data">No payment data for selected period</p>
-                    )}
-                </div>
+              <div className="payment-breakdown">
+                  <h3>Payment Method Breakdown</h3>
+                  {Object.keys(metrics.paymentBreakdown).length > 0 ? (
+                      // Sort payment methods in consistent order: CASH, CREDIT CARD, DEBIT CARD, GIFT CARD
+                      Object.keys(metrics.paymentBreakdown)
+                          .sort((a, b) => {
+                              const order = { 'cash': 1, 'credit_card': 2, 'debit_card': 3, 'gift_card': 4 };
+                              return (order[a] || 99) - (order[b] || 99);
+                          })
+                          .map(method => (
+                          <div key={method} className="payment-row">
+                              <div className="payment-label">{formatPaymentMethod(method)}:</div>
+                              <div className="payment-amount">${metrics.paymentBreakdown[method].amount.toFixed(2)}</div>
+                              <div className="payment-bar-container">
+                                  <div className="payment-bar" style={{ width: `${metrics.paymentBreakdown[method].percent}%` }}>
+                                      <span className="payment-percent">{metrics.paymentBreakdown[method].percent}%</span>
+                                  </div>
+                              </div>
+                          </div>
+                      ))
+                  ) : (
+                      <p className="no-data">No payment data for selected period</p>
+                  )}
+              </div>
 
                 <div className="recent-transactions">
                     <h3>Recent Transactions</h3>
@@ -298,9 +288,9 @@ function Financials({ setCurrentView, setSelectedTable }) {
                             {metrics.recentTransactions.map((transaction) => (
                                 <div key={transaction.orderId} className="transaction-item">
                                     <div className="transaction-info">
-                                        <div className="transaction-table">Table {transaction.tableNumber}</div>
+                                        <div className="transaction-table">{formatTableName(transaction.table)}</div>
                                         <div className="transaction-server">Server: {transaction.serverName}</div>
-                                        <div className="transaction-time">{getTimeAgo(transaction.closedAt)}</div>
+                                        <div className="transaction-time">{formatTimeAgo(transaction.closedAt)}</div>
                                         <div className="transaction-method">{formatPaymentMethod(transaction.paymentMethod)}</div>
                                     </div>
                                     <div className="transaction-amounts">

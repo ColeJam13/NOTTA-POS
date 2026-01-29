@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import NavBar from '../../components/NavBar/NavBar';
+import { formatTableName, formatTimeAgo, formatDateTime, formatPaymentMethod } from '../../utils/formatters';
 import './QuickOrders.css';
 
 function QuickOrders({ setCurrentView, setSelectedTable }) {
@@ -96,7 +97,7 @@ function QuickOrders({ setCurrentView, setSelectedTable }) {
 
                                                                             // Get oldest order time
         const oldestOrder = tableOrders.sort((a, b) => a.createdAt - b.createdAt)[0];
-        const timeAgo = getTimeAgo(oldestOrder.createdAt);
+        const timeAgo = formatTimeAgo(oldestOrder.createdAt);
 
                                                                             // Determine border color based on status
         let borderColor = 'default';
@@ -131,11 +132,11 @@ function QuickOrders({ setCurrentView, setSelectedTable }) {
             }));
             
             const subtotal = items.reduce((sum, item) => sum + item.price, 0);
-            const timeAgo = getTimeAgo(order.closedAt || order.createdAt);
+            const timeAgo = formatTimeAgo(order.closedAt || order.createdAt);
 
             return {
                 orderId: order.orderId,
-                tableNumber: table.tableNumber,
+                table: table,
                 serverName: order.serverName,
                 items: itemsWithNames,
                 subtotal,
@@ -147,30 +148,6 @@ function QuickOrders({ setCurrentView, setSelectedTable }) {
                 closedAt: order.closedAt
             };
         });
-    };
-
-                                                                            // Helper to calculate time ago
-    const getTimeAgo = (timestamp) => {
-        const now = Date.now();
-        const created = new Date(timestamp).getTime();
-        const diff = Math.floor((now - created) / 1000 / 60); // minutes
-        if (diff < 60) return `${diff}m ago`;
-        const hours = Math.floor(diff / 60);
-        return `${hours}h ${diff % 60}m ago`;
-    };
-
-                                                                            // Helper to format timestamp as date/time
-    const formatDateTime = (timestamp) => {
-        if (!timestamp) return 'N/A';
-        const date = new Date(timestamp);
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const year = date.getFullYear();
-        let hours = date.getHours();
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12 || 12;
-        return `${month}/${day}/${year} ${hours}:${minutes} ${ampm}`;
     };
 
                                                                             // Get all Quick Orders with closed orders
@@ -246,11 +223,11 @@ function QuickOrders({ setCurrentView, setSelectedTable }) {
                                     className="table-card closed-card"
                                     onClick={() => setSelectedClosedOrder(orderInfo)}
                                 >
-                                    <h3 className="table-card-number">{orderInfo.tableNumber}</h3>
+                                    <h3 className="table-card-number">{orderInfo.table.tableNumber}</h3>
                                     <div className="table-card-total">${orderInfo.total.toFixed(2)}</div>
                                     <div className="table-card-items">{orderInfo.items.length} items</div>
                                     <div className="table-card-server">Server: {orderInfo.serverName || 'N/A'}</div>
-                                    <div className="table-card-payment">{orderInfo.paymentMethod.replace('_', ' ').toUpperCase()}</div>
+                                    <div className="table-card-payment">{formatPaymentMethod(orderInfo.paymentMethod)}</div>
                                     <div className="table-card-time">{orderInfo.timeAgo}</div>
                                 </div>
                             ));
@@ -268,12 +245,12 @@ function QuickOrders({ setCurrentView, setSelectedTable }) {
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <button className="modal-close" onClick={() => setSelectedClosedOrder(null)}>×</button>
                         
-                        <h2>Order {selectedClosedOrder.tableNumber}</h2>
+                        <h2>{formatTableName(selectedClosedOrder.table)}</h2>
                         <div className="modal-info">
                             <p><strong>Server:</strong> {selectedClosedOrder.serverName || 'N/A'}</p>
                             <p><strong>Order Created:</strong> {formatDateTime(selectedClosedOrder.createdAt)}</p>
                             <p><strong>Order Closed:</strong> {formatDateTime(selectedClosedOrder.closedAt)}</p>
-                            <p><strong>Payment Method:</strong> {selectedClosedOrder.paymentMethod.replace('_', ' ').toUpperCase()}</p>
+                            <p><strong>Payment Method:</strong> {formatPaymentMethod(selectedClosedOrder.paymentMethod)}</p>
                         </div>
 
                         <div className="modal-items">

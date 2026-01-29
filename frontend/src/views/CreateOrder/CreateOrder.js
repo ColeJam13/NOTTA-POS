@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import NavBar from '../../components/NavBar';
 import { Lock } from 'lucide-react';
 import PaymentModal from '../../components/PaymentModal';
+import { formatTableName } from '../../utils/formatters';
 import './CreateOrder.css';
 
 
@@ -60,7 +61,8 @@ const createQuickOrderTable = async () => {
         tableNumber: newTableNumber,
         section: 'Quick Orders',
         seatCount: 0,
-        status: 'available'
+        status: 'available',
+        isQuickOrder: true
       })
     });
     
@@ -262,7 +264,7 @@ useEffect(() => {
       <NavBar currentView="createOrder" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />                    
             <div className="app">
             <div className="order-panel">
-                <h2>Current Order - {currentTable ? `Table ${currentTable.tableNumber}` : 'New Quick Order'}</h2> {/* Show "New Quick Order" if no table yet */}
+                <h2>Current Order - {currentTable ? formatTableName(currentTable) : 'New Quick Order'}</h2>
 
                 <div className={`notification-bar ${
                   showDraftSaved ? 'notification-success' : 
@@ -576,19 +578,20 @@ useEffect(() => {
             </div>
         </div>
 
-        {showPaymentModal && (
-          <PaymentModal
-            order={{ orderId: currentOrderId }}
-            orderItems={orderItems}
-            onClose={() => setShowPaymentModal(false)}
-            onPaymentSuccess={() => {
-              setShowPaymentModal(false);
-              alert('Payment processed successfully!');
-              setOrderItems([]);
-              setCurrentView('home');
-            }}
-          />
-        )}
+      {showPaymentModal && (
+        <PaymentModal
+          order={{ orderId: currentOrderId }}
+          orderItems={orderItems}
+          onClose={() => setShowPaymentModal(false)}
+          onPaymentSuccess={() => {
+            setShowPaymentModal(false);
+            setOrderItems([]);
+            setCurrentOrderId(null);
+            setCurrentTable(null);
+            setSelectedTable(null);
+          }}
+        />
+      )}
     </div>
   );
 }

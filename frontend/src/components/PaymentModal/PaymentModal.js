@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Banknote, CreditCard, Gift } from 'lucide-react';
 import './PaymentModal.css';
 
 function PaymentModal({ order, orderItems, onClose, onPaymentSuccess }) {
@@ -6,6 +7,7 @@ function PaymentModal({ order, orderItems, onClose, onPaymentSuccess }) {
   const [tipAmount, setTipAmount] = useState('');
   const [tipPercent, setTipPercent] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   // Calculate order total
   const subtotal = orderItems.reduce((sum, item) => sum + item.price, 0);
@@ -41,14 +43,19 @@ function PaymentModal({ order, orderItems, onClose, onPaymentSuccess }) {
       });
 
       if (response.ok) {
-        onPaymentSuccess();
+        setPaymentSuccess(true);
+        
+        // Wait 2 seconds to show success message, then call success callback
+        setTimeout(() => {
+          onPaymentSuccess();
+        }, 2000);
       } else {
         alert('Payment failed. Please try again.');
+        setIsProcessing(false);
       }
     } catch (error) {
       console.error('Payment error:', error);
       alert('Payment failed. Please try again.');
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -62,88 +69,102 @@ function PaymentModal({ order, orderItems, onClose, onPaymentSuccess }) {
         </div>
 
         <div className="modal-body">
-          <div className="order-summary">
-            <div className="summary-row">
-              <span>Subtotal:</span>
-              <span>${subtotal.toFixed(2)}</span>
+          {paymentSuccess ? (
+            <div className="payment-success-message">
+              <div className="success-icon">✓</div>
+              <h3>Payment Processed Successfully!</h3>
+              <p>Returning to order screen...</p>
             </div>
-            <div className="summary-row">
-              <span>Tax (3%):</span>
-              <span>${tax.toFixed(2)}</span>
-            </div>
-            <div className="summary-row total">
-              <span>Total:</span>
-              <span>${total.toFixed(2)}</span>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>Payment Method</label>
-              <div className="payment-methods">
-                <button
-                  type="button"
-                  className={`payment-method-btn ${paymentMethod === 'cash' ? 'active' : ''}`}
-                  onClick={() => setPaymentMethod('cash')}
-                >
-                  💵 CASH
-                </button>
-                <button
-                  type="button"
-                  className={`payment-method-btn ${paymentMethod === 'credit_card' ? 'active' : ''}`}
-                  onClick={() => setPaymentMethod('credit_card')}
-                >
-                  💳 CREDIT
-                </button>
-                <button
-                  type="button"
-                  className={`payment-method-btn ${paymentMethod === 'debit_card' ? 'active' : ''}`}
-                  onClick={() => setPaymentMethod('debit_card')}
-                >
-                  💳 DEBIT
-                </button>
-                <button
-                  type="button"
-                  className={`payment-method-btn ${paymentMethod === 'gift_card' ? 'active' : ''}`}
-                  onClick={() => setPaymentMethod('gift_card')}
-                >
-                  🎁 GIFT CARD
-                </button>
+          ) : (
+            <>
+              <div className="order-summary">
+                <div className="summary-row">
+                  <span>Subtotal:</span>
+                  <span>${subtotal.toFixed(2)}</span>
+                </div>
+                <div className="summary-row">
+                  <span>Tax (3%):</span>
+                  <span>${tax.toFixed(2)}</span>
+                </div>
+                <div className="summary-row total">
+                  <span>Total:</span>
+                  <span>${total.toFixed(2)}</span>
+                </div>
               </div>
-            </div>
 
-            <div className="form-group">
-              <label>Tip Amount</label>
-              <div className="tip-buttons">
-                <button type="button" className={`tip-btn ${tipPercent === 15 ? 'active' : ''}`} onClick={() => handleTipPercentChange(15)}>15%</button>
-                <button type="button" className={`tip-btn ${tipPercent === 18 ? 'active' : ''}`} onClick={() => handleTipPercentChange(18)}>18%</button>
-                <button type="button" className={`tip-btn ${tipPercent === 20 ? 'active' : ''}`} onClick={() => handleTipPercentChange(20)}>20%</button>
-                <button type="button" className={`tip-btn ${tipPercent === 25 ? 'active' : ''}`} onClick={() => handleTipPercentChange(25)}>25%</button>
-              </div>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="Custom tip amount"
-                value={tipAmount}
-                onChange={(e) => handleTipAmountChange(e.target.value)}
-                className="tip-input"
-              />
-            </div>
+              <form onSubmit={handleSubmit}>
+                <div className="form-group">
+                  <label>Payment Method</label>
+                  <div className="payment-methods">
+                    <button
+                      type="button"
+                      className={`payment-method-btn ${paymentMethod === 'cash' ? 'active' : ''}`}
+                      onClick={() => setPaymentMethod('cash')}
+                    >
+                      <Banknote size={20} />
+                      <span>CASH</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`payment-method-btn ${paymentMethod === 'credit_card' ? 'active' : ''}`}
+                      onClick={() => setPaymentMethod('credit_card')}
+                    >
+                      <CreditCard size={20} />
+                      <span>CREDIT</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`payment-method-btn ${paymentMethod === 'debit_card' ? 'active' : ''}`}
+                      onClick={() => setPaymentMethod('debit_card')}
+                    >
+                      <CreditCard size={20} />
+                      <span>DEBIT</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`payment-method-btn ${paymentMethod === 'gift_card' ? 'active' : ''}`}
+                      onClick={() => setPaymentMethod('gift_card')}
+                    >
+                      <Gift size={20} />
+                      <span>GIFT CARD</span>
+                    </button>
+                  </div>
+                </div>
 
-            <div className="grand-total">
-              <span>GRAND TOTAL:</span>
-              <span>${grandTotal.toFixed(2)}</span>
-            </div>
+                <div className="form-group">
+                  <label>Tip Amount</label>
+                  <div className="tip-buttons">
+                    <button type="button" className={`tip-btn ${tipPercent === 15 ? 'active' : ''}`} onClick={() => handleTipPercentChange(15)}>15%</button>
+                    <button type="button" className={`tip-btn ${tipPercent === 18 ? 'active' : ''}`} onClick={() => handleTipPercentChange(18)}>18%</button>
+                    <button type="button" className={`tip-btn ${tipPercent === 20 ? 'active' : ''}`} onClick={() => handleTipPercentChange(20)}>20%</button>
+                    <button type="button" className={`tip-btn ${tipPercent === 25 ? 'active' : ''}`} onClick={() => handleTipPercentChange(25)}>25%</button>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Custom tip amount"
+                    value={tipAmount}
+                    onChange={(e) => handleTipAmountChange(e.target.value)}
+                    className="tip-input"
+                  />
+                </div>
 
-            <div className="modal-actions">
-              <button type="button" className="btn-cancel" onClick={onClose}>
-                CANCEL
-              </button>
-              <button type="submit" className="btn-process" disabled={isProcessing}>
-                {isProcessing ? 'PROCESSING...' : 'PROCESS PAYMENT'}
-              </button>
-            </div>
-          </form>
+                <div className="grand-total">
+                  <span>GRAND TOTAL:</span>
+                  <span>${grandTotal.toFixed(2)}</span>
+                </div>
+
+                <div className="modal-actions">
+                  <button type="button" className="btn-cancel" onClick={onClose}>
+                    CANCEL
+                  </button>
+                  <button type="submit" className="btn-process" disabled={isProcessing}>
+                    {isProcessing ? 'PROCESSING...' : 'PROCESS PAYMENT'}
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </div>
