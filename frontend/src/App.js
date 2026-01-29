@@ -4,6 +4,7 @@ import CreateOrder from './views/CreateOrder';
 import ActiveOrders from './views/ActiveOrders';
 import FloorMap from './views/FloorMap';
 import Tables from './views/Tables';
+import QuickOrders from './views/QuickOrders';
 import Financials from './views/Financials';
 import Challenges from './views/Challenges';
 import './App.css';
@@ -26,6 +27,10 @@ function App() {
 
   if (currentView === 'activeTables') {
     return <Tables setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;
+  }
+
+  if (currentView === 'quickOrders') {
+    return <QuickOrders setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;
   }
 
   if (currentView === 'financials') {

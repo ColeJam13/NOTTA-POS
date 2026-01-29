@@ -28,6 +28,7 @@ function NavBar({ currentView, setCurrentView, setSelectedTable }) {  // Add set
       <div className="navbar-bottom">
         <button className={`nav-btn ${currentView === 'floorMap' ? 'active' : ''}`} onClick={() => setCurrentView('floorMap')}>FLOOR MAP</button>
         <button className={`nav-btn ${currentView === 'activeTables' ? 'active' : ''}`} onClick={() => setCurrentView('activeTables')}>TABLES</button>
+        <button className={`nav-btn ${currentView === 'quickOrders' ? 'active' : ''}`} onClick={() => setCurrentView('quickOrders')}>QUICK ORDERS</button>
         <button className={`nav-btn ${currentView === 'activeOrders' ? 'active' : ''}`} onClick={() => setCurrentView('activeOrders')}>ACTIVE ORDERS</button>
         <button className={`nav-btn ${currentView === 'createOrder' ? 'active' : ''}`} onClick={() => {
           setSelectedTable(null);  // Clear selected table

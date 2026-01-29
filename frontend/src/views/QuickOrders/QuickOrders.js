@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import NavBar from '../../components/NavBar/NavBar';
-import './Tables.css';
+import './QuickOrders.css';
 
-function Tables({ setCurrentView, setSelectedTable }) {
+function QuickOrders({ setCurrentView, setSelectedTable }) {
     const [view, setView] = useState('active');
     const [tables, setTables] = useState([]);
     const [orders, setOrders] = useState([]);
@@ -11,11 +11,11 @@ function Tables({ setCurrentView, setSelectedTable }) {
     const [menuItems, setMenuItems] = useState([]);
     const [selectedClosedOrder, setSelectedClosedOrder] = useState(null);
 
-    useEffect(() => {                                                       // Load tables (excluding Quick Orders), orders, order items, payments, and menu items on mount
-        fetch('http://localhost:8080/api/tables?quickOrders=false')
+    useEffect(() => {                                                       // Load Quick Order tables, orders, order items, payments, and menu items on mount
+        fetch('http://localhost:8080/api/tables?quickOrders=true')
             .then(response => response.json())
             .then(data => setTables(data))
-            .catch(error => console.error('Error fetching tables:', error));
+            .catch(error => console.error('Error fetching Quick Orders:', error));
 
         fetch('http://localhost:8080/api/orders')
             .then(response => response.json())
@@ -40,10 +40,10 @@ function Tables({ setCurrentView, setSelectedTable }) {
 
     useEffect(() => {                                                       // Auto-refresh every 3 seconds
         const interval = setInterval(() => {
-            fetch('http://localhost:8080/api/tables?quickOrders=false')
+            fetch('http://localhost:8080/api/tables?quickOrders=true')
                 .then(response => response.json())
                 .then(data => setTables(data))
-                .catch(error => console.error('Error fetching tables:', error));
+                .catch(error => console.error('Error fetching Quick Orders:', error));
 
             fetch('http://localhost:8080/api/orders')
                 .then(response => response.json())
@@ -69,18 +69,18 @@ function Tables({ setCurrentView, setSelectedTable }) {
         return () => clearInterval(interval);
     }, []);
 
-                                                                            // Filter to only occupied tables with open orders
+                                                                            // Filter to only occupied Quick Orders with open orders
     const occupiedTables = tables.filter(table => {
         const hasOpenOrders = orders.some(o => o.tableId === table.tableId && o.status === 'open');
         return table.status === 'occupied' && hasOpenOrders;
     });
 
-                                                                            // Helper function to get order info for a table (ACTIVE)
+                                                                            // Helper function to get order info for a Quick Order (ACTIVE)
     const getTableInfo = (table) => {
         const tableOrders = orders.filter(o => o.tableId === table.tableId && o.status === 'open');
         if (tableOrders.length === 0) return null;
 
-                                                                            // Get all items for all orders for this table
+                                                                            // Get all items for all orders for this Quick Order
         const allItems = tableOrders.flatMap(order => 
             orderItems.filter(item => item.orderId === order.orderId)
         );
@@ -116,7 +116,7 @@ function Tables({ setCurrentView, setSelectedTable }) {
         };
     };
 
-                                                                            // Helper function to get closed table info
+                                                                            // Helper function to get closed Quick Order info
     const getClosedTableInfo = (table) => {
         const closedOrders = orders.filter(o => o.tableId === table.tableId && o.status === 'closed');
         
@@ -173,16 +173,16 @@ function Tables({ setCurrentView, setSelectedTable }) {
         return `${month}/${day}/${year} ${hours}:${minutes} ${ampm}`;
     };
 
-                                                                            // Get all tables with closed orders
+                                                                            // Get all Quick Orders with closed orders
     const tablesWithClosedOrders = tables.filter(table => 
         orders.some(o => o.tableId === table.tableId && o.status === 'closed')
     );
 
     return (
         <div className="page-with-nav">
-        <NavBar currentView="activeTables" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />
+        <NavBar currentView="quickOrders" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />
             <div className="tables-page">
-                <h2>TABLES</h2>
+                <h2>QUICK ORDERS</h2>
 
                 <div className="view-toggle">
                     <button
@@ -230,7 +230,7 @@ function Tables({ setCurrentView, setSelectedTable }) {
                         })}
 
                         {occupiedTables.length === 0 && (
-                            <p className="no-tables">No active tables</p>
+                            <p className="no-tables">No active Quick Orders</p>
                         )}
                     </div>
                 )}
@@ -257,7 +257,7 @@ function Tables({ setCurrentView, setSelectedTable }) {
                         })}
 
                         {tablesWithClosedOrders.length === 0 && (
-                            <p className="no-tables">No closed tables</p>
+                            <p className="no-tables">No closed Quick Orders</p>
                         )}
                     </div>
                 )}
@@ -268,7 +268,7 @@ function Tables({ setCurrentView, setSelectedTable }) {
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <button className="modal-close" onClick={() => setSelectedClosedOrder(null)}>×</button>
                         
-                        <h2>Table {selectedClosedOrder.tableNumber}</h2>
+                        <h2>Order {selectedClosedOrder.tableNumber}</h2>
                         <div className="modal-info">
                             <p><strong>Server:</strong> {selectedClosedOrder.serverName || 'N/A'}</p>
                             <p><strong>Order Created:</strong> {formatDateTime(selectedClosedOrder.createdAt)}</p>
@@ -307,4 +307,4 @@ function Tables({ setCurrentView, setSelectedTable }) {
     );
 }
 
-export default Tables;
+export default QuickOrders;

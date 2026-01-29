@@ -19,6 +19,9 @@ function Home({ setCurrentView }) {
         <button className="landing-btn" onClick={() => setCurrentView('activeTables')}>
           TABLES
         </button>
+        <button className="landing-btn" onClick={() => setCurrentView('quickOrders')}>
+          QUICK ORDERS
+        </button>
         <button className="landing-btn" onClick={() => setCurrentView('activeOrders')}>
           ACTIVE ORDERS
         </button>
