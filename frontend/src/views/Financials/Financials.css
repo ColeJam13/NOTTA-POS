@@ -19,6 +19,78 @@
   margin-bottom: 30px;
 }
 
+.time-period-selector {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.period-btn {
+  background: #16213e;
+  color: #e0e0e0;
+  border: 2px solid #b026ff;
+  padding: 10px 25px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  transition: all 0.3s;
+}
+
+.period-btn:hover {
+  background: #b026ff;
+  color: #fff;
+}
+
+.period-btn.active {
+  background: #39ff14;
+  color: #1a1a2e;
+  border-color: #39ff14;
+}
+
+.custom-date-range {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #16213e;
+  border: 2px solid #b026ff;
+  border-radius: 8px;
+}
+
+.date-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.date-input-group label {
+  color: #b026ff;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.date-input-group input[type="date"] {
+  background: #0f0f1e;
+  border: 2px solid #b026ff;
+  border-radius: 6px;
+  padding: 10px;
+  color: #39ff14;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.date-input-group input[type="date"]:focus {
+  outline: none;
+  border-color: #39ff14;
+}
+
 .shift-info {
   text-align: center;
   color: #b026ff;
@@ -77,29 +149,29 @@
 }
 
 .payment-row {
-display: grid;
-grid-template-columns: 100px 120px 1fr;
-align-items: center;
-gap: 20px;
-margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: 120px 120px 1fr;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
 }
 
 .payment-label {
-color: #e0e0e0;
-font-size: 12px;
+  color: #e0e0e0;
+  font-size: 12px;
 }
 
 .payment-amount {
-color: #39ff14;
-font-weight: bold;
+  color: #39ff14;
+  font-weight: bold;
 }
 
 .payment-bar-container {
-background: #0f0f1e;
-height: 25px;
-border-radius: 5px;
-overflow: hidden;
-position: relative;
+  background: #0f0f1e;
+  height: 25px;
+  border-radius: 5px;
+  overflow: hidden;
+  position: relative;
 }
 
 .payment-bar {
@@ -152,22 +224,36 @@ position: relative;
 .transaction-info {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
 }
 
 .transaction-table {
   color: #39ff14;
   font-weight: bold;
-  font-size: 14px;
+  font-size: 16px;
+}
+
+.transaction-server {
+  color: #e0e0e0;
+  font-size: 13px;
 }
 
 .transaction-time {
   color: #666;
-  font-size: 10px;
+  font-size: 11px;
+}
+
+.transaction-method {
+  color: #b026ff;
+  font-size: 12px;
+  font-weight: bold;
 }
 
 .transaction-amounts {
   text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .transaction-total {
@@ -179,4 +265,11 @@ position: relative;
 .transaction-tip {
   color: #b026ff;
   font-size: 12px;
+}
+
+.no-data {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 20px;
 }
