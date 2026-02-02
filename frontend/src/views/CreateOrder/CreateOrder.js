@@ -230,28 +230,36 @@ useEffect(() => {
       await Promise.all(createPromises);
 
       // Now send ALL draft items for this order (backend will only send items with status 'draft')
-      const sendResponse = await fetch(`http://localhost:8080/api/order-items/order/${orderId}/send`, {
-        method: 'POST'
-      });
-      const sentItems = await sendResponse.json();
+  const sendResponse = await fetch(`http://localhost:8080/api/order-items/order/${orderId}/send`, {
+  method: 'POST'
+});
+const sentItems = await sendResponse.json();
 
-      console.log('Sent items response:', sentItems);
+console.log('Sent items response:', sentItems);
 
-        if (sentItems && sentItems.length > 0) {
-          const expiresAt = new Date(sentItems[0].delayExpiresAt);
-          
-          console.log('Timer expires at:', expiresAt);
-          console.log('Current time:', new Date());
-          
-          setTimerExpires(expiresAt);
-          setSecondsLeft(15);  // Start at 15, let interval handle countdown
-        }
+if (sentItems && sentItems.length > 0) {
+  const expiresAt = new Date(sentItems[0].delayExpiresAt);
+  
+  console.log('Timer expires at:', expiresAt);
+  console.log('Current time:', new Date());
+  
+  setTimerExpires(expiresAt);
+  setSecondsLeft(15);  // Start at 15, let interval handle countdown
+}
 
-      // Change only draft items to limbo
-      setOrderItems(prevItems => prevItems.map(item => {
-        if (item.status === 'draft') return { ...item, status: 'limbo' };
-        return item;
-      }));
+// Update items with data from backend (includes orderItemId and status='limbo')
+setOrderItems(prevItems => prevItems.map(item => {
+  // Find matching item from backend response
+  const sentItem = sentItems.find(si => si.menuItemId === item.menuItemId && item.status === 'draft');
+  if (sentItem) {
+    return {
+      ...item,
+      orderItemId: sentItem.orderItemId,
+      status: 'limbo'
+    };
+  }
+  return item;
+}));
 
     } catch (error) {
       console.error('Error sending order:', error);
@@ -291,34 +299,52 @@ useEffect(() => {
                       {item.name}
                     </span>
                     <span>${item.price.toFixed(2)}</span>
-                    {(item.status === 'draft' || item.status === 'limbo') &&(
-                      <button
-                          className="btn-remove"
-                          onClick={async () => {
-                          // If item has an orderItemId, delete it from database
-                          if (item.orderItemId) {
-                              try {
-                                  await fetch(`http://localhost:8080/api/order-items/${item.orderItemId}`, {
-                                      method: 'DELETE'
-                                  });
-                              } catch (error) {
-                                  console.error('Error deleting item:', error);
-                              }
-                          }
+{(item.status === 'draft' || item.status === 'limbo') &&(
+  <button
+      className="btn-remove"
+      onClick={async () => {
+        console.log('X button clicked! Item:', item);
+        
+        // If item has an orderItemId, delete it from database
+        if (item.orderItemId) {
+            console.log('Item has orderItemId, attempting delete:', item.orderItemId);
+            try {
+                const deleteResponse = await fetch(`http://localhost:8080/api/order-items/${item.orderItemId}`, {
+                    method: 'DELETE'
+                });
+                
+                console.log('Delete response status:', deleteResponse.status);
+                
+                if (!deleteResponse.ok) {
+                    console.error('Failed to delete item from backend');
+                    return; // Don't remove from UI if backend delete failed
+                }
+                
+                console.log('Successfully deleted item:', item.orderItemId);
+            } catch (error) {
+                console.error('Error deleting item:', error);
+                return; // Don't remove from UI if delete failed
+            }
+        } else {
+            console.log('Item has NO orderItemId, skipping backend delete');
+        }
 
-                          // Remove from local state
-                          setOrderItems(orderItems.filter((_, i) => i !== index));
+        // Remove from local state ONLY after successful backend delete
+        console.log('Removing item from local state at index:', index);
+        setOrderItems(prevItems => prevItems.filter((_, i) => i !== index));
 
-                            if (timerExpires) {
-                                const newExpires = new Date(Date.now() + 16000);
-                                setTimerExpires(newExpires);
-                                setSecondsLeft(15);
-                            }
-                          }}
-                      >
-                          x
-                      </button>
-                    )}
+        // Reset timer if active
+        if (timerExpires) {
+            console.log('Resetting timer');
+            const newExpires = new Date(Date.now() + 16000);
+            setTimerExpires(newExpires);
+            setSecondsLeft(15);
+        }
+      }}
+  >
+      x
+  </button>
+)}
                     </div>
                 ))}
                 </div>
@@ -428,24 +454,11 @@ useEffect(() => {
                         setSecondsLeft(0);
                         setTimerExpires(null);
 
-                        // Refetch the order items to get updated status from backend
-                        const response = await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}`);
-                        const updatedItems = await response.json();
-                        
-                        // Fetch menu items to format properly
-                        const menuResponse = await fetch('http://localhost:8080/api/menu-items');
-                        const menuData = await menuResponse.json();
-                        
-                        const formattedItems = updatedItems.map(item => ({
-                          orderItemId: item.orderItemId,
-                          menuItemId: item.menuItemId,
-                          name: menuData.find(m => m.menuItemId === item.menuItemId)?.name,
-                          price: item.price,
-                          quantity: item.quantity,
-                          status: item.status
+                        // Update local state: change limbo items to pending
+                        setOrderItems(prevItems => prevItems.map(item => {
+                          if (item.status === 'limbo') return { ...item, status: 'pending' };
+                          return item;
                         }));
-                        
-                        setOrderItems(formattedItems);
                       } else {
                         sendOrder();
                       }
@@ -518,38 +531,42 @@ useEffect(() => {
                             if (timerExpires && currentOrderId) {
                               try {
                                 // Create item
-                                const createRes = await fetch('http://localhost:8080/api/order-items', {
-                                  method: 'POST',
-                                  headers: { 'Content-type': 'application/json' },
-                                  body: JSON.stringify({
-                                    orderId: currentOrderId,
-                                    menuItemId: item.menuItemId,
-                                    quantity: 1,
-                                    price: item.price,
-                                    status: 'draft'
-                                  })
-                                });
-                                const created = await createRes.json();
-                                
-                                // Send it immediately
-                                await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}/send`, {
-                                  method: 'POST'
-                                });
-                                
-                                // Add to state as 'limbo' with orderItemId
-                                setOrderItems([...orderItems, {
-                                  orderItemId: created.orderItemId,
-                                  menuItemId: item.menuItemId,
-                                  name: item.name,
-                                  price: item.price,
-                                  quantity: 1,
-                                  status: 'limbo'
-                                }]);
-                                
-                                // Reset timer
-                                const newExpires = new Date(Date.now() + 16000);
-                                setTimerExpires(newExpires);
-                                setSecondsLeft(15);
+const createRes = await fetch('http://localhost:8080/api/order-items', {
+  method: 'POST',
+  headers: { 'Content-type': 'application/json' },
+  body: JSON.stringify({
+    orderId: currentOrderId,
+    menuItemId: item.menuItemId,
+    quantity: 1,
+    price: item.price,
+    status: 'draft'
+  })
+});
+const created = await createRes.json();
+
+console.log('Created item response:', created);
+
+// Send it immediately
+await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}/send`, {
+  method: 'POST'
+});
+
+// Add to state as 'limbo' with orderItemId - USE FUNCTIONAL UPDATE
+setOrderItems(prevItems => [...prevItems, {
+  orderItemId: created.orderItemId,
+  menuItemId: item.menuItemId,
+  name: item.name,
+  price: item.price,
+  quantity: 1,
+  status: 'limbo'
+}]);
+
+console.log('Added item to state with orderItemId:', created.orderItemId);
+
+// Reset timer
+const newExpires = new Date(Date.now() + 16000);
+setTimerExpires(newExpires);
+setSecondsLeft(15);
                               } catch (error) {
                                 console.error('Error adding item during timer:', error);
                               }
