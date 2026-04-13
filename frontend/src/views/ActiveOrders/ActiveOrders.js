@@ -87,7 +87,10 @@ function ActiveOrders({ setCurrentView, setSelectedTable }) {
                     ? items.filter(item => item.status === 'pending' || item.status === 'fired' || item.status === 'completed')         // FOH and BOH available state views
                     : items.filter(item => item.status !== 'draft');
 
-                    if (filteredItems.length === 0) return null;
+                    // Sort by orderItemId to keep items in a stable order when status changes
+                    const sortedItems = filteredItems.sort((a, b) => a.orderItemId - b.orderItemId);
+
+                    if (sortedItems.length === 0) return null;
 
                     const table = tables.find(t => t.tableId === order.tableId);
 
@@ -95,7 +98,7 @@ function ActiveOrders({ setCurrentView, setSelectedTable }) {
                     <div key={order.orderId} className="order-card">
                         <h3>{formatTableName(table)} - Order #{order.orderId}</h3>
                         <div className="order-items">
-                        {filteredItems.map(item => (
+                        {sortedItems.map(item => (
                             <div key={item.orderItemId} className="order-item-row">
                             <span>{item.quantity}x</span>                                                                                  
                             <span>{menuItems.find(m => m.menuItemId === item.menuItemId)?.name || `Item ${item.menuItemId}`}</span>
