@@ -5,8 +5,8 @@ com/notapos/service/OrderService.class
 com/notapos/service/OrderItemModifierService.class
 com/notapos/repository/OrderItemRepository.class
 com/notapos/controller/TableController.class
-com/notapos/service/MenuItemModifierGroupService.class
 com/notapos/entity/OrderItem.class
+com/notapos/service/MenuItemModifierGroupService.class
 com/notapos/entity/Payment.class
 com/notapos/repository/PrepStationRepository.class
 com/notapos/entity/RestaurantTable.class
@@ -29,13 +29,13 @@ com/notapos/service/OrderItemService.class
 com/notapos/repository/OrderRepository.class
 com/notapos/NotaPosApplication.class
 com/notapos/service/PaymentService.class
-com/notapos/scheduled/TimerScheduledTask.class
 com/notapos/controller/OrderItemController.class
+com/notapos/scheduled/TimerScheduledTask.class
 com/notapos/service/TableService.class
 com/notapos/repository/TableRepository.class
 com/notapos/entity/Modifier.class
-com/notapos/service/MenuItemService.class
 com/notapos/entity/TableStatusLog.class
+com/notapos/service/MenuItemService.class
 com/notapos/controller/ModifierController.class
 com/notapos/controller/MenuItemModifierGroupController.class
 com/notapos/service/ModifierService.class
@@ -43,5 +43,5 @@ com/notapos/repository/MenuItemRepository.class
 com/notapos/service/TableStatusLogService.class
 com/notapos/entity/ModifierGroup.class
 com/notapos/controller/ModifierGroupController.class
-com/notapos/repository/ModifierGroupRepository.class
 com/notapos/repository/MenuItemModifierGroupRepository.class
+com/notapos/repository/ModifierGroupRepository.class
