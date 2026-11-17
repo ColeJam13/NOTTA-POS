@@ -1,0 +1,252 @@
+/* Dark backdrop behind the picker. Tapping it closes the picker. */
+.modifier-picker-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* The box itself: header on top, scrolling middle, footer pinned to the bottom */
+.modifier-picker {
+  background: #1a1a2e;
+  border: 3px solid #b026ff;
+  border-radius: 12px;
+  width: 92%;
+  max-width: 720px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  color: #e0e0e0;
+}
+
+.modifier-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  padding: 16px 24px;
+  border-bottom: 2px solid #b026ff;
+  flex-shrink: 0;
+}
+
+.modifier-picker-header h2 {
+  color: #39ff14;
+  font-size: 18px;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.modifier-picker-close {
+  background: transparent;
+  border: none;
+  color: #e0e0e0;
+  font-size: 28px;
+  cursor: pointer;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+
+.modifier-picker-close:hover {
+  color: #ff3366;
+  transform: scale(1.2);
+}
+
+/* Only this middle part scrolls, so the price and buttons never leave the screen */
+.modifier-picker-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modifier-group {
+  margin-bottom: 22px;
+}
+
+.modifier-group-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.modifier-group-heading h3 {
+  color: #e0e0e0;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.modifier-group-rule {
+  font-size: 10px;
+  color: #999;
+  letter-spacing: 1px;
+}
+
+/* A required group that still needs an answer stands out */
+.modifier-group-rule.unanswered {
+  color: #ff3366;
+  font-weight: bold;
+}
+
+.modifier-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+/* Each choice is a big button - sized for a finger on a touch screen, not a mouse */
+.modifier-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 12px 14px;
+  background: #16213e;
+  border: 2px solid #b026ff;
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modifier-option:hover:not(:disabled) {
+  background: #1f2d50;
+}
+
+.modifier-option.selected {
+  background: #39ff14;
+  border-color: #39ff14;
+  color: #1a1a2e;
+  font-weight: bold;
+}
+
+.modifier-option:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.modifier-option-price {
+  color: #39ff14;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.modifier-option.selected .modifier-option-price {
+  color: #1a1a2e;
+}
+
+.modifier-note label {
+  display: block;
+  color: #e0e0e0;
+  font-size: 14px;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.modifier-note textarea {
+  width: 100%;
+  min-height: 70px;
+  padding: 12px;
+  background: #16213e;
+  border: 2px solid #b026ff;
+  border-radius: 8px;
+  color: #ffd700;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.modifier-note textarea::placeholder {
+  color: #666;
+}
+
+.modifier-note textarea:focus {
+  outline: none;
+  border-color: #39ff14;
+}
+
+.modifier-picker-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  padding: 16px 24px;
+  border-top: 2px solid #b026ff;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.modifier-picker-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.modifier-picker-price {
+  color: #39ff14;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.modifier-picker-missing {
+  color: #ff3366;
+  font-size: 10px;
+}
+
+.modifier-picker-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.modifier-picker-cancel,
+.modifier-picker-confirm {
+  padding: 15px 20px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.modifier-picker-cancel {
+  background: #2a2a4a;
+  color: #e0e0e0;
+  border: 2px solid #b026ff;
+}
+
+.modifier-picker-cancel:hover {
+  background: #3a3a5a;
+}
+
+.modifier-picker-confirm {
+  background: #39ff14;
+  color: #1a1a2e;
+  border: 2px solid #39ff14;
+}
+
+.modifier-picker-confirm:hover:not(:disabled) {
+  background: #2ee00f;
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.5);
+}
+
+.modifier-picker-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #666;
+  border-color: #666;
+}

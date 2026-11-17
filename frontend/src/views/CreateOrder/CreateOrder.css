@@ -90,6 +90,49 @@
   margin-left: 15px;
 }
 
+/* Left side of an order line: the name with its modifiers and note stacked underneath */
+.order-item-info {
+  flex: 1;
+  min-width: 0;
+  padding-right: 12px;      /* Keeps a long note from running into the price */
+}
+
+.order-item-info > span {
+  display: block;
+}
+
+.order-item-modifiers {
+  list-style: none;
+  margin-top: 6px;
+  padding-left: 14px;
+  color: #c9a6ff;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* The upcharge beside a modifier that costs extra, e.g. "+$2.00" */
+.order-item-modifiers small {
+  margin-left: 8px;
+  color: #39ff14;
+  font-size: 11px;
+}
+
+/* Kitchen note - gold so it is never missed */
+.order-item-note {
+  margin-top: 6px;
+  padding-left: 14px;
+  color: #ffd700;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.order-item.locked .order-item-modifiers,
+.order-item.locked .order-item-modifiers small,
+.order-item.locked .order-item-note {
+  color: #888;
+}
+
 .order-item.locked {
   opacity: 0.5;
   background: #0f0f1e;
@@ -113,6 +156,29 @@
   margin-right: 8px;
   color: #ff3366;
   flex-shrink: 0;
+}
+
+/* Pencil button: change an item's modifiers or note while it is still editable */
+.btn-edit-item {
+  background: transparent;
+  border: none;
+  color: #b026ff;
+  cursor: pointer;
+  padding: 6px 8px;
+  margin-left: 15px;
+  transition: all 0.3s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.btn-edit-item:hover {
+  color: #39ff14;
+  transform: scale(1.2);
+}
+
+.btn-edit-item + .btn-remove {
+  margin-left: 0;
 }
 
 .btn-remove {

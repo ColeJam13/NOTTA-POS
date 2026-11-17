@@ -21,6 +21,35 @@ export const TAX_RATE_LABEL = `${(TAX_RATE * 100).toFixed(TAX_RATE * 100 % 1 ===
 const roundToCents = (amount) => Math.round(amount * 100) / 100;
 
 /**
+ * Add up the upcharges of the modifiers chosen for one item.
+ *
+ * @param {Array} modifiers - Chosen modifiers, each with a priceAdjustment (0 when free)
+ * @returns {number} - Total upcharge in dollars
+ */
+export const modifierUpcharge = (modifiers = []) =>
+  roundToCents(
+    modifiers.reduce((sum, modifier) => sum + (modifier.priceAdjustment ?? 0), 0)
+  );
+
+/**
+ * Price of ONE item once its modifier upcharges are added.
+ * Example: Combo Plate $15.00 + French Toast $2.00 = $17.00.
+ *
+ * The backend does this same sum when it saves the item (see
+ * OrderItemModifierService) - its answer is the one that gets charged. This
+ * copy is for showing the price on screen before the item is saved.
+ *
+ * An order item's "price" already includes its upcharges, so
+ * calculateOrderTotals below needs no changes to account for modifiers.
+ *
+ * @param {number} basePrice - The menu price
+ * @param {Array} modifiers - Chosen modifiers, each with a priceAdjustment
+ * @returns {number} - Price in dollars, never below zero
+ */
+export const priceWithModifiers = (basePrice, modifiers = []) =>
+  Math.max(0, roundToCents(basePrice + modifierUpcharge(modifiers)));
+
+/**
  * Calculate subtotal, tax, and total for a list of order items.
  *
  * @param {Array} items - Order items, each with a price and optional quantity
