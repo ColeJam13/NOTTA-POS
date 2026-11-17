@@ -2,6 +2,7 @@ package com.notapos.controller;
 
 import com.notapos.dto.ActiveOrderItemView;
 import com.notapos.dto.ActiveOrderView;
+import com.notapos.dto.OrderItemModifierView;
 import com.notapos.service.ActiveOrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +23,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * WHAT: Tests GET /api/orders/active using MockMvc (no real server or database)
  * WHY: Make sure the JSON the Active Orders screen reads has the field names
- *      it expects (tableNumber, isQuickOrder, items[].name, items[].status)
+ *      it expects (tableNumber, isQuickOrder, items[].name, items[].status,
+ *      items[].modifiers[].name)
  *
  * @author CJ
  */
@@ -37,9 +39,10 @@ class ActiveOrderControllerTest {
 
     @Test
     void testGetActiveOrders_ShouldReturnOrdersWithTableAndItems() throws Exception {
-        // Given - one open order at table W3 with one pending item
+        // Given - one open order at table W3 with one pending item (with a modifier and a kitchen note)
         ActiveOrderItemView item = new ActiveOrderItemView(
-                5L, 2L, "Chicken Cutty", 1, new BigDecimal("17.00"), "pending", "no onions");
+                5L, 2L, "Chicken Cutty", 1, new BigDecimal("17.00"), "pending", "no onions",
+                List.of(new OrderItemModifierView(5L, 16L, "Hashbrowns", new BigDecimal("0.00"))));
         ActiveOrderView order = new ActiveOrderView(
                 1L, 3L, "W3", false, "Sarah", LocalDateTime.of(2026, 1, 1, 12, 0), List.of(item));
         when(activeOrderService.getActiveOrders()).thenReturn(List.of(order));
@@ -56,7 +59,10 @@ class ActiveOrderControllerTest {
                 .andExpect(jsonPath("$[0].items[0].orderItemId").value(5))
                 .andExpect(jsonPath("$[0].items[0].name").value("Chicken Cutty"))
                 .andExpect(jsonPath("$[0].items[0].status").value("pending"))
-                .andExpect(jsonPath("$[0].items[0].specialInstructions").value("no onions"));
+                .andExpect(jsonPath("$[0].items[0].specialInstructions").value("no onions"))
+                .andExpect(jsonPath("$[0].items[0].modifiers.length()").value(1))
+                .andExpect(jsonPath("$[0].items[0].modifiers[0].modifierId").value(16))
+                .andExpect(jsonPath("$[0].items[0].modifiers[0].name").value("Hashbrowns"));
 
         verify(activeOrderService, times(1)).getActiveOrders();
     }

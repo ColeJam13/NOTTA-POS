@@ -1,6 +1,8 @@
 package com.notapos.service;
 
+import com.notapos.dto.ActiveOrderItemView;
 import com.notapos.dto.ActiveOrderView;
+import com.notapos.dto.OrderItemModifierView;
 import com.notapos.entity.MenuItem;
 import com.notapos.entity.Order;
 import com.notapos.entity.OrderItem;
@@ -18,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -47,6 +50,9 @@ class ActiveOrderServiceTest {
 
     @Mock
     private TableRepository tableRepository;
+
+    @Mock
+    private OrderItemModifierService orderItemModifierService;
 
     @InjectMocks
     private ActiveOrderService activeOrderService;
@@ -143,7 +149,7 @@ class ActiveOrderServiceTest {
 
         // Then - empty list and no wasted queries
         assertTrue(result.isEmpty());
-        verifyNoInteractions(orderItemRepository, menuItemRepository, tableRepository);
+        verifyNoInteractions(orderItemRepository, menuItemRepository, tableRepository, orderItemModifierService);
     }
 
     @Test
@@ -178,5 +184,44 @@ class ActiveOrderServiceTest {
         // Then
         assertEquals(1, result.size());
         assertTrue(result.get(0).items().isEmpty());
+    }
+
+    @Test
+    void testGetActiveOrders_ShouldAttachModifiersAndKitchenNoteToEachItem() {
+        // WHAT: Test that the kitchen ticket carries each item's modifiers and note
+        // WHY: "Combo Plate" alone is not enough to cook it - the kitchen needs the choices
+
+        // Given - a Combo Plate with two modifiers and a note, and plain Fries
+        OrderItem comboPlate = item(101L, 1L, 501L, "pending");
+        comboPlate.setSpecialInstructions("nut allergy");
+        when(orderRepository.findByStatus("open")).thenReturn(Arrays.asList(order(1L, 10L)));
+        when(orderItemRepository.findByOrderIdIn(anyCollection()))
+                .thenReturn(Arrays.asList(comboPlate, item(102L, 1L, 502L, "pending")));
+        when(menuItemRepository.findAllById(any()))
+                .thenReturn(Arrays.asList(menuItem(501L, "Combo Plate"), menuItem(502L, "Fries")));
+        when(tableRepository.findAllById(any())).thenReturn(Arrays.asList(table(10L, "W3")));
+        when(orderItemModifierService.getModifierViewsForOrderItems(List.of(101L, 102L)))
+                .thenReturn(Map.of(101L, List.of(
+                        new OrderItemModifierView(101L, 14L, "French Toast", new BigDecimal("2.00")),
+                        new OrderItemModifierView(101L, 16L, "Hashbrowns", new BigDecimal("0.00")))));
+
+        // When
+        List<ActiveOrderView> result = activeOrderService.getActiveOrders();
+
+        // Then - the Combo Plate has its modifiers and note
+        ActiveOrderItemView comboPlateView = result.get(0).items().get(0);
+        assertEquals("Combo Plate", comboPlateView.name());
+        assertEquals("nut allergy", comboPlateView.specialInstructions());
+        assertEquals(2, comboPlateView.modifiers().size());
+        assertEquals("French Toast", comboPlateView.modifiers().get(0).name());
+        assertEquals("Hashbrowns", comboPlateView.modifiers().get(1).name());
+
+        // The Fries have an empty list (never null), so the screen can loop over it safely
+        ActiveOrderItemView friesView = result.get(0).items().get(1);
+        assertNull(friesView.specialInstructions());
+        assertTrue(friesView.modifiers().isEmpty());
+
+        // ONE modifiers lookup for every item on every order
+        verify(orderItemModifierService, times(1)).getModifierViewsForOrderItems(anyCollection());
     }
 }

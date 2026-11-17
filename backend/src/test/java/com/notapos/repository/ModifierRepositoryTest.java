@@ -272,4 +272,27 @@ class ModifierRepositoryTest extends BaseRepositoryTest {
         assertEquals(new BigDecimal("2.00"), loaded.getPriceAdjustment());
         assertEquals("Add Bacon", loaded.getName());
     }
+
+    @Test
+    void testFindByModifierGroupIdInAndIsActive_ShouldReturnActiveModifiersForAllGivenGroups() {
+        // WHAT: Test finding the active modifiers for many groups with one query
+        // WHY: An item's modifier picker needs every group's choices at once
+
+        // Given - Sides has Fries, Salad, and an inactive "Old Option"; Protein has Add Bacon (from setUp)
+
+        // When - Ask for both groups
+        List<Modifier> modifiers = modifierRepository.findByModifierGroupIdInAndIsActive(
+                List.of(sidesGroup.getModifierGroupId(), proteinGroup.getModifierGroupId()), true);
+
+        // Then - The three active modifiers, without the inactive one
+        assertEquals(3, modifiers.size());
+        assertTrue(modifiers.stream().allMatch(Modifier::getIsActive));
+        assertTrue(modifiers.stream().noneMatch(m -> m.getName().equals("Old Option")));
+
+        // And asking for one group returns only that group's modifiers
+        List<Modifier> proteinOnly = modifierRepository.findByModifierGroupIdInAndIsActive(
+                List.of(proteinGroup.getModifierGroupId()), true);
+        assertEquals(1, proteinOnly.size());
+        assertEquals("Add Bacon", proteinOnly.get(0).getName());
+    }
 }

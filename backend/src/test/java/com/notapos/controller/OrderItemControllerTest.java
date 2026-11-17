@@ -1,8 +1,12 @@
 package com.notapos.controller;
 
+import com.notapos.dto.OrderItemModifiersRequest;
+import com.notapos.dto.OrderItemRequest;
+import com.notapos.exception.InvalidModifierSelectionException;
 import com.notapos.exception.ItemLockedException;
 import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.entity.OrderItem;
+import com.notapos.service.OrderItemModifierService;
 import com.notapos.service.OrderItemService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +43,9 @@ class OrderItemControllerTest {
 
     @MockBean
     private OrderItemService orderItemService;
+
+    @MockBean
+    private OrderItemModifierService orderItemModifierService;
 
     private OrderItem testItem;
 
@@ -446,5 +453,136 @@ class OrderItemControllerTest {
         verify(orderItemService, times(1)).getItemsByOrder(1L);
         verify(orderItemService, never()).getDraftItemsByOrder(any());
         verify(orderItemService, never()).getPendingItemsByOrder(any());
+    }
+
+    // ------------------------------------------------------------------------
+    // Items with modifiers and kitchen notes
+    // ------------------------------------------------------------------------
+
+    @Test
+    void testCreateOrderItemWithModifiers_ShouldReturnCreated() throws Exception {
+        // WHAT: Test POST /api/order-items/with-modifiers
+        // WHY: Ring in an item together with its modifiers and kitchen note
+
+        // Given - Service returns the saved item, priced with its upcharge
+        testItem.setPrice(new BigDecimal("19.00"));
+        testItem.setSpecialInstructions("no onions");
+        when(orderItemModifierService.createOrderItemWithModifiers(any(OrderItemRequest.class))).thenReturn(testItem);
+
+        // When/Then - POST request should return 201 Created (note: the request carries no price)
+        mockMvc.perform(post("/api/order-items/with-modifiers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderId\":1,\"menuItemId\":1,\"quantity\":1,\"specialInstructions\":\"no onions\",\"modifierIds\":[14,16]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.orderItemId").value(1))
+                .andExpect(jsonPath("$.price").value(19.00))
+                .andExpect(jsonPath("$.specialInstructions").value("no onions"))
+                .andExpect(jsonPath("$.status").value("draft"));
+
+        // The controller handed the service exactly what was sent
+        verify(orderItemModifierService, times(1)).createOrderItemWithModifiers(
+                new OrderItemRequest(1L, 1L, 1, "no onions", List.of(14L, 16L)));
+    }
+
+    @Test
+    void testCreateOrderItemWithModifiers_WhenOrderIdMissing_ShouldReturn400() throws Exception {
+        // WHAT: Test POST /api/order-items/with-modifiers without an order
+        // WHY: @Valid rejects the request before it reaches the service
+
+        mockMvc.perform(post("/api/order-items/with-modifiers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"menuItemId\":1,\"modifierIds\":[14]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.orderId").exists());
+
+        verify(orderItemModifierService, never()).createOrderItemWithModifiers(any());
+    }
+
+    @Test
+    void testCreateOrderItemWithModifiers_WhenNoteTooLong_ShouldReturn400() throws Exception {
+        // WHAT: Test a kitchen note longer than the 500 characters the database column holds
+        // WHY: Reject it with a clear message instead of a database error
+
+        String longNote = "x".repeat(501);
+
+        mockMvc.perform(post("/api/order-items/with-modifiers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderId\":1,\"menuItemId\":1,\"specialInstructions\":\"" + longNote + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.specialInstructions").exists());
+
+        verify(orderItemModifierService, never()).createOrderItemWithModifiers(any());
+    }
+
+    @Test
+    void testCreateOrderItemWithModifiers_WhenSelectionInvalid_ShouldReturn400() throws Exception {
+        // WHAT: Test POST with modifiers that break the menu's rules
+        // WHY: A required group left unanswered is the caller's mistake (400), not a server error (500)
+
+        // Given - Service rejects the selection
+        when(orderItemModifierService.createOrderItemWithModifiers(any(OrderItemRequest.class)))
+                .thenThrow(new InvalidModifierSelectionException("\"Bread Choice\" must be chosen for Combo Plate"));
+
+        // When/Then
+        mockMvc.perform(post("/api/order-items/with-modifiers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderId\":1,\"menuItemId\":1,\"modifierIds\":[]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("\"Bread Choice\" must be chosen for Combo Plate"));
+    }
+
+    @Test
+    void testReplaceModifiers_WhenExists_ShouldReturnUpdated() throws Exception {
+        // WHAT: Test PUT /api/order-items/{id}/modifiers
+        // WHY: Change an item's modifiers and note before it locks
+
+        // Given - Service returns the updated item
+        testItem.setPrice(new BigDecimal("19.00"));
+        testItem.setSpecialInstructions("nut allergy");
+        when(orderItemModifierService.replaceModifiersForOrderItem(eq(1L), any(OrderItemModifiersRequest.class)))
+                .thenReturn(testItem);
+
+        // When/Then - PUT request should return 200 OK
+        mockMvc.perform(put("/api/order-items/1/modifiers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"specialInstructions\":\"nut allergy\",\"modifierIds\":[14]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.price").value(19.00))
+                .andExpect(jsonPath("$.specialInstructions").value("nut allergy"));
+
+        verify(orderItemModifierService, times(1)).replaceModifiersForOrderItem(
+                1L, new OrderItemModifiersRequest("nut allergy", List.of(14L)));
+    }
+
+    @Test
+    void testReplaceModifiers_WhenLocked_ShouldReturn409() throws Exception {
+        // WHAT: Test PUT /api/order-items/{id}/modifiers on a locked item
+        // WHY: Items already sent to the kitchen cannot be changed
+
+        // Given - Service throws exception (item locked)
+        when(orderItemModifierService.replaceModifiersForOrderItem(eq(1L), any(OrderItemModifiersRequest.class)))
+                .thenThrow(new ItemLockedException("Cannot change modifiers on locked item. Item has been sent to kitchen."));
+
+        // When/Then
+        mockMvc.perform(put("/api/order-items/1/modifiers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"modifierIds\":[14]}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void testReplaceModifiers_WhenNotFound_ShouldReturn404() throws Exception {
+        // WHAT: Test PUT /api/order-items/{id}/modifiers for an item that does not exist
+
+        // Given
+        when(orderItemModifierService.replaceModifiersForOrderItem(eq(999L), any(OrderItemModifiersRequest.class)))
+                .thenThrow(new ResourceNotFoundException("Order item not found with id: 999"));
+
+        // When/Then
+        mockMvc.perform(put("/api/order-items/999/modifiers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"modifierIds\":[]}"))
+                .andExpect(status().isNotFound());
     }
 }

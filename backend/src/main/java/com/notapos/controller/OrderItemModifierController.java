@@ -1,5 +1,6 @@
 package com.notapos.controller;
 
+import com.notapos.dto.OrderItemModifierView;
 import com.notapos.entity.OrderItemModifier;
 import com.notapos.service.OrderItemModifierService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +50,12 @@ public class OrderItemModifierController {
     public ResponseEntity<List<OrderItemModifier>> getOrderItemsWithModifier(                               // Get order items with modifier
             @PathVariable Long modifierId) {
         return ResponseEntity.ok(orderItemModifierService.getOrderItemsWithModifier(modifierId));
+    }
+
+    @GetMapping("/order/{orderId}")
+    public ResponseEntity<List<OrderItemModifierView>> getModifiersForOrder(                                // Get modifiers (with names) for every item on an order
+            @PathVariable Long orderId) {
+        return ResponseEntity.ok(orderItemModifierService.getModifierViewsForOrder(orderId));
     }
 
     @PostMapping

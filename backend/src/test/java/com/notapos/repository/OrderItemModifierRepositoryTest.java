@@ -421,4 +421,49 @@ class OrderItemModifierRepositoryTest extends BaseRepositoryTest {
         assertEquals(new BigDecimal("2.00"), historical.getPriceAdjustment());
         // Even if current modifier price changes, this order's price stays $2.00
     }
+
+    @Test
+    void testFindByOrderItemIdIn_ShouldReturnModifiersForAllGivenItems() {
+        // WHAT: Test finding modifiers for many order items with one query
+        // WHY: The kitchen ticket screen loads every open order's modifiers at once
+
+        // Given - Item 1 has 2 modifiers, item 2 has 1, item 3 has none (from setUp)
+
+        // When - Ask for items 1 and 3 only
+        List<OrderItemModifier> modifiers = orderItemModifierRepository.findByOrderItemIdIn(
+                List.of(orderItem1.getOrderItemId(), orderItem3.getOrderItemId()));
+
+        // Then - Only item 1's two modifiers come back (item 2's is left out)
+        assertEquals(2, modifiers.size());
+        assertTrue(modifiers.stream().allMatch(m -> m.getOrderItemId().equals(orderItem1.getOrderItemId())));
+    }
+
+    @Test
+    void testDeleteByOrderItemId_ShouldRemoveOnlyThatItemsModifiers() {
+        // WHAT: Test removing every modifier from one order item
+        // WHY: Used when an item is deleted, or when its modifiers are replaced during the edit window
+
+        // Given - Item 1 has 2 modifiers, item 2 has 1 (from setUp)
+
+        // When - Delete item 1's modifiers
+        int removed = orderItemModifierRepository.deleteByOrderItemId(orderItem1.getOrderItemId());
+
+        // Then - Both of item 1's rows are gone, item 2's is untouched
+        assertEquals(2, removed);
+        assertTrue(orderItemModifierRepository.findByOrderItemId(orderItem1.getOrderItemId()).isEmpty());
+        assertEquals(1, orderItemModifierRepository.findByOrderItemId(orderItem2.getOrderItemId()).size());
+    }
+
+    @Test
+    void testDeleteByOrderItemId_WhenItemHasNoModifiers_ShouldRemoveNothing() {
+        // WHAT: Test deleting modifiers for an item that has none
+        // WHY: Deleting a plain item must not fail or touch other items
+
+        // When - Item 3 has no modifiers (from setUp)
+        int removed = orderItemModifierRepository.deleteByOrderItemId(orderItem3.getOrderItemId());
+
+        // Then
+        assertEquals(0, removed);
+        assertEquals(3, orderItemModifierRepository.findAll().size());
+    }
 }

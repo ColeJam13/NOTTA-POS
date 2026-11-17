@@ -1,6 +1,7 @@
 package com.notapos.service;
 
 import com.notapos.entity.OrderItem;
+import com.notapos.repository.OrderItemModifierRepository;
 import com.notapos.repository.OrderItemRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,9 @@ class OrderItemServiceTest {
 
     @Mock
     private OrderItemRepository orderItemRepository;
+
+    @Mock
+    private OrderItemModifierRepository orderItemModifierRepository;
 
     @InjectMocks
     private OrderItemService orderItemService;
@@ -215,6 +219,7 @@ class OrderItemServiceTest {
         
         assertTrue(exception.getMessage().contains("Cannot delete locked item"));
         verify(orderItemRepository, never()).deleteById(any());
+        verify(orderItemModifierRepository, never()).deleteByOrderItemId(any());   // A locked item keeps its modifiers too
     }
 
     @Test
@@ -434,6 +439,23 @@ class OrderItemServiceTest {
         orderItemService.deleteOrderItem(1L);
 
         // Then
+        verify(orderItemRepository, times(1)).deleteById(1L);
+    }
+
+    @Test
+    void testDeleteOrderItem_ShouldAlsoDeleteItsModifiers() {
+        // WHAT: Test that removing an item removes its modifier rows
+        // WHY: Tables are linked by plain ID columns, so nothing else would clean them up
+
+        // Given
+        testItem.setIsLocked(false);
+        when(orderItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
+
+        // When
+        orderItemService.deleteOrderItem(1L);
+
+        // Then
+        verify(orderItemModifierRepository, times(1)).deleteByOrderItemId(1L);
         verify(orderItemRepository, times(1)).deleteById(1L);
     }
 }

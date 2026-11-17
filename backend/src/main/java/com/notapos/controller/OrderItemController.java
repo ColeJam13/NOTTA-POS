@@ -1,8 +1,11 @@
 package com.notapos.controller;
 
 import jakarta.validation.Valid;
+import com.notapos.dto.OrderItemModifiersRequest;
+import com.notapos.dto.OrderItemRequest;
 import com.notapos.entity.OrderItem;
 import com.notapos.enums.OrderItemStatus;
+import com.notapos.service.OrderItemModifierService;
 import com.notapos.service.OrderItemService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -23,10 +26,13 @@ import java.util.List;
 public class OrderItemController {
     
     private final OrderItemService orderItemService;
+    private final OrderItemModifierService orderItemModifierService;       // Rings in / changes items that carry modifiers and kitchen notes
 
     @Autowired
-    public OrderItemController(OrderItemService orderItemService) {
+    public OrderItemController(OrderItemService orderItemService,
+                               OrderItemModifierService orderItemModifierService) {
         this.orderItemService = orderItemService;
+        this.orderItemModifierService = orderItemModifierService;
     }
 
     @GetMapping                                                             // Get all order items
@@ -68,6 +74,20 @@ public class OrderItemController {
     public ResponseEntity<OrderItem> createOrderItem(@Valid @RequestBody OrderItem orderItem) {
         OrderItem created = orderItemService.createOrderItem(orderItem);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PostMapping("/with-modifiers")                                                         // Create new order item together with its modifiers + kitchen note (price is worked out by the backend)
+    public ResponseEntity<OrderItem> createOrderItemWithModifiers(@Valid @RequestBody OrderItemRequest request) {
+        OrderItem created = orderItemModifierService.createOrderItemWithModifiers(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PutMapping("/{id}/modifiers")                                  // Replace an item's modifiers + kitchen note (only if not locked)
+    public ResponseEntity<OrderItem> replaceModifiers(
+            @PathVariable Long id,
+            @Valid @RequestBody OrderItemModifiersRequest request) {
+        OrderItem updated = orderItemModifierService.replaceModifiersForOrderItem(id, request);
+        return ResponseEntity.ok(updated);
     }
 
     @PutMapping("/{id}")                                            // Update Order Item

@@ -2,6 +2,7 @@ package com.notapos.service;
 
 import com.notapos.dto.ActiveOrderItemView;
 import com.notapos.dto.ActiveOrderView;
+import com.notapos.dto.OrderItemModifierView;
 import com.notapos.entity.MenuItem;
 import com.notapos.entity.Order;
 import com.notapos.entity.OrderItem;
@@ -26,42 +27,48 @@ import java.util.stream.Collectors;
  * Builds the "active orders" view: every open order with its table and items.
  *
  * WHAT: Answers the Active Orders screen with ONE response.
- * HOW:  Exactly four database queries no matter how many orders are open:
+ * HOW:  At most six database queries no matter how many orders are open:
  *         1. all open orders
  *         2. all items for those orders        (WHERE order_id IN (...))
  *         3. the menu items those items use    (WHERE menu_item_id IN (...))
  *         4. the tables those orders sit at    (WHERE table_id IN (...))
+ *         5. the modifiers chosen for those items   (WHERE order_item_id IN (...))
+ *         6. the names of those modifiers           (WHERE modifier_id IN (...))
  *       The results are then matched up in memory using maps.
+ *       (Queries 5 and 6 live in OrderItemModifierService.)
  * WHY:  The slow alternative is the "N+1 problem": 1 query for the orders,
  *       then 1 more query per order for its items. 30 open orders = 31 queries.
  *
  * @author CJ
  */
 @Service
-@Transactional(readOnly = true)      // All four queries see the same consistent snapshot of the data
+@Transactional(readOnly = true)      // All the queries see the same consistent snapshot of the data
 public class ActiveOrderService {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final MenuItemRepository menuItemRepository;
     private final TableRepository tableRepository;
+    private final OrderItemModifierService orderItemModifierService;
 
     @Autowired
     public ActiveOrderService(OrderRepository orderRepository,
                               OrderItemRepository orderItemRepository,
                               MenuItemRepository menuItemRepository,
-                              TableRepository tableRepository) {
+                              TableRepository tableRepository,
+                              OrderItemModifierService orderItemModifierService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.menuItemRepository = menuItemRepository;
         this.tableRepository = tableRepository;
+        this.orderItemModifierService = orderItemModifierService;
     }
 
     public List<ActiveOrderView> getActiveOrders() {                    // Get every open order with its table and items
         // Query 1: open orders
         List<Order> openOrders = orderRepository.findByStatus(OrderStatus.OPEN.getValue());
         if (openOrders.isEmpty()) {
-            return List.of();                                           // Nothing open - skip the other three queries
+            return List.of();                                           // Nothing open - skip the other queries
         }
 
         // Query 2: every item on those orders, grouped by the order it belongs to
@@ -80,6 +87,11 @@ public class ActiveOrderService {
         Map<Long, RestaurantTable> tablesById = tableRepository.findAllById(tableIds).stream()
                 .collect(Collectors.toMap(RestaurantTable::getTableId, Function.identity()));
 
+        // Queries 5 and 6: the modifiers chosen for every item, with names, keyed by order item ID
+        List<Long> orderItemIds = allItems.stream().map(OrderItem::getOrderItemId).toList();
+        Map<Long, List<OrderItemModifierView>> modifiersByOrderItemId =
+                orderItemModifierService.getModifierViewsForOrderItems(orderItemIds);
+
         // Match everything up - oldest order first so cards do not jump around on screen
         return openOrders.stream()
                 .sorted(Comparator.comparing(Order::getOrderId))
@@ -87,14 +99,16 @@ public class ActiveOrderService {
                         order,
                         tablesById.get(order.getTableId()),
                         itemsByOrderId.getOrDefault(order.getOrderId(), List.of()),
-                        menuItemsById))
+                        menuItemsById,
+                        modifiersByOrderItemId))
                 .toList();
     }
 
     private ActiveOrderView toView(Order order,
                                    RestaurantTable table,
                                    List<OrderItem> items,
-                                   Map<Long, MenuItem> menuItemsById) {
+                                   Map<Long, MenuItem> menuItemsById,
+                                   Map<Long, List<OrderItemModifierView>> modifiersByOrderItemId) {
         // Items sorted by ID so a line keeps its position when its status changes
         List<ActiveOrderItemView> itemViews = items.stream()
                 .sorted(Comparator.comparing(OrderItem::getOrderItemId))
@@ -107,7 +121,8 @@ public class ActiveOrderService {
                             item.getQuantity(),
                             item.getPrice(),
                             item.getStatus(),
-                            item.getSpecialInstructions());
+                            item.getSpecialInstructions(),
+                            modifiersByOrderItemId.getOrDefault(item.getOrderItemId(), List.of()));
                 })
                 .toList();
 
