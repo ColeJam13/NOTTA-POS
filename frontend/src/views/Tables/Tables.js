@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import NavBar from '../../components/NavBar/NavBar';
 import { formatTableName, formatTimeAgo, formatDateTime, formatPaymentMethod } from '../../utils/formatters';
 import './Tables.css';
+import { apiFetch } from '../../services/api';
 
 function Tables({ setCurrentView, setSelectedTable }) {
     const [view, setView] = useState('active');
@@ -13,27 +14,27 @@ function Tables({ setCurrentView, setSelectedTable }) {
     const [selectedClosedOrder, setSelectedClosedOrder] = useState(null);
 
     useEffect(() => {                                                       // Load tables (excluding Quick Orders), orders, order items, payments, and menu items on mount
-        fetch('http://localhost:8080/api/tables?quickOrders=false')
+        apiFetch('/api/tables?quickOrders=false')
             .then(response => response.json())
             .then(data => setTables(data))
             .catch(error => console.error('Error fetching tables:', error));
 
-        fetch('http://localhost:8080/api/orders')
+        apiFetch('/api/orders')
             .then(response => response.json())
             .then(data => setOrders(data))
             .catch(error => console.error('Error fetching orders:', error));
 
-        fetch('http://localhost:8080/api/order-items')
+        apiFetch('/api/order-items')
             .then(response => response.json())
             .then(data => setOrderItems(data))
             .catch(error => console.error('Error fetching order items:', error));
 
-        fetch('http://localhost:8080/api/payments')
+        apiFetch('/api/payments')
             .then(response => response.json())
             .then(data => setPayments(data))
             .catch(error => console.error('Error fetching payments:', error));
 
-        fetch('http://localhost:8080/api/menu-items')
+        apiFetch('/api/menu-items')
             .then(response => response.json())
             .then(data => setMenuItems(data))
             .catch(error => console.error('Error fetching menu items:', error));
@@ -41,27 +42,27 @@ function Tables({ setCurrentView, setSelectedTable }) {
 
     useEffect(() => {                                                       // Auto-refresh every 3 seconds
         const interval = setInterval(() => {
-            fetch('http://localhost:8080/api/tables?quickOrders=false')
+            apiFetch('/api/tables?quickOrders=false')
                 .then(response => response.json())
                 .then(data => setTables(data))
                 .catch(error => console.error('Error fetching tables:', error));
 
-            fetch('http://localhost:8080/api/orders')
+            apiFetch('/api/orders')
                 .then(response => response.json())
                 .then(data => setOrders(data))
                 .catch(error => console.error('Error fetching orders:', error));
 
-            fetch('http://localhost:8080/api/order-items')
+            apiFetch('/api/order-items')
                 .then(response => response.json())
                 .then(data => setOrderItems(data))
                 .catch(error => console.error('Error fetching order items:', error));
 
-            fetch('http://localhost:8080/api/payments')
+            apiFetch('/api/payments')
                 .then(response => response.json())
                 .then(data => setPayments(data))
                 .catch(error => console.error('Error fetching payments:', error));
 
-            fetch('http://localhost:8080/api/menu-items')
+            apiFetch('/api/menu-items')
                 .then(response => response.json())
                 .then(data => setMenuItems(data))
                 .catch(error => console.error('Error fetching menu items:', error));

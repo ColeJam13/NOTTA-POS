@@ -4,6 +4,8 @@ import { Lock } from 'lucide-react';
 import PaymentModal from '../../components/PaymentModal';
 import { formatTableName } from '../../utils/formatters';
 import './CreateOrder.css';
+import { apiFetch } from '../../services/api';
+import { calculateOrderTotals, TAX_RATE_LABEL } from '../../utils/totals';
 
 
 function CreateOrder({ setCurrentView, selectedTable, setSelectedTable }) {
@@ -17,6 +19,9 @@ function CreateOrder({ setCurrentView, selectedTable, setSelectedTable }) {
   const orderItemsRef = useRef(null);
   const [showDraftSaved, setShowDraftSaved] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  // Subtotal, tax, and total for the items on screen (shared math with the Payment modal)
+  const totals = calculateOrderTotals(orderItems);
 
 // Set initial table state - if selectedTable exists, use it. Otherwise null (Quick Order will be created on Save/Send)
 useEffect(() => {
@@ -34,7 +39,7 @@ const createQuickOrderTable = async () => {
     console.log('Creating Quick Order table...');
     
     // 1. Get all existing tables to find highest QO number
-    const tablesResponse = await fetch('http://localhost:8080/api/tables');
+    const tablesResponse = await apiFetch('/api/tables');
     const allTables = await tablesResponse.json();
     
     // 2. Filter for Quick Order tables (starting with "QO")
@@ -54,7 +59,7 @@ const createQuickOrderTable = async () => {
     console.log('Creating Quick Order:', newTableNumber);
     
     // 4. Create the new Quick Order table
-    const createResponse = await fetch('http://localhost:8080/api/tables', {
+    const createResponse = await apiFetch('/api/tables', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -83,7 +88,7 @@ const createQuickOrderTable = async () => {
 // Load existing order if table is occupied
 useEffect(() => {
   if (currentTable && currentTable.status === 'occupied') {
-    fetch(`http://localhost:8080/api/orders?tableId=${currentTable.tableId}`)
+    apiFetch(`/api/orders?tableId=${currentTable.tableId}`)
       .then(response => response.json())
       .then(orders => {
         if (orders.length > 0) {
@@ -94,12 +99,12 @@ useEffect(() => {
             setCurrentOrderId(openOrders[0].orderId);
 
             // Fetch menu items first
-            fetch('http://localhost:8080/api/menu-items')
+            apiFetch('/api/menu-items')
               .then(response => response.json())
               .then(menuData => {
                 // Fetch items from ALL open orders
                 const itemPromises = openOrders.map(order =>
-                  fetch(`http://localhost:8080/api/order-items/order/${order.orderId}`)
+                  apiFetch(`/api/order-items/order/${order.orderId}`)
                     .then(response => response.json())
                 );
 
@@ -129,7 +134,7 @@ useEffect(() => {
 }, [currentTable]); // Changed dependency from selectedTable to currentTable
 
 useEffect(() => {
-  fetch('http://localhost:8080/api/menu-items')                             // fetch menu items
+  apiFetch('/api/menu-items')                             // fetch menu items
     .then(response => response.json())
     .then(data => {
       console.log('Menu items:', data);
@@ -184,7 +189,7 @@ useEffect(() => {
 
       // If no current order, create a new one
       if (!orderId) {
-        const orderResponse = await fetch('http://localhost:8080/api/orders', {
+        const orderResponse = await apiFetch('/api/orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -199,7 +204,7 @@ useEffect(() => {
         orderId = order.orderId;
         setCurrentOrderId(orderId);
 
-        await fetch(`http://localhost:8080/api/tables/${tableToUse.tableId}`, { // Changed: use tableToUse
+        await apiFetch(`/api/tables/${tableToUse.tableId}`, { // Changed: use tableToUse
           method: 'PUT',
           headers: { 'Content-Type': 'application/json'},
           body: JSON.stringify({ status: 'occupied' })
@@ -213,7 +218,7 @@ useEffect(() => {
       const createPromises = draftItems
         .filter(item => !item.orderItemId)
         .map(item =>
-          fetch('http://localhost:8080/api/order-items', {
+          apiFetch('/api/order-items', {
             method: 'POST',
             headers: { 'Content-type': 'application/json' },
             body: JSON.stringify({
@@ -230,7 +235,7 @@ useEffect(() => {
       await Promise.all(createPromises);
 
       // Now send ALL draft items for this order (backend will only send items with status 'draft')
-  const sendResponse = await fetch(`http://localhost:8080/api/order-items/order/${orderId}/send`, {
+  const sendResponse = await apiFetch(`/api/order-items/order/${orderId}/send`, {
   method: 'POST'
 });
 const sentItems = await sendResponse.json();
@@ -309,7 +314,7 @@ setOrderItems(prevItems => prevItems.map(item => {
         if (item.orderItemId) {
             console.log('Item has orderItemId, attempting delete:', item.orderItemId);
             try {
-                const deleteResponse = await fetch(`http://localhost:8080/api/order-items/${item.orderItemId}`, {
+                const deleteResponse = await apiFetch(`/api/order-items/${item.orderItemId}`, {
                     method: 'DELETE'
                 });
                 
@@ -352,15 +357,15 @@ setOrderItems(prevItems => prevItems.map(item => {
             <div className="order-totals">
                 <div className="total-row">
                 <span>Subtotal:</span>
-                <span>${orderItems.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</span>
+                <span>${totals.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="total-row"> 
-                <span>Tax (3%):</span>
-                <span>${(orderItems.reduce((sum, item) => sum + item.price, 0) * 0.03).toFixed(2)}</span>
+                <span>Tax ({TAX_RATE_LABEL}):</span>
+                <span>${totals.tax.toFixed(2)}</span>
                 </div>
                 <div className="total-row total">
                 <span>TOTAL:</span>
-                <span>${(orderItems.reduce((sum, item) => sum + item.price, 0) * 1.03).toFixed(2)}</span>
+                <span>${totals.total.toFixed(2)}</span>
                 </div>
             </div>
 
@@ -379,7 +384,7 @@ setOrderItems(prevItems => prevItems.map(item => {
 
                         // If no current order, create a new one
                         if (!orderId) {
-                          const orderResponse = await fetch('http://localhost:8080/api/orders', {
+                          const orderResponse = await apiFetch('/api/orders', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -394,7 +399,7 @@ setOrderItems(prevItems => prevItems.map(item => {
                           setCurrentOrderId(orderId);
 
                           // Mark table as occupied
-                          await fetch(`http://localhost:8080/api/tables/${tableToUse.tableId}`, { // Changed: use tableToUse
+                          await apiFetch(`/api/tables/${tableToUse.tableId}`, { // Changed: use tableToUse
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json'},
                             body: JSON.stringify({ status: 'occupied' })
@@ -405,7 +410,7 @@ setOrderItems(prevItems => prevItems.map(item => {
 
                         const savedItems = [];
                         for (const item of newDraftItems) {
-                          const response = await fetch('http://localhost:8080/api/order-items', {
+                          const response = await apiFetch('/api/order-items', {
                             method: 'POST',
                             headers: { 'Content-type': 'application/json' },
                             body: JSON.stringify({
@@ -446,7 +451,7 @@ setOrderItems(prevItems => prevItems.map(item => {
                     <button className="btn-send" onClick={async () => {
                       if (timerExpires && currentOrderId) {
                         // Call backend to send now
-                        await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}/send-now`, {
+                        await apiFetch(`/api/order-items/order/${currentOrderId}/send-now`, {
                           method: 'POST'
                         });
 
@@ -516,7 +521,7 @@ setOrderItems(prevItems => prevItems.map(item => {
                     COCKTAILS
                 </button>
                 <button
-                    className={`category-tab ${selectedCategory === 'Coffee' ? 'active' : ''}}`}
+                    className={`category-tab ${selectedCategory === 'Coffee' ? 'active' : ''}`}
                     onClick={() => setSelectedCategory('Coffee')}
                 >
                     COFFEE
@@ -531,7 +536,7 @@ setOrderItems(prevItems => prevItems.map(item => {
                             if (timerExpires && currentOrderId) {
                               try {
                                 // Create item
-const createRes = await fetch('http://localhost:8080/api/order-items', {
+const createRes = await apiFetch('/api/order-items', {
   method: 'POST',
   headers: { 'Content-type': 'application/json' },
   body: JSON.stringify({
@@ -547,7 +552,7 @@ const created = await createRes.json();
 console.log('Created item response:', created);
 
 // Send it immediately
-await fetch(`http://localhost:8080/api/order-items/order/${currentOrderId}/send`, {
+await apiFetch(`/api/order-items/order/${currentOrderId}/send`, {
   method: 'POST'
 });
 

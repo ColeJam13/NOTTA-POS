@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, memo } from 'react';
 import NavBar from '../../components/NavBar';
 import './FloorMap.css';
+import { apiFetch } from '../../services/api';
 
 /**
  * Memoized Table Component - prevents unnecessary re-renders
@@ -27,7 +28,7 @@ function FloorMap({ setCurrentView, setSelectedTable }) {
 
     // Initial fetch - only runs once on mount
     useEffect(() => {
-        fetch('http://localhost:8080/api/tables?quickOrders=false')
+        apiFetch('/api/tables?quickOrders=false')
             .then(response => response.json())
             .then(data => setTables(data))
             .catch(error => console.error('Error fetching tables:', error));
@@ -36,7 +37,7 @@ function FloorMap({ setCurrentView, setSelectedTable }) {
     // Polling interval - runs every 3 seconds
     useEffect(() => {
         const interval = setInterval(() => {
-            fetch('http://localhost:8080/api/tables?quickOrders=false')
+            apiFetch('/api/tables?quickOrders=false')
                 .then(response => response.json())
                 .then(data => setTables(data))
                 .catch(error => console.error('Error fetching tables:', error));

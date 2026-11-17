@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Banknote, CreditCard, Gift } from 'lucide-react';
 import './PaymentModal.css';
+import { apiFetch } from '../../services/api';
+import { calculateOrderTotals, TAX_RATE_LABEL } from '../../utils/totals';
 
 function PaymentModal({ order, orderItems, onClose, onPaymentSuccess }) {
   const [paymentMethod, setPaymentMethod] = useState('credit_card');
@@ -10,9 +12,8 @@ function PaymentModal({ order, orderItems, onClose, onPaymentSuccess }) {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   // Calculate order total
-  const subtotal = orderItems.reduce((sum, item) => sum + item.price, 0);
-  const tax = subtotal * 0.03;
-  const total = subtotal + tax;
+  // Shared helper keeps these numbers identical to the Create Order screen
+  const { subtotal, tax, total } = calculateOrderTotals(orderItems);
   const tipValue = parseFloat(tipAmount) || 0;
   const grandTotal = total + tipValue;
 
@@ -31,7 +32,7 @@ function PaymentModal({ order, orderItems, onClose, onPaymentSuccess }) {
     setIsProcessing(true);
 
     try {
-      const response = await fetch('http://localhost:8080/api/payments', {
+      const response = await apiFetch('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -83,7 +84,7 @@ function PaymentModal({ order, orderItems, onClose, onPaymentSuccess }) {
                   <span>${subtotal.toFixed(2)}</span>
                 </div>
                 <div className="summary-row">
-                  <span>Tax (3%):</span>
+                  <span>Tax ({TAX_RATE_LABEL}):</span>
                   <span>${tax.toFixed(2)}</span>
                 </div>
                 <div className="summary-row total">
