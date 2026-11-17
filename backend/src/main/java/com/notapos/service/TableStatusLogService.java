@@ -1,5 +1,6 @@
 package com.notapos.service;
 
+import org.springframework.transaction.annotation.Transactional;
 import com.notapos.entity.TableStatusLog;
 import com.notapos.repository.TableStatusLogRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import java.util.Optional;
  */
 
 @Service
+@Transactional(readOnly = true)      // Every method runs in a database transaction; read-only unless a method says otherwise
 public class TableStatusLogService {
     
     private final TableStatusLogRepository tableStatusLogRepository;
@@ -50,10 +52,12 @@ public class TableStatusLogService {
         return tableStatusLogRepository.findTableLogsBetween(tableId, start, end);
     }
 
+    @Transactional
     public TableStatusLog createLog(TableStatusLog log) {                           // create new log
         return tableStatusLogRepository.save(log);
     }
 
+    @Transactional
     public void deleteLog(Long id) {                                                // delete log
         tableStatusLogRepository.deleteById(id);
     }

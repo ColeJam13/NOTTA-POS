@@ -1,4 +1,6 @@
 package com.notapos.entity;
+import jakarta.validation.constraints.*;
+import com.notapos.enums.OrderStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -20,6 +22,7 @@ public class Order {
     @Column(name = "order_id")
     private Long orderId;
     
+    @NotNull(message = "An order must belong to a table")
     @Column(name = "table_id", nullable = false)
     private Long tableId;
     
@@ -30,7 +33,7 @@ public class Order {
     private String orderType = "dine_in";
     
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "open";
+    private String status = OrderStatus.OPEN.getValue();
     
     @Column(name = "subtotal", precision = 10, scale = 2)
     private BigDecimal subtotal = BigDecimal.ZERO;

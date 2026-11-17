@@ -1,5 +1,7 @@
 package com.notapos.service;
 
+import org.springframework.transaction.annotation.Transactional;
+import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.entity.PrepStation;
 import com.notapos.repository.PrepStationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +16,7 @@ import java.util.Optional;
  */
 
 @Service
+@Transactional(readOnly = true)      // Every method runs in a database transaction; read-only unless a method says otherwise
 public class PrepStationService {
     
     private final PrepStationRepository prepStationRepository;
@@ -39,13 +42,15 @@ public class PrepStationService {
         return prepStationRepository.findByName(name);
     }
 
+    @Transactional
     public PrepStation createPrepStation(PrepStation prepStation) {         // create new prep station
         return prepStationRepository.save(prepStation);
     }
 
+    @Transactional
     public PrepStation updatePrepStation(Long id, PrepStation updatedStation) {     // Update a prep station
         PrepStation existing = prepStationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Prep station not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Prep station not found with id: " + id));
 
         existing.setName(updatedStation.getName());
         existing.setDescription(updatedStation.getDescription());
@@ -54,6 +59,7 @@ public class PrepStationService {
         return prepStationRepository.save(existing);
     }
 
+    @Transactional
     public void deletePrepStation(Long id) {                        // delete a prep station
         prepStationRepository.deleteById(id);
     }

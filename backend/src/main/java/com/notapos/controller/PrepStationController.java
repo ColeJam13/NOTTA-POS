@@ -52,12 +52,8 @@ public class PrepStationController {
     public ResponseEntity<PrepStation> updatePrepStation(                       // Update prep station
             @PathVariable Long id,
             @RequestBody PrepStation prepStation) {
-        try {
-            PrepStation updated = prepStationService.updatePrepStation(id, prepStation);
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        PrepStation updated = prepStationService.updatePrepStation(id, prepStation);
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")

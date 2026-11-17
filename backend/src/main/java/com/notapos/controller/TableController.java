@@ -1,5 +1,6 @@
 package com.notapos.controller;
 
+import jakarta.validation.Valid;
 import com.notapos.entity.RestaurantTable;
 import com.notapos.service.TableService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,7 +50,7 @@ public class TableController {
     }
 
     @PostMapping                                                                                    // Create new table
-    public ResponseEntity<RestaurantTable> createTable(@RequestBody RestaurantTable table) {
+    public ResponseEntity<RestaurantTable> createTable(@Valid @RequestBody RestaurantTable table) {
         RestaurantTable created = tableService.createTable(table);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -58,24 +59,16 @@ public class TableController {
     public ResponseEntity<RestaurantTable> updateTableStatus(
             @PathVariable Long id,
             @RequestParam String status) {
-        try {
-            RestaurantTable updated = tableService.updateTableStatus(id, status);
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        RestaurantTable updated = tableService.updateTableStatus(id, status);
+        return ResponseEntity.ok(updated);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<RestaurantTable> updateTable(
             @PathVariable Long id,
             @RequestBody RestaurantTable tableUpdate) {
-        try {
-            RestaurantTable updated = tableService.updateTable(id, tableUpdate);
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        RestaurantTable updated = tableService.updateTable(id, tableUpdate);
+        return ResponseEntity.ok(updated);
             }
     
 }

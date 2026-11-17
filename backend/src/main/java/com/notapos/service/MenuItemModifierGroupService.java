@@ -1,5 +1,6 @@
 package com.notapos.service;
 
+import org.springframework.transaction.annotation.Transactional;
 import com.notapos.entity.MenuItemModifierGroup;
 import com.notapos.repository.MenuItemModifierGroupRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import java.util.Optional;
  */
 
 @Service
+@Transactional(readOnly = true)      // Every method runs in a database transaction; read-only unless a method says otherwise
 public class MenuItemModifierGroupService {
     
     private final MenuItemModifierGroupRepository menuItemModifierGroupRepository;
@@ -41,10 +43,12 @@ public class MenuItemModifierGroupService {
         return menuItemModifierGroupRepository.findByModifierGroupId(modifierGroupId);
     }
 
+    @Transactional
     public MenuItemModifierGroup createLink(MenuItemModifierGroup link) {                       // Create a new link between menu item and modifier group
         return menuItemModifierGroupRepository.save(link);
     }
 
+    @Transactional
     public void deleteLink(Long id) {
         menuItemModifierGroupRepository.deleteById(id);                                         // Delete a link
     }

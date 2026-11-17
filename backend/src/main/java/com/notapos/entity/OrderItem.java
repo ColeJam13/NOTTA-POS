@@ -1,5 +1,7 @@
 package com.notapos.entity;
 
+import jakarta.validation.constraints.*;
+import com.notapos.enums.OrderItemStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,15 +24,21 @@ public class OrderItem {
     @Column(name = "order_item_id")
     private Long orderItemId;
 
+    @NotNull(message = "An order item must belong to an order")
     @Column(name = "order_id", nullable = false)
     private Long orderId;
 
+    @NotNull(message = "An order item must reference a menu item")
     @Column(name = "menu_item_id", nullable = false)
     private Long menuItemId;
 
+    @NotNull(message = "Quantity is required")
+    @Min(value = 1, message = "Quantity must be at least 1")
     @Column(name = "quantity", nullable = false)
     private Integer quantity = 1;
 
+    @NotNull(message = "Price is required")
+    @PositiveOrZero(message = "Price cannot be negative")
     @Column(name = "price", nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
@@ -38,7 +46,7 @@ public class OrderItem {
     private String specialInstructions;
 
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "draft";
+    private String status = OrderItemStatus.DRAFT.getValue();
 
     @Column(name = "delay_seconds", nullable = false)
     private Integer delaySeconds = 15;

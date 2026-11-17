@@ -1,5 +1,7 @@
 package com.notapos.entity;
 
+import jakarta.validation.constraints.*;
+import com.notapos.enums.TableStatus;
 import java.time.LocalDateTime;                   // JPA annotations
 
 import jakarta.persistence.Column;
@@ -29,17 +31,20 @@ public class RestaurantTable {
     @Column(name = "table_id")                                  // column name in database
     private Long tableId;                                       // field name in java
 
+    @NotBlank(message = "Table number is required")
     @Column(name = "table_number", nullable = false, unique = true, length = 10)        // nullable = false (means required field) - unique = true (means no duplicate table numbers)
     private String tableNumber;
 
     @Column(name = "section", length = 20)
     private String section;
 
+    @NotNull(message = "Seat count is required")
+    @Min(value = 0, message = "Seat count cannot be negative")
     @Column(name = "seat_count", nullable = false)
     private Integer seatCount;
 
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "available";
+    private String status = TableStatus.AVAILABLE.getValue();
 
     @Column(name = "x_position")
     private Integer xPosition;

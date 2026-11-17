@@ -1,6 +1,8 @@
 package com.notapos.controller;
 
+import jakarta.validation.Valid;
 import com.notapos.entity.OrderItem;
+import com.notapos.enums.OrderItemStatus;
 import com.notapos.service.OrderItemService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -50,10 +52,10 @@ public class OrderItemController {
             @RequestParam(required = false) String status) {
 
         if (status != null) {
-            if (status.equals("draft")) {
+            if (OrderItemStatus.DRAFT.matches(status)) {
 
                 return ResponseEntity.ok(orderItemService.getDraftItemsByOrder(orderId));
-            } else if (status.equals("pending")) {
+            } else if (OrderItemStatus.PENDING.matches(status)) {
 
                 return ResponseEntity.ok(orderItemService.getPendingItemsByOrder(orderId));
             }
@@ -63,7 +65,7 @@ public class OrderItemController {
     }
 
     @PostMapping                                                                            // Create new order item, add to order
-    public ResponseEntity<OrderItem> createOrderItem(@RequestBody OrderItem orderItem) {
+    public ResponseEntity<OrderItem> createOrderItem(@Valid @RequestBody OrderItem orderItem) {
         OrderItem created = orderItemService.createOrderItem(orderItem);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -72,12 +74,8 @@ public class OrderItemController {
     public ResponseEntity<OrderItem> updateOrderItem(
             @PathVariable Long id,
             @RequestBody OrderItem orderItem) {
-        try {
-            OrderItem updated = orderItemService.updateOrderItem(id, orderItem);
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+        OrderItem updated = orderItemService.updateOrderItem(id, orderItem);
+        return ResponseEntity.ok(updated);
     }
 
     @PostMapping("/order/{orderId}/send")                                                       // Send items, start timer
@@ -86,64 +84,34 @@ public class OrderItemController {
         return ResponseEntity.ok(sentItems);
     }
 
-    @PostMapping("/order/{orderId}/send-now")
+    @PostMapping("/order/{orderId}/send-now")                                                   // Send every draft + limbo item now, bypass timer
     public ResponseEntity<List<OrderItem>> sendOrderNow(@PathVariable Long orderId) {
-        List<OrderItem> draftItems = orderItemService.getDraftItemsByOrder(orderId);
-        List<OrderItem> limboItems = orderItemService.getLimboItemsByOrder(orderId);
-
-        List<OrderItem> sentItems = new java.util.ArrayList<>();
-
-        // Send draft items
-        for (OrderItem item : draftItems) {
-            sentItems.add(orderItemService.sendItemNow(item.getOrderItemId()));
-        }
-
-        // Send limbo items (bypass timer)
-        for (OrderItem item : limboItems) {
-            sentItems.add(orderItemService.sendItemNow(item.getOrderItemId()));
-        }
-
+        List<OrderItem> sentItems = orderItemService.sendOrderNow(orderId);
         return ResponseEntity.ok(sentItems);
     }
 
     @PutMapping("/{id}/send-now")                                                   // Send Item Immediately, bypass timer
     public ResponseEntity<OrderItem> sendItemNow(@PathVariable Long id) {
-        try {
-            OrderItem sent = orderItemService.sendItemNow(id);
-            return ResponseEntity.ok(sent);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        OrderItem sent = orderItemService.sendItemNow(id);
+        return ResponseEntity.ok(sent);
     }
 
     @PutMapping("/{id}/start")                                                    // start item in kitchen
     public ResponseEntity<OrderItem> startItem(@PathVariable Long id) {
-        try {
-            OrderItem started = orderItemService.startItem(id);
-            return ResponseEntity.ok(started);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        OrderItem started = orderItemService.startItem(id);
+        return ResponseEntity.ok(started);
     }
 
     @PutMapping("/{id}/complete")                                               // Mark item as completed
     public ResponseEntity<OrderItem> completeItem(@PathVariable Long id) {
-        try {
-            OrderItem completed = orderItemService.completeItem(id);
-            return ResponseEntity.ok(completed);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        OrderItem completed = orderItemService.completeItem(id);
+        return ResponseEntity.ok(completed);
     }
 
     @DeleteMapping("/{id}")                                                     // Delete order item
     public ResponseEntity<Void> deleteOrderItem(@PathVariable Long id) {
-        try {
-            orderItemService.deleteOrderItem(id);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+        orderItemService.deleteOrderItem(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/lock-expired")                                                       // Lock and fire items when delay timer hits zero

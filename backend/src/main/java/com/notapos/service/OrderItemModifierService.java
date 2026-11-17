@@ -1,5 +1,6 @@
 package com.notapos.service;
 
+import org.springframework.transaction.annotation.Transactional;
 import com.notapos.entity.OrderItemModifier;
 import com.notapos.repository.OrderItemModifierRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import java.util.Optional;
  */
 
 @Service
+@Transactional(readOnly = true)      // Every method runs in a database transaction; read-only unless a method says otherwise
 public class OrderItemModifierService {
     private final OrderItemModifierRepository orderItemModifierRepository;
 
@@ -40,10 +42,12 @@ public class OrderItemModifierService {
         return orderItemModifierRepository.findByModifierId(modifierId);
     }
 
+    @Transactional
     public OrderItemModifier createOrderItemModifier(OrderItemModifier orderItemModifier) {         // Create a new order item modifier
         return orderItemModifierRepository.save(orderItemModifier);
     }
 
+    @Transactional
     public void deleteOrderItemModifier(Long id) {                                                  // Delete an order item modifier
         orderItemModifierRepository.deleteById(id);
     }

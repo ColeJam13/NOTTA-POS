@@ -1,4 +1,8 @@
 package com.notapos.service;
+import org.springframework.transaction.annotation.Transactional;
+import com.notapos.enums.OrderStatus;
+import com.notapos.enums.TableStatus;
+import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.entity.Payment;
 import com.notapos.repository.OrderRepository;
 import com.notapos.repository.PaymentRepository;
@@ -21,6 +25,7 @@ import java.util.Optional;
  */
 
 @Service
+@Transactional(readOnly = true)      // Every method runs in a database transaction; read-only unless a method says otherwise
 public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
@@ -64,6 +69,7 @@ public class PaymentService {
         return total != null ? total : BigDecimal.ZERO;
     }
 
+    @Transactional
     public Payment createPayment(Payment payment) {
         // Save the payment
         Payment savedPayment = paymentRepository.save(payment);
@@ -72,7 +78,7 @@ public class PaymentService {
         Optional<Order> orderOpt = orderRepository.findById(payment.getOrderId());
         if (orderOpt.isPresent()) {
             Order order = orderOpt.get();
-            order.setStatus("closed");
+            order.setStatus(OrderStatus.CLOSED.getValue());
             order.setClosedAt(LocalDateTime.now());
             orderRepository.save(order);
             
@@ -80,22 +86,24 @@ public class PaymentService {
             Optional<RestaurantTable> tableOpt = tableRepository.findById(order.getTableId());
             if (tableOpt.isPresent()) {
                 RestaurantTable table = tableOpt.get();
-                table.setStatus("available");
+                table.setStatus(TableStatus.AVAILABLE.getValue());
                 tableRepository.save(table);
             }
         }
         return savedPayment;
     }
 
+    @Transactional
     public Payment updatePayment(Long id, Payment updatedPayment) {                                     // Update existing payment
         Payment existing = paymentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Payment not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Payment not found with id: " + id));
         existing.setAmount(updatedPayment.getAmount());
         existing.setTipAmount(updatedPayment.getTipAmount());
         existing.setStatus(updatedPayment.getStatus());
         return paymentRepository.save(existing);
     }
 
+    @Transactional
     public void deletePayment(Long id) {                                                        // Delete existing payment
         paymentRepository.deleteById(id);
     }

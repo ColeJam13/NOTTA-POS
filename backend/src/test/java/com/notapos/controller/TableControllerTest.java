@@ -1,5 +1,6 @@
 package com.notapos.controller;
 
+import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.entity.RestaurantTable;
 import com.notapos.service.TableService;
 import org.junit.jupiter.api.BeforeEach;
@@ -187,7 +188,7 @@ class TableControllerTest {
         
         // Given
         when(tableService.updateTableStatus(eq(999L), eq("occupied")))
-                .thenThrow(new RuntimeException("Table not found"));
+                .thenThrow(new ResourceNotFoundException("Table not found"));
 
         // When/Then
         mockMvc.perform(put("/api/tables/999/status")
@@ -225,7 +226,7 @@ class TableControllerTest {
         
         // Given
         when(tableService.updateTable(eq(999L), any(RestaurantTable.class)))
-                .thenThrow(new RuntimeException("Table not found"));
+                .thenThrow(new ResourceNotFoundException("Table not found"));
 
         // When/Then
         mockMvc.perform(put("/api/tables/999")

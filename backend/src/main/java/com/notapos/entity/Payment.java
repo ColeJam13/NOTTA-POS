@@ -1,5 +1,7 @@
 package com.notapos.entity;
 
+import jakarta.validation.constraints.*;
+import com.notapos.enums.PaymentStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,12 +24,16 @@ public class Payment {
     @Column(name = "payment_id")
     private Long paymentId;
 
+    @NotNull(message = "A payment must belong to an order")
     @Column(name = "order_id", nullable = false)
     private Long orderId;
 
+    @NotNull(message = "Amount is required")
+    @PositiveOrZero(message = "Amount cannot be negative")
     @Column(name = "amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
+    @NotBlank(message = "Payment method is required")
     @Column(name = "payment_method", nullable = false, length = 50)
     private String paymentMethod;
 
@@ -35,7 +41,7 @@ public class Payment {
     private BigDecimal tipAmount = BigDecimal.ZERO;
 
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "completed";
+    private String status = PaymentStatus.COMPLETED.getValue();
 
     @Column(name = "transaction_reference", length = 100)
     private String transactionReference;
