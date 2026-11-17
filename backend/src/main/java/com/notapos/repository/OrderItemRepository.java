@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -32,6 +33,8 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
     @Query("SELECT oi FROM OrderItem oi WHERE oi.orderId = :orderId AND oi.status = :status")               // Find pending items for an order (timer active)
     List<OrderItem> findPendingItemsByOrder(Long orderId, String status);
+
+    List<OrderItem> findByOrderIdIn(Collection<Long> orderIds);     // Find items for MANY orders in one query (avoids one query per order)
 
     List<OrderItem> findByMenuItemId(Long menuItemId);              // Find items by menu item ID
 }
