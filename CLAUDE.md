@@ -58,6 +58,8 @@ When pair-programming interactively instead of automating: ask before writing co
 - **Prefer a data-model change over a React workaround.** Example: Quick Orders were kept off the floor map with an `is_quick_order` column, not a frontend filter.
 - **Frontend requests** go through `apiFetch` / `getJson` / `sendJson` in `services/api.js`. Never hardcode the backend address.
 - **Money math** goes through `utils/totals.js`.
+- **Item price includes upcharges.** `OrderItem.price` is the price of one item with its modifier upcharges already added, so every screen that sums `price` is correct without knowing about modifiers. For items with modifiers or a note the backend works the price out itself (`OrderItemModifierService`); the request carries no price.
+- **Modifiers are saved with the item, not after it.** `POST /api/order-items/with-modifiers` saves the item, its modifiers, and its note in one transaction and checks the choices against the menu's rules (`MenuModifierService` supplies the rules to both the picker and the check). Do not go back to one request per modifier: a half-saved item would reach the kitchen without its modifiers.
 - **Frontend structure:** `views/` for screens, `components/` for shared pieces, one CSS file per component or view. Pieces private to one screen live in that screen's folder (see `views/CreateOrder/`).
 - **Separation of concerns:** payment actions stay separate from order actions.
 - JSON quirk: `xPosition` / `yPosition` on tables serialize as `xposition` / `yposition`.
@@ -75,6 +77,8 @@ When pair-programming interactively instead of automating: ask before writing co
 
 Merged: CI, and a cleanup pass covering eight audit findings (central API module, typed exceptions and validation, transactions, status enums, shared totals, `GET /api/orders/active`, `CreateOrder.js` split into five files with behavior tests).
 
+Built: feature 1, modifiers and kitchen notes (see the feature plan below for what it covers).
+
 Known gaps left open on purpose:
 
 - Tables, Quick Orders, and Financials screens still download several lists and match them up in the browser. Only Active Orders uses a combined endpoint.
@@ -82,7 +86,9 @@ Known gaps left open on purpose:
 - `OrderItemService.updateOrderItem` resets the edit timer only when status is `pending`, but pending items are locked and rejected earlier in the method, so the reset never runs. It probably should check `limbo`. A test asserts the current behavior.
 - `GET /api/menu-items` returns active items whether or not `?active=true` is passed.
 - `subtotal`, `tax`, and `total` on orders are never written (nothing calls `PUT /api/orders/{id}/totals`). Totals are computed on the frontend only.
-- Order totals ignore modifier upcharges (modifiers are not wired into ordering yet).
+- The plain `POST /api/order-items` endpoint does not check modifier rules, so an item with required groups could be saved bare through it. The order screen never does this (anything with modifiers or a note goes through `/with-modifiers`).
+- The item lists on the Tables, Quick Orders, and Financials screens do not print modifiers or notes yet. Their totals are right, because upcharges are part of each item's price.
+- Changing an item during the edit window restarts the countdown for that item on the backend and for the whole order on screen, so the other items lock on the backend at their original time while the screen still shows seconds left. Adding and removing items during the window have always behaved the same way.
 - `backend/target/`, `backend/restaurant.db`, and `.DS_Store` are committed. The README still describes SQLite.
 - The nav bar shows a hardcoded user and a hardcoded notification count; the search box does nothing.
 
@@ -90,11 +96,13 @@ Known gaps left open on purpose:
 
 Build in this order, one pull request each.
 
-### 1. Modifiers and kitchen notes
+### 1. Modifiers and kitchen notes (built)
 
-- Backend already has: `ModifierGroup`, `Modifier`, `MenuItemModifierGroup` (which groups apply to which item), `OrderItemModifier`, full CRUD endpoints, seed data, and a `specialInstructions` column on `OrderItem`.
-- Missing: the order screen never loads or sends any of it.
-- Build: tapping an item with modifier groups opens a picker (required groups must be answered, `maxSelections` respected, optional groups skippable); a free-text note per item; upcharges included in the item price and totals; modifiers and notes shown on the kitchen ticket (Active Orders, BOH view). Add modifiers and notes to `ActiveOrderItemView`. Consider one endpoint that returns a menu item's groups with their modifiers, to avoid a request per group.
+- Tapping an item with modifier groups opens `views/CreateOrder/ModifierPicker.js`: required groups must be answered, `maxSelections` is respected, optional groups can be skipped. Items without groups are still added with one tap.
+- Every item can carry a free-text kitchen note. The pencil on an order line reopens the picker to change modifiers or the note while the item is a draft or in the edit window.
+- `GET /api/menu-items/modifier-groups` returns every item's groups with their choices in one response; the order screen loads it together with the menu.
+- `POST /api/order-items/with-modifiers` and `PUT /api/order-items/{id}/modifiers` save and replace an item's modifiers and note. `GET /api/order-item-modifiers/order/{orderId}` returns an order's modifiers with names.
+- `ActiveOrderItemView` carries `modifiers`, and the Active Orders screen prints modifiers and notes under each item in both views.
 
 ### 2. 86 board
 
