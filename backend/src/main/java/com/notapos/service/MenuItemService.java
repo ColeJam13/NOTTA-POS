@@ -1,6 +1,8 @@
 package com.notapos.service;
 
 
+import org.springframework.transaction.annotation.Transactional;
+import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.entity.MenuItem;
 import com.notapos.repository.MenuItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,7 @@ import java.util.Optional;
  */
 
 @Service
+@Transactional(readOnly = true)      // Every method runs in a database transaction; read-only unless a method says otherwise
 public class MenuItemService {
 
     private final MenuItemRepository menuItemRepository;
@@ -55,13 +58,15 @@ public class MenuItemService {
         return menuItemRepository.findByPrepStationId(prepStationId);
     }
 
+    @Transactional
     public MenuItem createMenuItem(MenuItem menuItem) {             // Create a new menu item
         return menuItemRepository.save(menuItem);
     }
 
+    @Transactional
     public MenuItem updateMenuItem(Long id, MenuItem updatedItem) {     // Update existing menu item
         MenuItem existing = menuItemRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Menu item not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Menu item not found with id: " + id));
 
         existing.setName(updatedItem.getName());
         existing.setDescription(updatedItem.getDescription());
@@ -73,22 +78,25 @@ public class MenuItemService {
         return menuItemRepository.save(existing);
     }
 
+    @Transactional
     public MenuItem deactivateMenuItem(Long id) {                       // "Soft delete" a menu item (turns it inactive)
         MenuItem menuItem = menuItemRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Menu item not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Menu item not found with id: " + id));
 
         menuItem.setIsActive(false);
         return menuItemRepository.save(menuItem);
     }
 
+    @Transactional
     public MenuItem activateMenuItem(Long id) {                         // Reactivate an inactive menu item
         MenuItem menuItem = menuItemRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Menu item not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Menu item not found with id: " + id));
 
         menuItem.setIsActive(true);
         return menuItemRepository.save(menuItem);
     }
 
+    @Transactional
     public void deleteMenuItem(Long id) {           // Completely delete item from repository (not reccomended, use deativateMenuItem() instead to preserve history)
         menuItemRepository.deleteById(id);
     }

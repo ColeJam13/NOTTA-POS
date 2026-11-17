@@ -1,60 +1,60 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import NavBar from '../../components/NavBar/NavBar';
 import { formatTableName } from '../../utils/formatters';
 import './ActiveOrders.css';
+import { apiFetch, getJson } from '../../services/api';
 
 function ActiveOrders({ setCurrentView, setSelectedTable }) {
   const [view, setView] = useState('FOH');
+  // Each entry is one open order with its table info and items already attached:
+  // { orderId, tableNumber, isQuickOrder, serverName, items: [{ orderItemId, name, quantity, status, ... }] }
   const [orders, setOrders] = useState([]);
-  const [orderItems, setOrderItems] = useState([]);
-  const [menuItems, setMenuItems] = useState([]);
-  const [tables, setTables] = useState([]);
 
-  
-  useEffect(() => {
-    fetch('http://localhost:8080/api/orders')                     // First useEffect - loads data on mount
-      .then(response => response.json())
-      .then(data => {
-        console.log('Orders:', data);
-        setOrders(data);
-      })
-      .catch(error => console.error('Error fetching orders:', error));
-
-    fetch('http://localhost:8080/api/order-items')
-      .then(response => response.json())
-      .then(data => {
-        console.log('Order items:', data);
-        setOrderItems(data);
-      })
-      .catch(error => console.error('Error fetching order items:', error));
-
-    fetch('http://localhost:8080/api/menu-items')
-      .then(response => response.json())
-      .then(data => setMenuItems(data))
-      .catch(error => console.error('Error fetching menu items:', error));
-
-    fetch('http://localhost:8080/api/tables')
-      .then(response => response.json())
-      .then(data => setTables(data))
-      .catch(error => console.error('Error fetching tables:', error));
+  // One request returns open orders + their items + item names + table numbers.
+  // (This used to be four separate downloads matched up here in the browser.)
+  const loadActiveOrders = useCallback(() => {
+    getJson('/api/orders/active')
+      .then(data => setOrders(data))
+      .catch(error => console.error('Error fetching active orders:', error));
   }, []);
 
-  
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetch('http://localhost:8080/api/orders')                           // Second useEffect - polls every 3 seconds
-        .then(response => response.json())
-        .then(data => setOrders(data))
-        .catch(error => console.error('Error fetching orders:', error));
+    loadActiveOrders();                                               // First useEffect - loads data on mount
+  }, [loadActiveOrders]);
 
-      fetch('http://localhost:8080/api/order-items')
-        .then(response => response.json())
-        .then(data => setOrderItems(data))
-        .catch(error => console.error('Error fetching order items:', error));
-    }, 3000);
+  useEffect(() => {
+    const interval = setInterval(loadActiveOrders, 3000);             // Second useEffect - polls every 3 seconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [loadActiveOrders]);
+
+  // Tell the backend an item moved to a new status, then update that one item on screen
+  // right away instead of waiting for the next 3-second poll.
+  const changeItemStatus = async (orderItemId, action, newStatus) => {
+    try {
+      const response = await apiFetch(`/api/order-items/${orderItemId}/${action}`, {
+        method: 'PUT'
+      });
+
+      if (!response.ok) {
+        console.error(`Failed to ${action} item ${orderItemId}: status ${response.status}`);
+        return;                                                       // Leave the screen as-is if the backend refused
+      }
+
+      setOrders(prevOrders =>
+        prevOrders.map(order => ({
+          ...order,
+          items: order.items.map(i =>
+            i.orderItemId === orderItemId
+              ? { ...i, status: newStatus }
+              : i
+          )
+        }))
+      );
+    } catch (error) {
+      console.error(`Error trying to ${action} item:`, error);
+    }
+  };
 
   return (
     <div className="page-with-nav">
@@ -81,45 +81,31 @@ function ActiveOrders({ setCurrentView, setSelectedTable }) {
                 {orders.length === 0 ? (
                 <p className="no-orders">NO ACTIVE ORDERS</p>
                 ) : (
-                orders.filter(order => order.status === 'open').map(order => {
-                    const items = orderItems.filter(item => item.orderId === order.orderId);
+                orders.map(order => {
                     const filteredItems = view === 'BOH'
-                    ? items.filter(item => item.status === 'pending' || item.status === 'fired' || item.status === 'completed')         // FOH and BOH available state views
-                    : items.filter(item => item.status !== 'draft');
+                    ? order.items.filter(item => item.status === 'pending' || item.status === 'fired' || item.status === 'completed')         // FOH and BOH available state views
+                    : order.items.filter(item => item.status !== 'draft');
 
                     // Sort by orderItemId to keep items in a stable order when status changes
-                    const sortedItems = filteredItems.sort((a, b) => a.orderItemId - b.orderItemId);
+                    // (copy first with [...] so the array held in state is never reordered in place)
+                    const sortedItems = [...filteredItems].sort((a, b) => a.orderItemId - b.orderItemId);
 
                     if (sortedItems.length === 0) return null;
 
-                    const table = tables.find(t => t.tableId === order.tableId);
-
                     return (
                     <div key={order.orderId} className="order-card">
-                        <h3>{formatTableName(table)} - Order #{order.orderId}</h3>
+                        <h3>{formatTableName(order)} - Order #{order.orderId}</h3>
                         <div className="order-items">
                         {sortedItems.map(item => (
                             <div key={item.orderItemId} className="order-item-row">
-                            <span>{item.quantity}x</span>                                                                                  
-                            <span>{menuItems.find(m => m.menuItemId === item.menuItemId)?.name || `Item ${item.menuItemId}`}</span>
+                            <span>{item.quantity}x</span>
+                            <span>{item.name}</span>
                             <span className={`status-${item.status}`}>{item.status}</span>
 
                             {view === 'BOH' && item.status === 'pending' && (
                               <button
                                 className="btn-start"                                                   // changes status from pending to fired
-                                onClick={async () => {
-                                  await fetch(`http://localhost:8080/api/order-items/${item.orderItemId}/start`, {
-                                    method: 'PUT'
-                                  });
-
-                                  setOrderItems(prevItems =>
-                                    prevItems.map(i =>
-                                      i.orderItemId === item.orderItemId
-                                      ? { ...i, status: 'fired' }
-                                      : i
-                                    )
-                                  );
-                                }}
+                                onClick={() => changeItemStatus(item.orderItemId, 'start', 'fired')}
                               >
                                 START
                               </button>
@@ -128,19 +114,7 @@ function ActiveOrders({ setCurrentView, setSelectedTable }) {
                             {view === 'BOH' && item.status === 'fired' && (
                               <button
                                 className="btn-complete"                                                                  // Complete order button appears when status is fired
-                                onClick={async () => {
-                                  await fetch(`http://localhost:8080/api/order-items/${item.orderItemId}/complete`, {
-                                    method: 'PUT'
-                                  });
-
-                                  setOrderItems(prevItems =>
-                                    prevItems.map(i =>
-                                      i.orderItemId === item.orderItemId                                // changed state to completed
-                                        ? {...i, status: 'completed' }
-                                        : i
-                                    )
-                                  );
-                                }}
+                                onClick={() => changeItemStatus(item.orderItemId, 'complete', 'completed')}             // changed state to completed
                               >
                                 COMPLETE
                               </button>

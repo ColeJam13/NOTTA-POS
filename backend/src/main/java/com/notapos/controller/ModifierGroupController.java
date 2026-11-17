@@ -52,12 +52,8 @@ public class ModifierGroupController {
     public ResponseEntity<ModifierGroup> updateModifierGroup(
             @PathVariable Long id,
             @RequestBody ModifierGroup modifierGroup) {
-        try {
-            ModifierGroup updated = modifierGroupService.updateModifierGroup(id, modifierGroup);
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        ModifierGroup updated = modifierGroupService.updateModifierGroup(id, modifierGroup);
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")                                                             // Delete existing modifier group

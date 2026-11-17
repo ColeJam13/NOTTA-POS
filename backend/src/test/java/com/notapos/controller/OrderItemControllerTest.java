@@ -1,5 +1,7 @@
 package com.notapos.controller;
 
+import com.notapos.exception.ItemLockedException;
+import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.entity.OrderItem;
 import com.notapos.service.OrderItemService;
 import org.junit.jupiter.api.BeforeEach;
@@ -286,19 +288,7 @@ class OrderItemControllerTest {
         // WHAT: Test POST /api/order-items/order/{orderId}/send-now
         // WHY: Send all draft and limbo items immediately (manager override)
         
-        // Given - Service returns draft and limbo items
-        OrderItem draftItem = new OrderItem();
-        draftItem.setOrderItemId(1L);
-        draftItem.setStatus("draft");
-        
-        OrderItem limboItem = new OrderItem();
-        limboItem.setOrderItemId(2L);
-        limboItem.setStatus("limbo");
-        
-        when(orderItemService.getDraftItemsByOrder(1L)).thenReturn(Arrays.asList(draftItem));
-        when(orderItemService.getLimboItemsByOrder(1L)).thenReturn(Arrays.asList(limboItem));
-        
-        // Mock sendItemNow to return sent items
+        // Given - Service locks and returns both items in one call
         OrderItem sentDraft = new OrderItem();
         sentDraft.setOrderItemId(1L);
         sentDraft.setStatus("pending");
@@ -309,18 +299,16 @@ class OrderItemControllerTest {
         sentLimbo.setStatus("pending");
         sentLimbo.setIsLocked(true);
         
-        when(orderItemService.sendItemNow(1L)).thenReturn(sentDraft);
-        when(orderItemService.sendItemNow(2L)).thenReturn(sentLimbo);
+        when(orderItemService.sendOrderNow(1L)).thenReturn(Arrays.asList(sentDraft, sentLimbo));
 
         // When/Then - POST request should return 200 OK with sent items
         mockMvc.perform(post("/api/order-items/order/1/send-now"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2));
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].status").value("pending"))
+                .andExpect(jsonPath("$[1].isLocked").value(true));
 
-        verify(orderItemService, times(1)).getDraftItemsByOrder(1L);
-        verify(orderItemService, times(1)).getLimboItemsByOrder(1L);
-        verify(orderItemService, times(1)).sendItemNow(1L);
-        verify(orderItemService, times(1)).sendItemNow(2L);
+        verify(orderItemService, times(1)).sendOrderNow(1L);
     }
 
     @Test
@@ -347,7 +335,7 @@ class OrderItemControllerTest {
         // WHY: Handle missing items gracefully
         
         // Given - Service throws exception
-        when(orderItemService.startItem(999L)).thenThrow(new RuntimeException("Item not found"));
+        when(orderItemService.startItem(999L)).thenThrow(new ResourceNotFoundException("Item not found"));
 
         // When/Then - PUT request should return 404 Not Found
         mockMvc.perform(put("/api/order-items/999/start"))
@@ -378,19 +366,20 @@ class OrderItemControllerTest {
     // ========== ERROR SCENARIO TESTS ==========
 
     @Test
-    void testUpdateOrderItem_WhenServiceThrowsException_ShouldReturnBadRequest() throws Exception {
+    void testUpdateOrderItem_WhenItemLocked_ShouldReturnConflict() throws Exception {
         // WHAT: Test PUT /api/order-items/{id} when update fails
         // WHY: Handle locked items or validation errors
         
         // Given - Service throws exception
         when(orderItemService.updateOrderItem(eq(1L), any(OrderItem.class)))
-                .thenThrow(new RuntimeException("Item is locked"));
+                .thenThrow(new ItemLockedException("Item is locked"));
 
-        // When/Then - PUT request should return 400 Bad Request
+        // When/Then - PUT request should return 409 Conflict (item exists but is locked)
         mockMvc.perform(put("/api/order-items/1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":1,\"menuItemId\":1,\"quantity\":2,\"price\":17.00}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Item is locked"));
 
         verify(orderItemService, times(1)).updateOrderItem(eq(1L), any(OrderItem.class));
     }
@@ -401,7 +390,7 @@ class OrderItemControllerTest {
         // WHY: Handle missing items
         
         // Given - Service throws exception
-        when(orderItemService.sendItemNow(999L)).thenThrow(new RuntimeException("Item not found"));
+        when(orderItemService.sendItemNow(999L)).thenThrow(new ResourceNotFoundException("Item not found"));
 
         // When/Then - PUT request should return 404 Not Found
         mockMvc.perform(put("/api/order-items/999/send-now"))
@@ -416,7 +405,7 @@ class OrderItemControllerTest {
         // WHY: Handle missing items
         
         // Given - Service throws exception
-        when(orderItemService.completeItem(999L)).thenThrow(new RuntimeException("Item not found"));
+        when(orderItemService.completeItem(999L)).thenThrow(new ResourceNotFoundException("Item not found"));
 
         // When/Then - PUT request should return 404 Not Found
         mockMvc.perform(put("/api/order-items/999/complete"))
@@ -426,16 +415,16 @@ class OrderItemControllerTest {
     }
 
     @Test
-    void testDeleteOrderItem_WhenServiceThrowsException_ShouldReturnBadRequest() throws Exception {
+    void testDeleteOrderItem_WhenItemLocked_ShouldReturnConflict() throws Exception {
         // WHAT: Test DELETE /api/order-items/{id} when delete fails
         // WHY: Handle locked items that can't be deleted
         
         // Given - Service throws exception
-        doThrow(new RuntimeException("Item is locked")).when(orderItemService).deleteOrderItem(1L);
+        doThrow(new ItemLockedException("Item is locked")).when(orderItemService).deleteOrderItem(1L);
 
-        // When/Then - DELETE request should return 400 Bad Request
+        // When/Then - DELETE request should return 409 Conflict (item exists but is locked)
         mockMvc.perform(delete("/api/order-items/1"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict());
 
         verify(orderItemService, times(1)).deleteOrderItem(1L);
     }

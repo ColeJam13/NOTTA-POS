@@ -1,5 +1,6 @@
 package com.notapos.controller;
 
+import jakarta.validation.Valid;
 import com.notapos.entity.MenuItem;
 import com.notapos.service.MenuItemService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,7 +67,7 @@ public class MenuItemController {
     }
 
     @PostMapping                                                                        // Create new menu item
-    public ResponseEntity<MenuItem> createMenuItem(@RequestBody MenuItem menuItem) {
+    public ResponseEntity<MenuItem> createMenuItem(@Valid @RequestBody MenuItem menuItem) {
         MenuItem created = menuItemService.createMenuItem(menuItem);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -75,32 +76,20 @@ public class MenuItemController {
     public ResponseEntity<MenuItem> updateMenuItem(
             @PathVariable Long id,
             @RequestBody MenuItem menuItem) {
-        try {
-            MenuItem updated = menuItemService.updateMenuItem(id, menuItem);
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        MenuItem updated = menuItemService.updateMenuItem(id, menuItem);
+        return ResponseEntity.ok(updated);
     }
 
     @PutMapping("/{id}/deactivate")                                                 // Deactivate (mark inactive/soft delete) menu item
     public ResponseEntity<MenuItem> deactivateMenuItem(@PathVariable Long id) {
-        try {
-            MenuItem deactivated = menuItemService.deactivateMenuItem(id);
-            return ResponseEntity.ok(deactivated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        MenuItem deactivated = menuItemService.deactivateMenuItem(id);
+        return ResponseEntity.ok(deactivated);
     }
 
     @PutMapping("/{id}/activate")                                                   // Reactivate inactive item
     public ResponseEntity<MenuItem> activateMenuItem(@PathVariable Long id) {
-        try {
-            MenuItem activated = menuItemService.activateMenuItem(id);
-            return ResponseEntity.ok(activated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        MenuItem activated = menuItemService.activateMenuItem(id);
+        return ResponseEntity.ok(activated);
     }
 
     @DeleteMapping("/{id}")                                                         // Delete menu item

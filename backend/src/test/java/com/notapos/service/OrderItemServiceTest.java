@@ -71,7 +71,6 @@ class OrderItemServiceTest {
         // Given
         List<OrderItem> draftItems = Arrays.asList(testItem);
         when(orderItemRepository.findByOrderIdAndStatus(1L, "draft")).thenReturn(draftItems);
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(testItem);
 
         // When
         List<OrderItem> sentItems = orderItemService.sendItemsForOrder(1L);
@@ -82,7 +81,8 @@ class OrderItemServiceTest {
         assertEquals("limbo", sent.getStatus());
         assertNotNull(sent.getDelayExpiresAt());
         assertFalse(sent.getIsLocked());
-        verify(orderItemRepository, times(1)).save(testItem);
+        verify(orderItemRepository, times(1)).saveAll(draftItems);       // One batched save, not one save per item
+        verify(orderItemRepository, never()).save(any());
     }
 
     @Test
@@ -132,7 +132,6 @@ class OrderItemServiceTest {
         List<OrderItem> expiredItems = Arrays.asList(testItem);
         when(orderItemRepository.findExpiredUnlockedItems(any(LocalDateTime.class), eq(false)))
                 .thenReturn(expiredItems);
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(testItem);
 
         // When
         List<OrderItem> lockedItems = orderItemService.lockAndSendExpiredItems();
@@ -142,7 +141,50 @@ class OrderItemServiceTest {
         OrderItem locked = lockedItems.get(0);
         assertTrue(locked.getIsLocked());
         assertEquals("pending", locked.getStatus());
-        verify(orderItemRepository, times(1)).save(testItem);
+        verify(orderItemRepository, times(1)).saveAll(expiredItems);     // One batched save, not one save per item
+        verify(orderItemRepository, never()).save(any());
+    }
+
+    @Test
+    void testSendOrderNow_ShouldLockAllDraftAndLimboItems() {
+        // Given - one draft item and one limbo item on the same order
+        OrderItem draftItem = new OrderItem();
+        draftItem.setOrderItemId(10L);
+        draftItem.setStatus("draft");
+        draftItem.setIsLocked(false);
+
+        OrderItem limboItem = new OrderItem();
+        limboItem.setOrderItemId(11L);
+        limboItem.setStatus("limbo");
+        limboItem.setIsLocked(false);
+
+        when(orderItemRepository.findByOrderIdAndStatus(1L, "draft")).thenReturn(Arrays.asList(draftItem));
+        when(orderItemRepository.findByOrderIdAndStatus(1L, "limbo")).thenReturn(Arrays.asList(limboItem));
+
+        // When
+        List<OrderItem> sentItems = orderItemService.sendOrderNow(1L);
+
+        // Then - both are locked and pending, saved together in one batch
+        assertEquals(2, sentItems.size());
+        for (OrderItem sent : sentItems) {
+            assertTrue(sent.getIsLocked());
+            assertEquals("pending", sent.getStatus());
+        }
+        verify(orderItemRepository, times(1)).saveAll(sentItems);
+        verify(orderItemRepository, never()).save(any());
+    }
+
+    @Test
+    void testSendOrderNow_WhenNothingToSend_ShouldReturnEmptyList() {
+        // Given - order has no draft or limbo items
+        when(orderItemRepository.findByOrderIdAndStatus(1L, "draft")).thenReturn(List.of());
+        when(orderItemRepository.findByOrderIdAndStatus(1L, "limbo")).thenReturn(List.of());
+
+        // When
+        List<OrderItem> sentItems = orderItemService.sendOrderNow(1L);
+
+        // Then
+        assertTrue(sentItems.isEmpty());
     }
 
     @Test

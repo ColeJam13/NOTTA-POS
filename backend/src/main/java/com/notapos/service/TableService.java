@@ -1,5 +1,7 @@
 package com.notapos.service;
 
+import org.springframework.transaction.annotation.Transactional;
+import com.notapos.exception.ResourceNotFoundException;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,6 +21,7 @@ import com.notapos.repository.TableRepository;
  */
 
 @Service                            // Tells Spring "This is a service bean"
+@Transactional(readOnly = true)      // Every method runs in a database transaction; read-only unless a method says otherwise
 public class TableService {
     
     private final TableRepository tableRepository;
@@ -52,25 +55,29 @@ public class TableService {
         return tableRepository.findByIsQuickOrder(isQuickOrder);
     }
 
+    @Transactional
     public RestaurantTable createTable(RestaurantTable table) {             // Create new table
         return tableRepository.save(table);
     }
 
+    @Transactional
     public RestaurantTable updateTableStatus(Long tableId, String newStatus) {          // Log status changes for tables
         RestaurantTable table = tableRepository.findById(tableId)                       // Find table, update the status, save to database
-                .orElseThrow(() -> new RuntimeException("Table not found with id: " + tableId));
+                .orElseThrow(() -> new ResourceNotFoundException("Table not found with id: " + tableId));
 
         table.setStatus(newStatus);
         return tableRepository.save(table);
     }
 
+    @Transactional
     public void deleteTable(Long id) {                  // Delete table (not recommended, use is_active flag instead)
         tableRepository.deleteById(id);
     }
 
+    @Transactional
     public RestaurantTable updateTable(Long id, RestaurantTable tableUpdate) {
         RestaurantTable table = tableRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Table not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Table not found with id: " + id));
         
         if (tableUpdate.getStatus() != null) {
             table.setStatus(tableUpdate.getStatus());

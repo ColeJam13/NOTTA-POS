@@ -1,5 +1,8 @@
 package com.notapos.service;
 
+import org.springframework.transaction.annotation.Transactional;
+import com.notapos.enums.OrderStatus;
+import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.entity.Order;
 import com.notapos.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +23,7 @@ import java.math.RoundingMode;
  */
 
 @Service
+@Transactional(readOnly = true)      // Every method runs in a database transaction; read-only unless a method says otherwise
 public class OrderService {
     
     private final OrderRepository orderRepository;
@@ -42,21 +46,23 @@ public class OrderService {
     }
 
     public List<Order> getOpenOrdersByTable(Long tableId) {                 // Get open orders for a table
-        return orderRepository.findByTableIdAndStatus(tableId, "open");
+        return orderRepository.findByTableIdAndStatus(tableId, OrderStatus.OPEN.getValue());
     }
 
     public List<Order> getOrdersByStatus(String status) {           // Get orders by status
         return orderRepository.findByStatus(status);
     }
 
+    @Transactional
     public Order createOrder(Order order) {                 // create new order
-        order.setStatus("open");
+        order.setStatus(OrderStatus.OPEN.getValue());
         return orderRepository.save(order);
     }
 
+    @Transactional
     public Order updateOrderTotals(Long id, BigDecimal subtotal, BigDecimal taxRate) {          // Update order totals as we add items
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found with id: " + id)); 
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id)); 
 
         BigDecimal tax = subtotal.multiply(taxRate).setScale(2, RoundingMode.HALF_UP);
         BigDecimal total = subtotal.add(tax);
@@ -68,10 +74,11 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
+    @Transactional
     public Order closeOrder(Long id) {                                       // Close out an order
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found with id: " + id));
-        order.setStatus("closed");
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+        order.setStatus(OrderStatus.CLOSED.getValue());
         order.setClosedAt(LocalDateTime.now());
         return orderRepository.save(order);
     }
@@ -80,11 +87,8 @@ public class OrderService {
         return orderRepository.findOrdersBetween(start, end);
     }
 
+    @Transactional
     public void deleteOrder(Long id) {                          // delete an order
         orderRepository.deleteById(id);
-    }
-
-    public List<Order> getOrdersByTableId(Long tableId) {
-        return orderRepository.findByTableId(tableId);
     }
 }

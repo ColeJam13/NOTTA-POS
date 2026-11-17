@@ -1,5 +1,6 @@
 package com.notapos.controller;
 
+import jakarta.validation.Valid;
 import com.notapos.entity.Payment;
 import com.notapos.service.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,7 +53,7 @@ public class PaymentController {
     }
 
     @PostMapping
-    public ResponseEntity<Payment> createPayment(@RequestBody Payment payment) {                    // Create new payment
+    public ResponseEntity<Payment> createPayment(@Valid @RequestBody Payment payment) {                    // Create new payment
         Payment created = paymentService.createPayment(payment);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -61,12 +62,8 @@ public class PaymentController {
     public ResponseEntity<Payment> updatePayment(                                               // Update existing payment
             @PathVariable Long id,
             @RequestBody Payment payment) {
-        try {
-            Payment updated = paymentService.updatePayment(id, payment);
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        Payment updated = paymentService.updatePayment(id, payment);
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")

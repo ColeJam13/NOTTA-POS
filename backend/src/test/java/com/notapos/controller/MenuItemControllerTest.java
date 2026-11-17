@@ -1,5 +1,6 @@
 package com.notapos.controller;
 
+import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.entity.MenuItem;
 import com.notapos.service.MenuItemService;
 import org.junit.jupiter.api.BeforeEach;
@@ -206,6 +207,43 @@ class MenuItemControllerTest {
     }
 
     @Test
+    void testCreateMenuItem_WhenRequiredFieldsMissing_ShouldReturnBadRequest() throws Exception {
+        // WHAT: Test POST /api/menu-items with no name and a negative price
+        // WHY: Bad input should be rejected at the door (400) with a message per field,
+        //      instead of reaching the database and failing with a 500
+
+        // When/Then
+        mockMvc.perform(post("/api/menu-items")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"price\":-5.00,\"category\":\"Savory\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.name").value("Menu item name is required"))
+                .andExpect(jsonPath("$.fieldErrors.price").value("Price cannot be negative"));
+
+        // The service must never be called with invalid data
+        verify(menuItemService, never()).createMenuItem(any(MenuItem.class));
+    }
+
+    @Test
+    void testUpdateMenuItem_WhenUnexpectedError_ShouldReturnServerErrorWithoutDetails() throws Exception {
+        // WHAT: Test PUT /api/menu-items/{id} when something unexpected breaks
+        // WHY: The user should get a clean 500 message - internal details stay in the server log
+
+        // Given
+        when(menuItemService.updateMenuItem(eq(1L), any(MenuItem.class)))
+                .thenThrow(new IllegalStateException("database exploded: secret-internal-detail"));
+
+        // When/Then
+        mockMvc.perform(put("/api/menu-items/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Chicken Cutty\",\"price\":17.00,\"category\":\"Savory\"}"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.message").value("Something went wrong on the server"));
+    }
+
+    @Test
     void testUpdateMenuItem_ShouldReturnUpdated() throws Exception {
         // WHAT: Test PUT /api/menu-items/{id}
         // WHY: Update menu item
@@ -278,7 +316,7 @@ class MenuItemControllerTest {
         
         // Given
         when(menuItemService.updateMenuItem(eq(999L), any(MenuItem.class)))
-                .thenThrow(new RuntimeException("Menu item not found"));
+                .thenThrow(new ResourceNotFoundException("Menu item not found"));
 
         // When/Then
         mockMvc.perform(put("/api/menu-items/999")
@@ -296,7 +334,7 @@ class MenuItemControllerTest {
         
         // Given
         when(menuItemService.deactivateMenuItem(999L))
-                .thenThrow(new RuntimeException("Menu item not found"));
+                .thenThrow(new ResourceNotFoundException("Menu item not found"));
 
         // When/Then
         mockMvc.perform(put("/api/menu-items/999/deactivate"))
@@ -312,7 +350,7 @@ class MenuItemControllerTest {
         
         // Given
         when(menuItemService.activateMenuItem(999L))
-                .thenThrow(new RuntimeException("Menu item not found"));
+                .thenThrow(new ResourceNotFoundException("Menu item not found"));
 
         // When/Then
         mockMvc.perform(put("/api/menu-items/999/activate"))

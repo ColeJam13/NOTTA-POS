@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import NavBar from '../../components/NavBar/NavBar';
 import { formatTableName, formatTimeAgo, formatPaymentMethod } from '../../utils/formatters';
 import './Financials.css';
+import { apiFetch } from '../../services/api';
 
 function Financials({ setCurrentView, setSelectedTable }) {
     const [timePeriod, setTimePeriod] = useState('today');
@@ -13,22 +14,22 @@ function Financials({ setCurrentView, setSelectedTable }) {
     const [tables, setTables] = useState([]);
 
     useEffect(() => {                                                       // Load orders, payments, order items, and tables on mount
-        fetch('http://localhost:8080/api/orders')
+        apiFetch('/api/orders')
             .then(response => response.json())
             .then(data => setOrders(data))
             .catch(error => console.error('Error fetching orders:', error));
 
-        fetch('http://localhost:8080/api/payments')
+        apiFetch('/api/payments')
             .then(response => response.json())
             .then(data => setPayments(data))
             .catch(error => console.error('Error fetching payments:', error));
 
-        fetch('http://localhost:8080/api/order-items')
+        apiFetch('/api/order-items')
             .then(response => response.json())
             .then(data => setOrderItems(data))
             .catch(error => console.error('Error fetching order items:', error));
 
-        fetch('http://localhost:8080/api/tables')
+        apiFetch('/api/tables')
             .then(response => response.json())
             .then(data => setTables(data))
             .catch(error => console.error('Error fetching tables:', error));

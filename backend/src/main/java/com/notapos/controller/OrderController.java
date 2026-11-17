@@ -1,6 +1,8 @@
 package com.notapos.controller;
 
+import jakarta.validation.Valid;
 import com.notapos.entity.Order;
+import com.notapos.enums.OrderStatus;
 import com.notapos.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -35,7 +37,7 @@ public ResponseEntity<List<Order>> getAllOrders(
         @RequestParam(required = false) Long tableId) {  // ADD tableId param
     
     if (tableId != null) {  // ADD this block
-        return ResponseEntity.ok(orderService.getOrdersByTableId(tableId));
+        return ResponseEntity.ok(orderService.getOrdersByTable(tableId));
     }
     
     if (status != null) {
@@ -57,14 +59,14 @@ public ResponseEntity<List<Order>> getAllOrders(
             @PathVariable Long tableId,
             @RequestParam(required = false) String status) {
 
-        if (status != null && status.equals("open")) {
+        if (OrderStatus.OPEN.matches(status)) {
             return ResponseEntity.ok(orderService.getOpenOrdersByTable(tableId));
         }
         return ResponseEntity.ok(orderService.getOrdersByTable(tableId));
     }
 
     @PostMapping                                                                // Create new order
-    public ResponseEntity<Order> createOrder(@RequestBody Order order) {
+    public ResponseEntity<Order> createOrder(@Valid @RequestBody Order order) {
         Order created = orderService.createOrder(order);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -74,22 +76,14 @@ public ResponseEntity<List<Order>> getAllOrders(
             @PathVariable Long id,
             @RequestParam BigDecimal subtotal,
             @RequestParam BigDecimal taxRate) {
-        try {
-            Order updated = orderService.updateOrderTotals(id, subtotal, taxRate);
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        Order updated = orderService.updateOrderTotals(id, subtotal, taxRate);
+        return ResponseEntity.ok(updated);
     }
 
     @PutMapping("/{id}/close")                                           // Mark order as closed
     public ResponseEntity<Order> closeOrder(@PathVariable Long id) {
-        try {
-            Order closed = orderService.closeOrder(id);
-            return ResponseEntity.ok(closed);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        Order closed = orderService.closeOrder(id);
+        return ResponseEntity.ok(closed);
     }
 
     @DeleteMapping("/{id}")                                                     // Delete order

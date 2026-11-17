@@ -1,5 +1,6 @@
 package com.notapos.entity;
 
+import jakarta.validation.constraints.*;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,15 +23,19 @@ public class MenuItem {
     @Column(name = "menu_item_id")
     private Long menuItemId;
 
+    @NotBlank(message = "Menu item name is required")
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
     @Column(name = "description", length = 500)
     private String description;
 
+    @NotNull(message = "Price is required")
+    @PositiveOrZero(message = "Price cannot be negative")
     @Column(name = "price", nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
+    @NotBlank(message = "Category is required")
     @Column(name = "category", nullable = false, length = 50)
     private String category;
 

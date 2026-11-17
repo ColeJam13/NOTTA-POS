@@ -1,5 +1,7 @@
 package com.notapos.service;
 
+import org.springframework.transaction.annotation.Transactional;
+import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.entity.ModifierGroup;
 import com.notapos.repository.ModifierGroupRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +16,7 @@ import java.util.Optional;
  */
 
 @Service
+@Transactional(readOnly = true)      // Every method runs in a database transaction; read-only unless a method says otherwise
 public class ModifierGroupService {
     
     private final ModifierGroupRepository modifierGroupRepository;
@@ -39,13 +42,15 @@ public class ModifierGroupService {
         return modifierGroupRepository.findByName(name);
     }
 
+    @Transactional
     public ModifierGroup createModifierGroup(ModifierGroup modifierGroup) {     // Create new ModififerGroup
         return modifierGroupRepository.save(modifierGroup);
     }
 
+    @Transactional
     public ModifierGroup updateModifierGroup(Long id, ModifierGroup updatedGroup) {             // Update existing ModififerGroup
         ModifierGroup existing = modifierGroupRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Modifier group not found with id: " +id));
+                .orElseThrow(() -> new ResourceNotFoundException("Modifier group not found with id: " +id));
 
                 existing.setName(updatedGroup.getName());
                 existing.setDescription(updatedGroup.getDescription());
@@ -56,6 +61,7 @@ public class ModifierGroupService {
                 return modifierGroupRepository.save(existing);
     }
 
+    @Transactional
     public void deleteModifierGroup(Long id) {                              // Delete existing ModifierGroup
         modifierGroupRepository.deleteById(id);
     }

@@ -63,12 +63,8 @@ public class ModifierController {
     public ResponseEntity<Modifier> updateModifier(
             @PathVariable Long id,
             @RequestBody Modifier modifier) {
-        try {
-            Modifier updated = modifierService.updateModifier(id, modifier);
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        Modifier updated = modifierService.updateModifier(id, modifier);
+        return ResponseEntity.ok(updated);
     }
     
     @DeleteMapping("/{id}")                                                     // Delete existing modifier
