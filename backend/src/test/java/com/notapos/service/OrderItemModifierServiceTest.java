@@ -61,6 +61,9 @@ class OrderItemModifierServiceTest {
     @Mock
     private MenuModifierService menuModifierService;
 
+    @Mock
+    private OrderItemService orderItemService;
+
     @InjectMocks
     private OrderItemModifierService orderItemModifierService;
 
@@ -504,6 +507,31 @@ class OrderItemModifierServiceTest {
         assertEquals("limbo", updated.getStatus());
         assertTrue(updated.getDelayExpiresAt().isAfter(LocalDateTime.now().plusSeconds(14)));
         assertTrue(updated.getDelayExpiresAt().isBefore(LocalDateTime.now().plusSeconds(17)));
+
+        // And the rest of the order's items still counting down get the same fresh window
+        // (order 77 is the order savedItem() puts the item on)
+        verify(orderItemService, times(1)).restartEditWindow(77L);
+    }
+
+    @Test
+    void testReplaceModifiersForOrderItem_WhenDraft_ShouldNotTouchTheEditWindow() {
+        // WHAT: Test changing an item that has not been sent yet
+        // WHY: No countdown is running for a draft, so there is nothing to restart
+
+        // Given - a saved draft
+        OrderItem existing = savedItem(100L, "draft", false);
+        when(orderItemRepository.findById(100L)).thenReturn(Optional.of(existing));
+        when(menuItemRepository.findById(COMBO_PLATE_ID)).thenReturn(Optional.of(comboPlate()));
+        when(menuModifierService.getModifierGroupsForMenuItem(COMBO_PLATE_ID)).thenReturn(comboPlateGroups());
+        when(orderItemRepository.save(any(OrderItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        OrderItem updated = orderItemModifierService.replaceModifiersForOrderItem(
+                100L, new OrderItemModifiersRequest(null, List.of(8L)));
+
+        // Then
+        assertNull(updated.getDelayExpiresAt());
+        verify(orderItemService, never()).restartEditWindow(any());
     }
 
     @Test

@@ -56,18 +56,21 @@ public class OrderItemModifierService {
     private final MenuItemRepository menuItemRepository;
     private final ModifierRepository modifierRepository;
     private final MenuModifierService menuModifierService;
+    private final OrderItemService orderItemService;            // Restarts the order's edit window when an item changes
 
     @Autowired
     public OrderItemModifierService(OrderItemModifierRepository orderItemModifierRepository,
                                     OrderItemRepository orderItemRepository,
                                     MenuItemRepository menuItemRepository,
                                     ModifierRepository modifierRepository,
-                                    MenuModifierService menuModifierService) {
+                                    MenuModifierService menuModifierService,
+                                    OrderItemService orderItemService) {
         this.orderItemModifierRepository = orderItemModifierRepository;
         this.orderItemRepository = orderItemRepository;
         this.menuItemRepository = menuItemRepository;
         this.modifierRepository = modifierRepository;
         this.menuModifierService = menuModifierService;
+        this.orderItemService = orderItemService;
     }
 
     public List<OrderItemModifier> getAllOrderItemModifiers() {                                     // Get all order item modifiers
@@ -223,11 +226,20 @@ public class OrderItemModifierService {
 
         // An item changed during the edit window gets a fresh window, so the kitchen
         // never receives it half-edited. Same +1 second as sendItemsForOrder in OrderItemService.
-        if (OrderItemStatus.LIMBO.matches(existing.getStatus())) {
+        boolean inEditWindow = OrderItemStatus.LIMBO.matches(existing.getStatus());
+        if (inEditWindow) {
             existing.setDelayExpiresAt(LocalDateTime.now().plusSeconds(existing.getDelaySeconds() + 1));
         }
 
-        return orderItemRepository.save(existing);
+        OrderItem saved = orderItemRepository.save(existing);
+
+        // The screen shows one countdown for the whole order, so the other items still
+        // counting down get the same fresh window as the one that changed
+        if (inEditWindow) {
+            orderItemService.restartEditWindow(existing.getOrderId());
+        }
+
+        return saved;
     }
 
     /**

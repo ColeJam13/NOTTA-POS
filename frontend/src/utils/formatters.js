@@ -29,7 +29,9 @@ export const formatTableName = (table) => {
 export const formatTimeAgo = (timestamp) => {
     const now = Date.now();
     const created = new Date(timestamp).getTime();
-    const diff = Math.floor((now - created) / 1000 / 60); // minutes
+    // minutes. Never below zero: if this device's clock is a little behind the
+    // server's, a brand new order would otherwise read "-1m ago".
+    const diff = Math.max(0, Math.floor((now - created) / 1000 / 60));
     
     if (diff < 60) return `${diff}m ago`;
     

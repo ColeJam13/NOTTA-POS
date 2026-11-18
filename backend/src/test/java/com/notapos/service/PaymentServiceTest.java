@@ -1,6 +1,11 @@
 package com.notapos.service;
 
+import com.notapos.dto.OrderCheckView;
+import com.notapos.entity.Order;
 import com.notapos.entity.Payment;
+import com.notapos.entity.RestaurantTable;
+import com.notapos.exception.OrderStateException;
+import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.repository.OrderRepository;
 import com.notapos.repository.PaymentRepository;
 import com.notapos.repository.TableRepository;
@@ -40,6 +45,12 @@ class PaymentServiceTest {
     @Mock
     private TableRepository tableRepository;
 
+    @Mock
+    private OrderCheckService orderCheckService;
+
+    @Mock
+    private OrderItemService orderItemService;
+
     @InjectMocks
     private PaymentService paymentService;
 
@@ -58,14 +69,30 @@ class PaymentServiceTest {
         testPayment.setTransactionReference("txn_12345");
     }
 
+    // An open order on table 5
+    private Order openOrder() {
+        Order order = new Order();
+        order.setOrderId(1L);
+        order.setTableId(5L);
+        order.setStatus("open");
+        return order;
+    }
+
+    // The check the backend works out for order 1: sent items, unsent items, and the amounts
+    private OrderCheckView check(int itemCount, int unsentItemCount, String subtotal, String tax, String total) {
+        return new OrderCheckView(1L, "open", itemCount, unsentItemCount,
+                new BigDecimal(subtotal), new BigDecimal(tax), new BigDecimal(total), new BigDecimal("0.03"));
+    }
     @Test
     void testCreatePayment_ShouldSavePayment() {
         // WHAT: Test processing a new payment
         // WHY: Guest pays for their meal
         
-        // Given - Mock returns saved payment and order doesn't exist (payment succeeds anyway)
+        // Given - An open order whose check comes to exactly what is being paid
+        Order order = openOrder();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderCheckService.buildCheck(order)).thenReturn(check(2, 0, "48.54", "1.46", "50.00"));
         when(paymentRepository.save(any(Payment.class))).thenReturn(testPayment);
-        when(orderRepository.findById(1L)).thenReturn(Optional.empty());
 
         // When - Process payment
         Payment created = paymentService.createPayment(testPayment);
@@ -76,6 +103,155 @@ class PaymentServiceTest {
         assertEquals(new BigDecimal("10.00"), created.getTipAmount());
         assertEquals("credit_card", created.getPaymentMethod());
         verify(paymentRepository, times(1)).save(testPayment);
+    }
+
+    @Test
+    void testCreatePayment_WhenOrderDoesNotExist_ShouldThrowAndSaveNothing() {
+        // WHAT: Test paying for an order that is not in the database
+        // WHY: This used to save a payment that belonged to nothing. The Close Order button
+        //      could be pressed before the order was ever saved.
+
+        // Given - No such order
+        when(orderRepository.findById(1L)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(ResourceNotFoundException.class, () -> paymentService.createPayment(testPayment));
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void testCreatePayment_WhenOrderAlreadyClosed_ShouldThrowAndSaveNothing() {
+        // WHAT: Test paying for a check that is already closed
+        // WHY: A second tap, or a second screen, must not charge the guest twice
+
+        // Given
+        Order order = openOrder();
+        order.setStatus("closed");
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        // When & Then
+        OrderStateException exception = assertThrows(OrderStateException.class,
+                () -> paymentService.createPayment(testPayment));
+        assertTrue(exception.getMessage().contains("already closed"));
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void testCreatePayment_WhenOrderHasUnsentItems_ShouldThrowAndSaveNothing() {
+        // WHAT: Test closing a check that still has draft items on it
+        // WHY: A draft never reached the kitchen. The server has to send it or remove it,
+        //      otherwise the guest pays for food that was never made (or gets it for free).
+
+        // Given - One sent item and two drafts
+        Order order = openOrder();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderCheckService.buildCheck(order)).thenReturn(check(1, 2, "48.54", "1.46", "50.00"));
+
+        // When & Then
+        OrderStateException exception = assertThrows(OrderStateException.class,
+                () -> paymentService.createPayment(testPayment));
+        assertTrue(exception.getMessage().contains("2 unsent item(s)"));
+        verify(paymentRepository, never()).save(any());
+        assertEquals("open", order.getStatus());
+    }
+
+    @Test
+    void testCreatePayment_WhenOrderHasNoItems_ShouldThrowAndSaveNothing() {
+        // WHAT: Test paying for an empty order
+        // WHY: There is nothing to pay for. An empty order is cleared off its table instead
+        //      (OrderService.deleteOrder).
+
+        // Given
+        Order order = openOrder();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderCheckService.buildCheck(order)).thenReturn(check(0, 0, "0.00", "0.00", "0.00"));
+        testPayment.setAmount(new BigDecimal("0.00"));
+
+        // When & Then
+        assertThrows(OrderStateException.class, () -> paymentService.createPayment(testPayment));
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void testCreatePayment_WhenAmountDoesNotMatchTheCheck_ShouldThrowAndSaveNothing() {
+        // WHAT: Test a payment for a different amount than the order's check
+        // WHY: The amount comes from a screen. If another server added an item after that
+        //      screen loaded, the guest was shown an old total and must not be charged it.
+
+        // Given - The screen thinks the check is 50.00, the order really comes to 67.51
+        Order order = openOrder();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderCheckService.buildCheck(order)).thenReturn(check(3, 0, "65.54", "1.97", "67.51"));
+
+        // When & Then
+        OrderStateException exception = assertThrows(OrderStateException.class,
+                () -> paymentService.createPayment(testPayment));
+        assertTrue(exception.getMessage().contains("67.51"));
+        assertTrue(exception.getMessage().contains("50.00"));
+        verify(paymentRepository, never()).save(any());
+        verify(orderItemService, never()).sendOrderNow(any());
+        assertEquals("open", order.getStatus());
+    }
+
+    @Test
+    void testCreatePayment_ShouldAcceptTheSameAmountWrittenWithFewerDecimals() {
+        // WHAT: Test that 50 and 50.00 count as the same amount
+        // WHY: JSON drops trailing zeros (50.00 arrives as 50). BigDecimal.equals would call
+        //      those different; compareTo does not.
+
+        // Given
+        Order order = openOrder();
+        testPayment.setAmount(new BigDecimal("50"));
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderCheckService.buildCheck(order)).thenReturn(check(2, 0, "48.54", "1.46", "50.00"));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        Payment created = paymentService.createPayment(testPayment);
+
+        // Then - Saved with the backend's own number, to the cent
+        assertEquals(new BigDecimal("50.00"), created.getAmount());
+    }
+
+    @Test
+    void testCreatePayment_ShouldRecordTheCheckOnTheOrderAndEndTheEditWindow() {
+        // WHAT: Test what else happens when a payment goes through
+        // WHY: The order keeps its subtotal, tax, and total for the sales records, and any
+        //      item still counting down is sent so it cannot be removed from a paid check
+
+        // Given
+        Order order = openOrder();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderCheckService.buildCheck(order)).thenReturn(check(2, 0, "48.54", "1.46", "50.00"));
+        when(paymentRepository.save(any(Payment.class))).thenReturn(testPayment);
+
+        // When
+        paymentService.createPayment(testPayment);
+
+        // Then
+        assertEquals(new BigDecimal("48.54"), order.getSubtotal());
+        assertEquals(new BigDecimal("1.46"), order.getTax());
+        assertEquals(new BigDecimal("50.00"), order.getTotal());
+        verify(orderItemService, times(1)).sendOrderNow(1L);
+    }
+
+    @Test
+    void testCreatePayment_WhenNoTipIsGiven_ShouldSaveZeroTip() {
+        // WHAT: Test a payment with no tip field
+        // WHY: Reports add tips up; a missing tip must count as zero, not break the sum
+
+        // Given
+        Order order = openOrder();
+        testPayment.setTipAmount(null);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderCheckService.buildCheck(order)).thenReturn(check(2, 0, "48.54", "1.46", "50.00"));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        Payment created = paymentService.createPayment(testPayment);
+
+        // Then
+        assertEquals(BigDecimal.ZERO, created.getTipAmount());
     }
 
     @Test
@@ -291,6 +467,7 @@ class PaymentServiceTest {
         
         when(paymentRepository.save(any(Payment.class))).thenReturn(testPayment);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderCheckService.buildCheck(order)).thenReturn(check(2, 0, "48.54", "1.46", "50.00"));
         when(tableRepository.findById(5L)).thenReturn(Optional.of(table));
         when(orderRepository.save(any(com.notapos.entity.Order.class))).thenReturn(order);
         when(tableRepository.save(any(com.notapos.entity.RestaurantTable.class))).thenReturn(table);
@@ -322,6 +499,7 @@ class PaymentServiceTest {
         
         when(paymentRepository.save(any(Payment.class))).thenReturn(testPayment);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderCheckService.buildCheck(order)).thenReturn(check(2, 0, "48.54", "1.46", "50.00"));
         when(tableRepository.findById(5L)).thenReturn(Optional.empty());
         when(orderRepository.save(any(com.notapos.entity.Order.class))).thenReturn(order);
 

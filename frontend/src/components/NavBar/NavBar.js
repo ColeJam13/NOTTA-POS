@@ -1,11 +1,30 @@
 import './NavBar.css';
 import { AlertCircle } from 'lucide-react';
 
-function NavBar({ currentView, setCurrentView, setSelectedTable }) {  // Add setSelectedTable prop
+/**
+ * The bar at the top of every screen.
+ *
+ * confirmLeave is optional. A screen that can hold unsaved work (the order
+ * screen) passes a function that returns false to keep the user where they
+ * are. It is asked before every navigation from this bar.
+ */
+function NavBar({ currentView, setCurrentView, setSelectedTable, confirmLeave }) {  // Add setSelectedTable prop
+
+  // Every button in the bar goes through here, so the "unsaved work" question is
+  // asked in one place - and asked BEFORE anything about the current screen changes.
+  const goTo = (view) => {
+    if (confirmLeave && !confirmLeave()) return;
+
+    if (view === 'createOrder') {
+      setSelectedTable(null);  // Clear selected table
+    }
+    setCurrentView(view);
+  };
+
   return (
     <div className="navbar">
       <div className="navbar-top">
-        <h1 className="navbar-logo" onClick={() => setCurrentView('home')} style={{cursor: 'pointer'}}>NOTTA-POS</h1>
+        <h1 className="navbar-logo" onClick={() => goTo('home')} style={{cursor: 'pointer'}}>NOTTA-POS</h1>
         
         <div className="navbar-search">
           <input type="text" placeholder="Find table, order, item..." />
@@ -26,16 +45,13 @@ function NavBar({ currentView, setCurrentView, setSelectedTable }) {  // Add set
       </div>
       
       <div className="navbar-bottom">
-        <button className={`nav-btn ${currentView === 'floorMap' ? 'active' : ''}`} onClick={() => setCurrentView('floorMap')}>FLOOR MAP</button>
-        <button className={`nav-btn ${currentView === 'activeTables' ? 'active' : ''}`} onClick={() => setCurrentView('activeTables')}>TABLES</button>
-        <button className={`nav-btn ${currentView === 'quickOrders' ? 'active' : ''}`} onClick={() => setCurrentView('quickOrders')}>QUICK ORDERS</button>
-        <button className={`nav-btn ${currentView === 'activeOrders' ? 'active' : ''}`} onClick={() => setCurrentView('activeOrders')}>ACTIVE ORDERS</button>
-        <button className={`nav-btn ${currentView === 'createOrder' ? 'active' : ''}`} onClick={() => {
-          setSelectedTable(null);  // Clear selected table
-          setCurrentView('createOrder');
-        }}>CREATE ORDER</button>
-        <button className={`nav-btn ${currentView === 'financials' ? 'active' : ''}`} onClick={() => setCurrentView('financials')}>FINANCIALS</button>
-        <button className={`nav-btn ${currentView === 'challenges' ? 'active' : ''}`} onClick={() => setCurrentView('challenges')}>CHALLENGES</button>
+        <button className={`nav-btn ${currentView === 'floorMap' ? 'active' : ''}`} onClick={() => goTo('floorMap')}>FLOOR MAP</button>
+        <button className={`nav-btn ${currentView === 'activeTables' ? 'active' : ''}`} onClick={() => goTo('activeTables')}>TABLES</button>
+        <button className={`nav-btn ${currentView === 'quickOrders' ? 'active' : ''}`} onClick={() => goTo('quickOrders')}>QUICK ORDERS</button>
+        <button className={`nav-btn ${currentView === 'activeOrders' ? 'active' : ''}`} onClick={() => goTo('activeOrders')}>ACTIVE ORDERS</button>
+        <button className={`nav-btn ${currentView === 'createOrder' ? 'active' : ''}`} onClick={() => goTo('createOrder')}>CREATE ORDER</button>
+        <button className={`nav-btn ${currentView === 'financials' ? 'active' : ''}`} onClick={() => goTo('financials')}>FINANCIALS</button>
+        <button className={`nav-btn ${currentView === 'challenges' ? 'active' : ''}`} onClick={() => goTo('challenges')}>CHALLENGES</button>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ package com.notapos.repository;
 
 import com.notapos.entity.RestaurantTable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
@@ -27,4 +28,7 @@ public interface TableRepository extends JpaRepository<RestaurantTable, Long> {
     List<RestaurantTable> findBySectionAndStatus(String section, String status);        // Find table by section and status
 
     List<RestaurantTable> findByIsQuickOrder(Boolean isQuickOrder);             // Find tables by Quick Order flag (true = Quick Orders, false = regular tables)
+
+    @Query("SELECT t FROM RestaurantTable t WHERE t.isQuickOrder = false OR t.isQuickOrder IS NULL")     // Find regular tables. NULL counts as regular: rows inserted by older seed files never set the flag
+    List<RestaurantTable> findRegularTables();
 }

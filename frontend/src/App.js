@@ -10,11 +10,27 @@ import Challenges from './views/Challenges';
 import './App.css';
 
 function App() {
-  const [currentView, setCurrentView] = useState('home');
+  const [currentView, setCurrentViewState] = useState('home');
   const [selectedTable, setSelectedTable] = useState(null);
 
+  // Counts how many times the order screen has been opened. It is used as the
+  // screen's "key": when a key changes, React throws the old copy of the component
+  // away and builds a fresh one, with fresh state.
+  const [orderScreenVisit, setOrderScreenVisit] = useState(0);
+
+  // Every screen changes view through this. Opening the order screen always starts
+  // it fresh - without this, tapping CREATE ORDER while a table's order was on screen
+  // kept that table's items and order under a "New Quick Order" heading, and the next
+  // items rung in went onto the old table's check.
+  const setCurrentView = (view) => {
+    if (view === 'createOrder') {
+      setOrderScreenVisit(visit => visit + 1);
+    }
+    setCurrentViewState(view);
+  };
+
   if (currentView === 'createOrder') {
-    return <CreateOrder setCurrentView={setCurrentView} selectedTable={selectedTable} setSelectedTable={setSelectedTable} />;  
+    return <CreateOrder key={orderScreenVisit} setCurrentView={setCurrentView} selectedTable={selectedTable} setSelectedTable={setSelectedTable} />;  
   }
 
   if (currentView === 'activeOrders') {

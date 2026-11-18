@@ -19,7 +19,8 @@ import {
   deleteOrderItem,
   loadOpenOrderForTable,
   loadModifierGroupsByMenuItem,
-  updateItemModifiers
+  updateItemModifiers,
+  clearEmptyOrder
 } from './orderActions';
 
 /**
@@ -67,6 +68,11 @@ function CreateOrder({ setCurrentView, selectedTable, setSelectedTable }) {
   const timer = useEditTimer(lockLimboItems);
   const secondsLeft = timer.secondsLeft;
 
+  // Drafts are items the server has not sent yet. Unsaved items exist only on this
+  // screen (no orderItemId): leaving the screen would lose them.
+  const hasDrafts = orderItems.some(item => item.status === 'draft');
+  const hasUnsavedItems = orderItems.some(item => !item.orderItemId);
+
 // Set initial table state - if selectedTable exists, use it. Otherwise null (Quick Order will be created on Save/Send)
 useEffect(() => {
   if (selectedTable) {
@@ -77,19 +83,53 @@ useEffect(() => {
   }
 }, [selectedTable]);
 
-// Load existing order if table is occupied
+// Load the table's open order, if it has one, when the screen opens on a table.
+// The backend is always asked (this used to trust the table's "occupied" status, but
+// that status is a few seconds old by the time a table is tapped - another server may
+// have just opened it). A Quick Order created from this screen has no selectedTable,
+// so it is never loaded over the items being rung in.
+const { resume: resumeTimer } = timer;
 useEffect(() => {
-  if (currentTable && currentTable.status === 'occupied') {
-    loadOpenOrderForTable(currentTable.tableId)
-      .then(openOrder => {
-        if (openOrder) {
-          setCurrentOrderId(openOrder.orderId);
-          setOrderItems(openOrder.items);
-        }
-      })
-      .catch(error => console.error('Error loading order:', error));
-  }
-}, [currentTable]); // Changed dependency from selectedTable to currentTable
+  if (!selectedTable) return;
+
+  loadOpenOrderForTable(selectedTable.tableId)
+    .then(openOrder => {
+      if (!openOrder) return;
+
+      setCurrentOrderId(openOrder.orderId);
+
+      // Show the loaded items, keeping anything the server already tapped in while
+      // the order was loading (those have no orderItemId yet)
+      const showItems = (loadedItems) =>
+        setOrderItems(prevItems => [...loadedItems, ...prevItems.filter(item => !item.orderItemId)]);
+
+      // If the table was reopened during its edit window, pick the countdown back up.
+      // Without this the items looked editable forever, with no countdown and a
+      // SEND ORDER button that did nothing.
+      const expiryTimes = openOrder.items
+        .filter(item => item.status === 'limbo' && item.delayExpiresAt)
+        .map(item => new Date(item.delayExpiresAt).getTime());
+
+      if (expiryTimes.length === 0) {
+        showItems(openOrder.items);
+        return;
+      }
+
+      // The earliest expiry is the safe one: the screen must never show an item as
+      // editable after the backend has locked it.
+      const expiresAt = new Date(Math.min(...expiryTimes));
+      if (expiresAt > new Date()) {
+        showItems(openOrder.items);
+        resumeTimer(expiresAt);
+      } else {
+        // The window ran out while the order was loading - show those items as locked
+        showItems(openOrder.items.map(item =>
+          item.status === 'limbo' ? { ...item, status: 'pending' } : item
+        ));
+      }
+    })
+    .catch(error => console.error('Error loading order:', error));
+}, [selectedTable, resumeTimer]); // Runs once per visit: neither of these changes while the screen is open
 
 useEffect(() => {
   // The menu and its modifier groups are loaded together and shown together.
@@ -159,6 +199,10 @@ useEffect(() => {
   };
 
   const sendOrder = async () => {
+    // Nothing to send. Without this check an empty Send still created a Quick Order
+    // table and an empty order every time it was pressed.
+    if (!hasDrafts) return;
+
     try {
       setShowDraftSaved(false);  // Clear the draft notification when sending
 
@@ -192,6 +236,8 @@ useEffect(() => {
   };
 
   const saveDraft = async () => {
+    if (!hasDrafts) return;       // Nothing to save (same reason as in sendOrder)
+
     try {
       const orderId = await ensureTableAndOrder();
 
@@ -235,7 +281,17 @@ useEffect(() => {
     if (item.orderItemId) {
       console.log('Item has orderItemId, attempting delete:', item.orderItemId);
       try {
-        const deleted = await deleteOrderItem(item.orderItemId);
+        const { deleted, locked } = await deleteOrderItem(item.orderItemId);
+
+        if (locked) {
+          // The edit window closed before this arrived. Show what is true: everything
+          // that was counting down is locked now. (This used to do nothing at all,
+          // leaving an "x" on screen that never worked.)
+          timer.finishNow();
+          lockLimboItems();
+          alert('Too late to remove this item - it was already sent to the prep station');
+          return;
+        }
 
         if (!deleted) {
           console.error('Failed to delete item from backend');
@@ -386,6 +442,10 @@ useEffect(() => {
         setOrderItems(prevItems => prevItems.map(existing =>
           existing.orderItemId === item.orderItemId ? { ...existing, status: 'pending' } : existing
         ));
+        // The window is one countdown for the whole order, so the other items that
+        // were counting down are locked too
+        timer.finishNow();
+        lockLimboItems();
         alert('Too late to change this item - it was already sent to the prep station');
         return;
       }
@@ -408,9 +468,55 @@ useEffect(() => {
     }
   };
 
+  // Asked by the nav bar before leaving this screen. Items that were never saved or
+  // sent exist only here, so the server gets a chance to stay and save them.
+  const confirmLeave = () =>
+    !hasUnsavedItems ||
+    window.confirm('This order has items that have not been saved or sent. Leave and lose them?');
+
+  // Put the screen back to an empty new order (after a check is paid or a table is cleared)
+  const startOver = () => {
+    setShowPaymentModal(false);
+    setOrderItems([]);
+    setCurrentOrderId(null);
+    setCurrentTable(null);
+    setSelectedTable(null);
+    timer.reset();
+  };
+
+  // CLOSE ORDER was pressed
+  const handleCloseOrderClick = () => {
+    // A draft never reached the kitchen, so it cannot be on the check. (Before this,
+    // the guest was charged for whatever was on screen, sent or not.)
+    if (hasDrafts) {
+      alert('Send or remove the unsent items before closing the check.');
+      return;
+    }
+    setShowPaymentModal(true);
+  };
+
+  // CLEAR TABLE was pressed: the order exists but has no items, so there is nothing to
+  // pay. Without this a table whose items were all removed stayed occupied for good.
+  const handleClearTableClick = async () => {
+    try {
+      const result = await clearEmptyOrder(currentOrderId);
+      if (!result.cleared) {
+        alert(result.message);
+        return;
+      }
+      startOver();
+    } catch (error) {
+      console.error('Error clearing table:', error);
+      alert('Failed to clear the table');
+    }
+  };
+
+  // An order that is saved but has nothing on it can only be cleared, not paid
+  const isEmptySavedOrder = currentOrderId !== null && orderItems.length === 0;
+
   return (
     <div className="page-with-nav">
-      <NavBar currentView="createOrder" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />
+      <NavBar currentView="createOrder" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} confirmLeave={confirmLeave} />
             <div className="app">
             <div className="order-panel">
                 <h2>Current Order - {currentTable ? formatTableName(currentTable) : 'New Quick Order'}</h2>
@@ -425,6 +531,7 @@ useEffect(() => {
                   secondsLeft !== null && secondsLeft > 0 ? `${secondsLeft} seconds to edit` :
                   secondsLeft === 0 ? 'Items locked and sent to prep station' :
                   orderItems.length === 0 ? 'Add items to order' :
+                  !hasDrafts ? 'All items sent to prep station' :
                   'Ready to send or save as draft'}
                 </div>
 
@@ -451,18 +558,24 @@ useEffect(() => {
             </div>
                 <div className="order-actions">
                   <div className="action-row">
-                    <button className="btn-save" onClick={saveDraft}>SAVE DRAFT</button>
-                    <button className="btn-send" onClick={handleSendClick}>
+                    <button className="btn-save" onClick={saveDraft} disabled={!hasDrafts}>SAVE DRAFT</button>
+                    <button className="btn-send" onClick={handleSendClick} disabled={!timer.isRunning && !hasDrafts}>
                         {timer.isRunning ? 'SEND NOW?' : 'SEND ORDER'}
                     </button>
                   </div>
-                  <button
-                    className="btn-close-order"
-                    onClick={() => setShowPaymentModal(true)}
-                    disabled={orderItems.length === 0}
-                  >
-                    CLOSE ORDER
-                  </button>
+                  {isEmptySavedOrder ? (
+                    <button className="btn-close-order" onClick={handleClearTableClick}>
+                      CLEAR TABLE
+                    </button>
+                  ) : (
+                    <button
+                      className="btn-close-order"
+                      onClick={handleCloseOrderClick}
+                      disabled={orderItems.length === 0}
+                    >
+                      CLOSE ORDER
+                    </button>
+                  )}
                 </div>
             </div>
 
@@ -489,15 +602,8 @@ useEffect(() => {
       {showPaymentModal && (
         <PaymentModal
           order={{ orderId: currentOrderId }}
-          orderItems={orderItems}
           onClose={() => setShowPaymentModal(false)}
-          onPaymentSuccess={() => {
-            setShowPaymentModal(false);
-            setOrderItems([]);
-            setCurrentOrderId(null);
-            setCurrentTable(null);
-            setSelectedTable(null);
-          }}
+          onPaymentSuccess={startOver}
         />
       )}
     </div>

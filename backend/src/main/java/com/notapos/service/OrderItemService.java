@@ -96,6 +96,15 @@ public class OrderItemService {
     public List<OrderItem> sendItemsForOrder(Long orderId) {                                            // Send items to kitchen/bar (STARTS THE TIMER WHEN SERVER HITS SEND)
         List<OrderItem> draftItems = orderItemRepository.findByOrderIdAndStatus(orderId, OrderItemStatus.DRAFT.getValue());
 
+        if (draftItems.isEmpty()) {
+            return draftItems;                                     // Nothing new to send: leave any running edit window alone
+        }
+
+        // Items sent a few seconds ago that are still counting down. The screen shows ONE
+        // countdown for the whole order and restarts it when an item is added, so these
+        // get the same fresh window as the new items (see restartEditWindow below).
+        List<OrderItem> alreadyInLimbo = orderItemRepository.findByOrderIdAndStatus(orderId, OrderItemStatus.LIMBO.getValue());
+
         LocalDateTime now = LocalDateTime.now();
 
         for (OrderItem item : draftItems) {
@@ -104,8 +113,42 @@ public class OrderItemService {
             item.setSentAt(now);
         }
 
-        orderItemRepository.saveAll(draftItems);                   // One batched save instead of one save per item
+        for (OrderItem item : alreadyInLimbo) {
+            item.setDelayExpiresAt(now.plusSeconds(item.getDelaySeconds() + 1));
+        }
+
+        List<OrderItem> itemsToSave = new ArrayList<>(draftItems);
+        itemsToSave.addAll(alreadyInLimbo);
+        orderItemRepository.saveAll(itemsToSave);                  // One batched save instead of one save per item
         return draftItems;
+    }
+
+    /**
+     * Give every item on an order that is still in its edit window a fresh window.
+     *
+     * WHY: The order screen shows one countdown for the whole order, and restarts it
+     *      whenever the server adds, removes, or changes an item. The backend used to
+     *      restart the window only for the one item that changed, so the other items
+     *      locked at their original time while the screen still showed seconds left -
+     *      and the server's next edit was refused. Now the backend and the screen agree:
+     *      a change during the window restarts it for the whole order.
+     *
+     * Items that are already locked are not touched.
+     */
+    @Transactional
+    public void restartEditWindow(Long orderId) {
+        List<OrderItem> limboItems = orderItemRepository.findByOrderIdAndStatus(orderId, OrderItemStatus.LIMBO.getValue());
+
+        if (limboItems.isEmpty()) {
+            return;                                                // No window is running on this order
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        for (OrderItem item : limboItems) {
+            item.setDelayExpiresAt(now.plusSeconds(item.getDelaySeconds() + 1));  // Same +1 second as sendItemsForOrder
+        }
+
+        orderItemRepository.saveAll(limboItems);
     }
 
     @Transactional
@@ -187,5 +230,10 @@ public class OrderItemService {
         // foreign keys), so nothing would clean these rows up automatically.
         orderItemModifierRepository.deleteByOrderItemId(id);
         orderItemRepository.deleteById(id);
+
+        // Removing an item during the edit window restarts the window for the rest of the order
+        if (OrderItemStatus.LIMBO.matches(item.getStatus())) {
+            restartEditWindow(item.getOrderId());
+        }
     }
 }

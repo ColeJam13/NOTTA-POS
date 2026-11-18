@@ -363,3 +363,9 @@
   font-size: 18px;
   font-weight: bold;
 }
+/* Save Draft and Send are greyed out when there is nothing to save or send */
+.btn-save:disabled,
+.btn-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

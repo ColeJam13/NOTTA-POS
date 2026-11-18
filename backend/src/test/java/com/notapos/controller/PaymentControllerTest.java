@@ -1,6 +1,8 @@
 package com.notapos.controller;
 
 import com.notapos.entity.Payment;
+import com.notapos.exception.ResourceNotFoundException;
+import com.notapos.exception.OrderStateException;
 import com.notapos.service.PaymentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -181,5 +183,49 @@ class PaymentControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(paymentService).deletePayment(1L);
+    }
+
+    @Test
+    void testCreatePayment_WhenOrderCannotBePaid_ShouldReturn409WithTheReason() throws Exception {
+        // WHAT: Test POST /api/payments when the order is not ready to be paid
+        // WHY: The Payment screen shows this message to the server as-is
+
+        when(paymentService.createPayment(any(Payment.class))).thenThrow(new OrderStateException(
+                "This order has 2 unsent item(s). Send or remove them before closing the check."));
+
+        mockMvc.perform(post("/api/payments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderId\":1,\"amount\":54.00,\"paymentMethod\":\"credit_card\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(
+                        "This order has 2 unsent item(s). Send or remove them before closing the check."));
+    }
+
+    @Test
+    void testCreatePayment_WhenOrderNotFound_ShouldReturn404() throws Exception {
+        // WHAT: Test POST /api/payments for an order that does not exist
+        // WHY: A payment must belong to a real order
+
+        when(paymentService.createPayment(any(Payment.class)))
+                .thenThrow(new ResourceNotFoundException("Order not found with id: 99"));
+
+        mockMvc.perform(post("/api/payments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderId\":99,\"amount\":54.00,\"paymentMethod\":\"credit_card\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void testCreatePayment_WithNegativeTip_ShouldReturn400() throws Exception {
+        // WHAT: Test POST /api/payments with a tip below zero
+        // WHY: A negative tip would quietly take money off the check
+
+        mockMvc.perform(post("/api/payments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderId\":1,\"amount\":54.00,\"tipAmount\":-5.00,\"paymentMethod\":\"credit_card\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.tipAmount").value("Tip cannot be negative"));
+
+        verify(paymentService, never()).createPayment(any());
     }
 }

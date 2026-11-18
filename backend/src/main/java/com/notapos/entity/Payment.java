@@ -37,6 +37,7 @@ public class Payment {
     @Column(name = "payment_method", nullable = false, length = 50)
     private String paymentMethod;
 
+    @PositiveOrZero(message = "Tip cannot be negative")
     @Column(name = "tip_amount", precision = 10, scale = 2)
     private BigDecimal tipAmount = BigDecimal.ZERO;
 

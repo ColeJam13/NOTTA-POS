@@ -59,7 +59,9 @@ let existingItemModifiers;  // what GET /api/order-item-modifiers/order/{id} ret
 let editWindowMs;     // how far in the future the fake backend says the edit window closes
 let savedMenuItemIds; // orderItemId -> menuItemId for items the fake backend has "saved"
 let refuseItemSaves;  // true = the fake backend answers 400 to saving an item with modifiers
-let itemsAreLocked;   // true = the fake backend answers 409 (already sent to kitchen) to modifier changes
+let itemsAreLocked;   // true = the fake backend answers 409 (already sent to kitchen) to modifier changes and removals
+let orderCheck;       // what GET /api/orders/77/check returns (the check as the backend works it out)
+let paymentRefusal;   // a message = the fake backend answers 409 with that message to a payment
 
 // What the real backend does when it saves modifiers: menu price + the chosen upcharges
 const priceWithUpcharges = (menuItemId, modifierIds) => {
@@ -88,6 +90,8 @@ beforeEach(() => {
   savedMenuItemIds = {};
   refuseItemSaves = false;
   itemsAreLocked = false;
+  orderCheck = { orderId: 77, status: 'open', itemCount: 1, unsentItemCount: 0, subtotal: 17.0, tax: 0.51, total: 17.51, taxRate: 0.03 };
+  paymentRefusal = null;
 
   global.fetch = jest.fn(async (url, options = {}) => {
     const method = options.method || 'GET';
@@ -142,7 +146,16 @@ beforeEach(() => {
       return jsonResponse([{ orderItemId: 100, menuItemId: 1, status: 'limbo', delayExpiresAt: expires }]);
     }
     if (method === 'POST' && path === '/api/order-items/order/77/send-now') return jsonResponse([]);
-    if (method === 'DELETE' && path.startsWith('/api/order-items/')) return jsonResponse(null, 204);
+    if (method === 'DELETE' && path.startsWith('/api/order-items/')) {
+      if (itemsAreLocked) return jsonResponse({ message: 'Cannot delete locked item' }, 409);
+      return jsonResponse(null, 204);
+    }
+    if (method === 'GET' && path === '/api/orders/77/check') return jsonResponse(orderCheck);
+    if (method === 'POST' && path === '/api/payments') {
+      if (paymentRefusal) return jsonResponse({ message: paymentRefusal }, 409);
+      return jsonResponse({ paymentId: 1, ...body }, 201);
+    }
+    if (method === 'DELETE' && path === '/api/orders/77') return jsonResponse(null, 204);
 
     throw new Error(`Unexpected request in test: ${method} ${path}`);
   });
@@ -224,14 +237,14 @@ test('SEND ORDER with no table creates a Quick Order, saves items, and starts th
   expect(screen.getByRole('button', { name: 'SEND NOW?' })).toBeInTheDocument();
   expect(screen.getByText('Current Order - Quick Order QO1')).toBeInTheDocument();
 
-  // Requests, in order: load menu + modifiers, find next QO number, create table, open order, seat table, save item, send
+  // Requests, in order: load menu + modifiers, find next QO number, create table, open order, save item, send
+  // (the backend marks the table occupied when it opens the order - there is no separate "seat table" request)
   expect(calls).toEqual([
     'GET /api/menu-items',
     'GET /api/menu-items/modifier-groups',
     'GET /api/tables',
     'POST /api/tables',
     'POST /api/orders',
-    'PUT /api/tables/9',
     'POST /api/order-items',
     'POST /api/order-items/order/77/send'
   ]);
@@ -613,4 +626,252 @@ test('opening an occupied table shows the modifiers and notes already on its ite
   // The fired Combo Plate is locked (no pencil); the draft Fries can still be edited
   expect(within(list).queryByRole('button', { name: 'Edit Combo Plate' })).not.toBeInTheDocument();
   expect(within(list).getByRole('button', { name: 'Edit Fries' })).toBeInTheDocument();
+});
+
+// ============================================================================
+// Sending, closing, and clearing an order
+// ============================================================================
+
+test('SEND ORDER and SAVE DRAFT are disabled when there is nothing to send, so no empty order is created', async () => {
+  await renderScreen();
+
+  expect(screen.getByRole('button', { name: 'SEND ORDER' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'SAVE DRAFT' })).toBeDisabled();
+
+  await userEvent.click(menuCard('Chicken Cutty'));
+
+  expect(screen.getByRole('button', { name: 'SEND ORDER' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'SAVE DRAFT' })).toBeEnabled();
+  // Still nothing but the two menu requests: no table and no order were created
+  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups']);
+});
+
+test('opening a table asks the backend for its open order even when the table looked available', async () => {
+  // Another server opened W3 a moment ago; the table object this screen was given is a few seconds old
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
+
+  const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'available' });
+
+  expect(await within(orderList(container)).findByText('Chicken Cutty')).toBeInTheDocument();
+  expect(screen.getByText('All items sent to prep station')).toBeInTheDocument();
+});
+
+test('reopening a table during its edit window picks the countdown back up', async () => {
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [{
+    orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'limbo',
+    delayExpiresAt: new Date(Date.now() + 9500).toISOString()             // 9 and a half seconds left
+  }];
+
+  const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
+
+  // The countdown shows the seconds actually left (not a fresh 15), the button offers
+  // Send Now, and the item can still be removed
+  expect(await screen.findByText(/^[89] seconds to edit$/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'SEND NOW?' })).toBeInTheDocument();
+  expect(within(orderList(container)).getByRole('button', { name: 'x' })).toBeInTheDocument();
+});
+
+test('reopening a table whose edit window just ran out shows its items as locked', async () => {
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [{
+    orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'limbo',
+    delayExpiresAt: new Date(Date.now() - 500).toISOString()              // Expired half a second ago
+  }];
+
+  const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
+
+  await within(orderList(container)).findByText('Chicken Cutty');
+  expect(orderList(container).querySelectorAll('.order-item.locked')).toHaveLength(1);
+  expect(within(orderList(container)).queryByRole('button', { name: 'x' })).not.toBeInTheDocument();
+});
+
+test('removing an item the backend already locked shows it as locked and tells the server', async () => {
+  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  const { container } = await renderScreen();
+  await userEvent.click(menuCard('Chicken Cutty'));
+  await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
+  await screen.findByText('15 seconds to edit');
+
+  // The edit window closes on the backend just before the "x" is pressed
+  itemsAreLocked = true;
+  await userEvent.click(within(orderList(container)).getByRole('button', { name: 'x' }));
+
+  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(
+    'Too late to remove this item - it was already sent to the prep station'
+  ));
+  const list = orderList(container);
+  expect(within(list).getByText('Chicken Cutty')).toBeInTheDocument();
+  expect(list.querySelectorAll('.order-item.locked')).toHaveLength(1);
+  expect(within(list).queryByRole('button', { name: 'x' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'SEND ORDER' })).toBeInTheDocument();     // No longer "SEND NOW?"
+});
+
+test('CLOSE ORDER is refused while the order has unsent items', async () => {
+  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  await renderScreen();
+  await userEvent.click(menuCard('Chicken Cutty'));
+
+  await userEvent.click(screen.getByRole('button', { name: 'CLOSE ORDER' }));
+
+  expect(alertSpy).toHaveBeenCalledWith('Send or remove the unsent items before closing the check.');
+  expect(screen.queryByRole('button', { name: 'PROCESS PAYMENT' })).not.toBeInTheDocument();
+  expect(calls).not.toContain('POST /api/payments');
+});
+
+test('CLOSE ORDER shows the check the backend worked out and pays exactly that amount', async () => {
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
+  // Another server added Fries to this table after this screen loaded: the screen shows
+  // one item ($17.00) but the real check is $23.00 + tax
+  orderCheck = { orderId: 77, status: 'open', itemCount: 2, unsentItemCount: 0, subtotal: 23.0, tax: 0.69, total: 23.69, taxRate: 0.03 };
+  const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
+  await within(orderList(container)).findByText('Chicken Cutty');
+
+  await userEvent.click(screen.getByRole('button', { name: 'CLOSE ORDER' }));
+
+  // The payment window shows the backend's numbers, not the screen's
+  const summary = await waitFor(() => {
+    const element = document.querySelector('.order-summary');
+    expect(element).not.toBeNull();
+    return element;
+  });
+  expect(within(summary).getByText('$23.00')).toBeInTheDocument();
+  expect(within(summary).getByText('Tax (3%):')).toBeInTheDocument();
+  expect(within(summary).getByText('$0.69')).toBeInTheDocument();
+  expect(within(summary).getByText('$23.69')).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole('button', { name: 'PROCESS PAYMENT' }));
+
+  expect(await screen.findByText('Payment Processed Successfully!')).toBeInTheDocument();
+  const payment = requests.find(r => r.method === 'POST' && r.path === '/api/payments');
+  expect(payment.body).toEqual({ orderId: 77, amount: 23.69, tipAmount: 0, paymentMethod: 'credit_card' });
+});
+
+test('a tip percentage is worked out from the backend check total', async () => {
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
+  orderCheck = { orderId: 77, status: 'open', itemCount: 1, unsentItemCount: 0, subtotal: 50.0, tax: 1.5, total: 51.5, taxRate: 0.03 };
+  const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
+  await within(orderList(container)).findByText('Chicken Cutty');
+  await userEvent.click(screen.getByRole('button', { name: 'CLOSE ORDER' }));
+  await screen.findByRole('button', { name: 'PROCESS PAYMENT' });
+
+  await userEvent.click(screen.getByRole('button', { name: '20%' }));
+
+  // 20% of 51.50 = 10.30, grand total 61.80
+  expect(screen.getByPlaceholderText('Custom tip amount')).toHaveValue(10.3);
+  expect(within(document.querySelector('.grand-total')).getByText('$61.80')).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole('button', { name: 'PROCESS PAYMENT' }));
+  await screen.findByText('Payment Processed Successfully!');
+  const payment = requests.find(r => r.method === 'POST' && r.path === '/api/payments');
+  expect(payment.body).toEqual({ orderId: 77, amount: 51.5, tipAmount: 10.3, paymentMethod: 'credit_card' });
+});
+
+test('a refused payment shows the reason the backend gave and leaves the order open', async () => {
+  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
+  paymentRefusal = 'Order #77 is already closed.';
+  const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
+  await within(orderList(container)).findByText('Chicken Cutty');
+  await userEvent.click(screen.getByRole('button', { name: 'CLOSE ORDER' }));
+
+  await userEvent.click(await screen.findByRole('button', { name: 'PROCESS PAYMENT' }));
+
+  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Order #77 is already closed.'));
+  expect(screen.queryByText('Payment Processed Successfully!')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'PROCESS PAYMENT' })).toBeEnabled();
+});
+
+test('the payment window says so when the check cannot be loaded', async () => {
+  jest.spyOn(console, 'error').mockImplementation(() => {});    // The failure is logged on purpose - keep the test output clean
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
+  orderCheck = null;
+  const realFetch = global.fetch;
+  global.fetch = jest.fn(async (url, options = {}) => {
+    if (url.endsWith('/api/orders/77/check')) return jsonResponse({ message: 'Order not found' }, 404);
+    return realFetch(url, options);
+  });
+  const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
+  await within(orderList(container)).findByText('Chicken Cutty');
+
+  await userEvent.click(screen.getByRole('button', { name: 'CLOSE ORDER' }));
+
+  expect(await screen.findByText(/Could not load the check/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'PROCESS PAYMENT' })).not.toBeInTheDocument();
+});
+
+test('after a check is paid the screen starts over as a new order', async () => {
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
+  const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
+  await within(orderList(container)).findByText('Chicken Cutty');
+  await userEvent.click(screen.getByRole('button', { name: 'CLOSE ORDER' }));
+  await userEvent.click(await screen.findByRole('button', { name: 'PROCESS PAYMENT' }));
+
+  // The success message stays up for 2 seconds, then the screen resets
+  expect(
+    await screen.findByText('Current Order - New Quick Order', {}, { timeout: 4000 })
+  ).toBeInTheDocument();
+  expect(within(orderList(container)).queryByText('Chicken Cutty')).not.toBeInTheDocument();
+  expect(screen.getByText('Add items to order')).toBeInTheDocument();
+});
+
+test('an order with every item removed can be cleared off its table', async () => {
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [{ orderItemId: 51, menuItemId: 2, price: 6.0, quantity: 1, status: 'draft' }];
+  const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
+  await within(orderList(container)).findByText('Fries');
+
+  // The guests changed their minds: remove the only item
+  await userEvent.click(within(orderList(container)).getByRole('button', { name: 'x' }));
+
+  // There is nothing to pay, so the button offers to clear the table instead
+  const clearButton = await screen.findByRole('button', { name: 'CLEAR TABLE' });
+  expect(screen.queryByRole('button', { name: 'CLOSE ORDER' })).not.toBeInTheDocument();
+  await userEvent.click(clearButton);
+
+  expect(await screen.findByText('Current Order - New Quick Order')).toBeInTheDocument();
+  expect(calls).toContain('DELETE /api/orders/77');
+  expect(calls).not.toContain('POST /api/payments');
+});
+
+test('leaving the screen with unsaved items asks first, and staying keeps them', async () => {
+  const setCurrentView = jest.fn();
+  const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);         // The server chooses to stay
+  const { container } = render(
+    <CreateOrder setCurrentView={setCurrentView} selectedTable={null} setSelectedTable={jest.fn()} />
+  );
+  await screen.findByRole('heading', { name: 'Chicken Cutty' });
+  await userEvent.click(menuCard('Chicken Cutty'));
+
+  await userEvent.click(screen.getByRole('button', { name: 'FLOOR MAP' }));
+
+  expect(confirmSpy).toHaveBeenCalledWith('This order has items that have not been saved or sent. Leave and lose them?');
+  expect(setCurrentView).not.toHaveBeenCalled();
+  expect(within(orderList(container)).getByText('Chicken Cutty')).toBeInTheDocument();
+
+  // Asked again, the server chooses to leave
+  confirmSpy.mockReturnValue(true);
+  await userEvent.click(screen.getByRole('button', { name: 'FLOOR MAP' }));
+  expect(setCurrentView).toHaveBeenCalledWith('floorMap');
+});
+
+test('leaving the screen is not questioned when everything on the order is saved', async () => {
+  const setCurrentView = jest.fn();
+  const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);
+  render(<CreateOrder setCurrentView={setCurrentView} selectedTable={null} setSelectedTable={jest.fn()} />);
+  await screen.findByRole('heading', { name: 'Chicken Cutty' });
+  await userEvent.click(menuCard('Chicken Cutty'));
+  await userEvent.click(screen.getByRole('button', { name: 'SAVE DRAFT' }));
+  await screen.findByText('Draft saved! Items remain editable');
+
+  await userEvent.click(screen.getByRole('button', { name: 'FLOOR MAP' }));
+
+  expect(confirmSpy).not.toHaveBeenCalled();
+  expect(setCurrentView).toHaveBeenCalledWith('floorMap');
 });

@@ -1,19 +1,46 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Banknote, CreditCard, Gift } from 'lucide-react';
 import './PaymentModal.css';
-import { apiFetch } from '../../services/api';
-import { calculateOrderTotals, TAX_RATE_LABEL } from '../../utils/totals';
+import { apiFetch, getJson } from '../../services/api';
 
-function PaymentModal({ order, orderItems, onClose, onPaymentSuccess }) {
+/**
+ * The pop-up for closing a check: shows what is owed, takes a tip and a
+ * payment method, and records the payment.
+ *
+ * The amounts come from the backend (GET /api/orders/{id}/check), not from the
+ * items on the order screen. The backend adds up the items that were actually
+ * saved and sent, so the number shown here is the number that gets charged.
+ * (This used to add up whatever the screen was holding, including items that
+ * were never saved.)
+ */
+function PaymentModal({ order, onClose, onPaymentSuccess }) {
   const [paymentMethod, setPaymentMethod] = useState('credit_card');
   const [tipAmount, setTipAmount] = useState('');
   const [tipPercent, setTipPercent] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
+  // The check from the backend: { subtotal, tax, total, taxRate, itemCount, unsentItemCount }.
+  // null until it has loaded.
+  const [check, setCheck] = useState(null);
+  const [checkError, setCheckError] = useState('');
+
+  // Load the check when the modal opens
+  useEffect(() => {
+    getJson(`/api/orders/${order.orderId}/check`)
+      .then(data => setCheck(data))
+      .catch(error => {
+        console.error('Error loading check:', error);
+        setCheckError('Could not load the check for this order. Close this window and try again.');
+      });
+  }, [order.orderId]);
+
   // Calculate order total
-  // Shared helper keeps these numbers identical to the Create Order screen
-  const { subtotal, tax, total } = calculateOrderTotals(orderItems);
+  // (zeros until the check has loaded - the form is not shown before then)
+  const subtotal = check ? check.subtotal : 0;
+  const tax = check ? check.tax : 0;
+  const total = check ? check.total : 0;
+  const taxRateLabel = check ? `${+(check.taxRate * 100).toFixed(2)}%` : '';      // 0.03 -> "3%" (the + drops trailing zeros)
   const tipValue = parseFloat(tipAmount) || 0;
   const grandTotal = total + tipValue;
 
@@ -51,7 +78,10 @@ function PaymentModal({ order, orderItems, onClose, onPaymentSuccess }) {
           onPaymentSuccess();
         }, 2000);
       } else {
-        alert('Payment failed. Please try again.');
+        // The backend says why in "message" (unsent items, check already closed,
+        // the order changed since this window opened, ...). Show that to the server.
+        const error = await response.json().catch(() => null);
+        alert(error?.message || 'Payment failed. Please try again.');
         setIsProcessing(false);
       }
     } catch (error) {
@@ -76,6 +106,10 @@ function PaymentModal({ order, orderItems, onClose, onPaymentSuccess }) {
               <h3>Payment Processed Successfully!</h3>
               <p>Returning to order screen...</p>
             </div>
+          ) : checkError ? (
+            <p className="payment-check-message">{checkError}</p>
+          ) : !check ? (
+            <p className="payment-check-message">Loading check...</p>
           ) : (
             <>
               <div className="order-summary">
@@ -84,7 +118,7 @@ function PaymentModal({ order, orderItems, onClose, onPaymentSuccess }) {
                   <span>${subtotal.toFixed(2)}</span>
                 </div>
                 <div className="summary-row">
-                  <span>Tax ({TAX_RATE_LABEL}):</span>
+                  <span>Tax ({taxRateLabel}):</span>
                   <span>${tax.toFixed(2)}</span>
                 </div>
                 <div className="summary-row total">
@@ -143,6 +177,7 @@ function PaymentModal({ order, orderItems, onClose, onPaymentSuccess }) {
                   <input
                     type="number"
                     step="0.01"
+                    min="0"
                     placeholder="Custom tip amount"
                     value={tipAmount}
                     onChange={(e) => handleTipAmountChange(e.target.value)}
