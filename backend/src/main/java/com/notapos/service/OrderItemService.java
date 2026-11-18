@@ -175,9 +175,16 @@ public class OrderItemService {
         itemsToSend.addAll(orderItemRepository.findByOrderIdAndStatus(orderId, OrderItemStatus.DRAFT.getValue()));
         itemsToSend.addAll(orderItemRepository.findByOrderIdAndStatus(orderId, OrderItemStatus.LIMBO.getValue()));
 
+        LocalDateTime now = LocalDateTime.now();
+
         for (OrderItem item : itemsToSend) {
             item.setIsLocked(true);
             item.setStatus(OrderItemStatus.PENDING.getValue());
+            // A draft sent straight to the kitchen never went through Send, so it has no send
+            // time yet. The kitchen display needs one to show how long the ticket has waited.
+            if (item.getSentAt() == null) {
+                item.setSentAt(now);
+            }
         }
 
         orderItemRepository.saveAll(itemsToSend);                  // One batched save for the whole order
@@ -191,6 +198,9 @@ public class OrderItemService {
 
         item.setIsLocked(true);
         item.setStatus(OrderItemStatus.PENDING.getValue());
+        if (item.getSentAt() == null) {
+            item.setSentAt(LocalDateTime.now());                   // Same reason as in sendOrderNow
+        }
 
         return orderItemRepository.save(item);
     }

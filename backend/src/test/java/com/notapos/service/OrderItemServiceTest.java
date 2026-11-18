@@ -594,4 +594,49 @@ class OrderItemServiceTest {
         verify(orderItemRepository, never()).findByOrderIdAndStatus(any(), any());
         verify(orderItemRepository, never()).saveAll(any());
     }
+
+    @Test
+    void testSendOrderNow_ShouldStampDraftsWithASendTimeAndKeepAnExistingOne() {
+        // WHAT: Test the send time on items sent straight to the kitchen
+        // WHY: The kitchen display shows how long a ticket has waited, counted from when it
+        //      was sent. A draft that skips the edit window never had a send time.
+
+        // Given - a draft (never sent), and an item in limbo that was sent 10 seconds ago
+        LocalDateTime sentEarlier = LocalDateTime.now().minusSeconds(10);
+        OrderItem inLimbo = new OrderItem();
+        inLimbo.setOrderItemId(2L);
+        inLimbo.setOrderId(1L);
+        inLimbo.setStatus("limbo");
+        inLimbo.setIsLocked(false);
+        inLimbo.setSentAt(sentEarlier);
+
+        when(orderItemRepository.findByOrderIdAndStatus(1L, "draft")).thenReturn(Arrays.asList(testItem));
+        when(orderItemRepository.findByOrderIdAndStatus(1L, "limbo")).thenReturn(Arrays.asList(inLimbo));
+
+        // When
+        orderItemService.sendOrderNow(1L);
+
+        // Then - the draft gets a send time; the item already sent keeps its own
+        assertNotNull(testItem.getSentAt());
+        assertEquals(sentEarlier, inLimbo.getSentAt());
+        assertEquals("pending", testItem.getStatus());
+        assertEquals("pending", inLimbo.getStatus());
+    }
+
+    @Test
+    void testSendItemNow_ShouldStampASendTimeWhenThereIsNone() {
+        // WHAT: Test the send time on a single item sent straight to the kitchen
+        // WHY: Same as above, for the one-item version
+
+        // Given - a draft with no send time
+        when(orderItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
+        when(orderItemRepository.save(any(OrderItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        OrderItem sent = orderItemService.sendItemNow(1L);
+
+        // Then
+        assertNotNull(sent.getSentAt());
+        assertTrue(sent.getIsLocked());
+    }
 }
