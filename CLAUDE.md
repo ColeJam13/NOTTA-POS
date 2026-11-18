@@ -77,6 +77,7 @@ When pair-programming interactively instead of automating: ask before writing co
 - Match newly saved items to on-screen items by position, not by menu item. Matching by menu item gave two of the same dish one shared ID.
 - A slow Floor Map load once turned out to be a Firefox-on-localhost issue, not the code. Measure backend response times before changing code for performance.
 - On PostgreSQL 15+, the application's database user needs an explicit `CREATE` grant on the `public` schema on a new machine.
+- Build output (`backend/target/`) and `backend/restaurant.db` (left over from the SQLite days) were committed for a long time, so every Maven run showed up as changed files. They are ignored now. If `git status` ever lists something under `target/` again, it was added with `git add -f`; remove it with `git rm --cached`.
 - Testcontainers must be 1.21.4 or newer to work with current Docker engines.
 - The seed file inserts rows with plain SQL and only names some columns. A new column that the app filters on needs a database default (see `is_quick_order` on `RestaurantTable`), or a freshly seeded database behaves differently from the owner's. A missing default once left the Floor Map empty.
 - Click through a full service (seat, send, pay, reopen, clear) on a freshly seeded database before calling a flow done. Feature 1 was verified from the Create Order button and never touched the Floor Map, so the empty map went unnoticed.
@@ -104,7 +105,6 @@ Known gaps left open on purpose:
 - The item lists on the Tables, Quick Orders, and Financials screens do not print modifiers or notes yet. Their totals are right, because upcharges are part of each item's price.
 - The order screen does not refresh while it is open. Item statuses changed elsewhere (kitchen starts an item, another server adds one) show up only when the table is reopened. The Payment modal is not affected: it reads the check from the backend.
 - Parallel draft saves give items IDs that do not follow ring-in order, and Active Orders sorts by ID, so a ticket can list items in a different order than the server entered them.
-- `backend/target/`, `backend/restaurant.db`, and `.DS_Store` are committed. The README still describes SQLite.
 - The nav bar shows a hardcoded user and a hardcoded notification count; the search box does nothing.
 
 ## Feature plan
