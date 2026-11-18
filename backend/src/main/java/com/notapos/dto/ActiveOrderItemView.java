@@ -1,6 +1,7 @@
 package com.notapos.dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -24,5 +25,7 @@ public record ActiveOrderItemView(
         BigDecimal price,
         String status,                  // draft, limbo, pending, fired, completed
         String specialInstructions,     // Free-text kitchen note, e.g. "no onions" (null when there is none)
-        List<OrderItemModifierView> modifiers) {    // Chosen modifiers with names, e.g. "French Toast" (empty when there are none)
+        List<OrderItemModifierView> modifiers,      // Chosen modifiers with names, e.g. "French Toast" (empty when there are none)
+        Long prepStationId,             // Which station makes it (Kitchen, Bar, ...). Null if the menu item has no station.
+        LocalDateTime sentAt) {         // When the server pressed Send. The kitchen view shows how long a ticket has been waiting. Null for drafts.
 }
