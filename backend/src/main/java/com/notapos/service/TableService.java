@@ -52,7 +52,10 @@ public class TableService {
     }
 
     public List<RestaurantTable> getTablesByQuickOrder(Boolean isQuickOrder) {      // Get tables filtered by Quick Order flag (true = Quick Orders only, false = regular tables only)
-        return tableRepository.findByIsQuickOrder(isQuickOrder);
+        if (Boolean.TRUE.equals(isQuickOrder)) {
+            return tableRepository.findByIsQuickOrder(true);
+        }
+        return tableRepository.findRegularTables();                 // Includes tables whose flag was never set (NULL)
     }
 
     @Transactional

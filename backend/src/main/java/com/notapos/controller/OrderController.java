@@ -1,8 +1,10 @@
 package com.notapos.controller;
 
 import jakarta.validation.Valid;
+import com.notapos.dto.OrderCheckView;
 import com.notapos.entity.Order;
 import com.notapos.enums.OrderStatus;
+import com.notapos.service.OrderCheckService;
 import com.notapos.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -25,10 +27,12 @@ import java.util.List;
 public class OrderController {
     
     private final OrderService orderService;
+    private final OrderCheckService orderCheckService;
 
     @Autowired
-    public OrderController(OrderService orderService) {
+    public OrderController(OrderService orderService, OrderCheckService orderCheckService) {
         this.orderService = orderService;
+        this.orderCheckService = orderCheckService;
     }
 
 @GetMapping
@@ -52,6 +56,11 @@ public ResponseEntity<List<Order>> getAllOrders(
         return orderService.getOrderById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/check")                                              // Get the check for an order: subtotal, tax, total (worked out by the backend)
+    public ResponseEntity<OrderCheckView> getOrderCheck(@PathVariable Long id) {
+        return ResponseEntity.ok(orderCheckService.getCheck(id));
     }
 
     @GetMapping("/table/{tableId}")                                         // Get orders by table
@@ -86,7 +95,7 @@ public ResponseEntity<List<Order>> getAllOrders(
         return ResponseEntity.ok(closed);
     }
 
-    @DeleteMapping("/{id}")                                                     // Delete order
+    @DeleteMapping("/{id}")                                                     // Clear an empty open order off its table (409 if it has items or is closed)
     public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
         orderService.deleteOrder(id);
         return ResponseEntity.noContent().build();

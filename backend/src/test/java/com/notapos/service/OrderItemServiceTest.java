@@ -458,4 +458,140 @@ class OrderItemServiceTest {
         verify(orderItemModifierRepository, times(1)).deleteByOrderItemId(1L);
         verify(orderItemRepository, times(1)).deleteById(1L);
     }
+
+    @Test
+    void testSendItemsForOrder_ShouldGiveItemsAlreadyCountingDownTheSameFreshWindow() {
+        // WHAT: Test sending a new item while an earlier item is still in its edit window
+        // WHY: The screen shows one countdown for the whole order and restarts it when an
+        //      item is added. The earlier item must not lock while the screen says "15 seconds".
+
+        // Given - one new draft, and one item sent earlier with 3 seconds left
+        OrderItem earlier = new OrderItem();
+        earlier.setOrderItemId(2L);
+        earlier.setOrderId(1L);
+        earlier.setStatus("limbo");
+        earlier.setDelaySeconds(15);
+        earlier.setIsLocked(false);
+        earlier.setDelayExpiresAt(LocalDateTime.now().plusSeconds(3));
+
+        when(orderItemRepository.findByOrderIdAndStatus(1L, "draft")).thenReturn(Arrays.asList(testItem));
+        when(orderItemRepository.findByOrderIdAndStatus(1L, "limbo")).thenReturn(Arrays.asList(earlier));
+
+        // When
+        List<OrderItem> sentItems = orderItemService.sendItemsForOrder(1L);
+
+        // Then - only the new item is reported as sent...
+        assertEquals(1, sentItems.size());
+        assertEquals("limbo", testItem.getStatus());
+
+        // ...but both now expire at the same moment, a full window from now
+        assertEquals(testItem.getDelayExpiresAt(), earlier.getDelayExpiresAt());
+        assertTrue(earlier.getDelayExpiresAt().isAfter(LocalDateTime.now().plusSeconds(14)));
+        verify(orderItemRepository, times(1)).saveAll(Arrays.asList(testItem, earlier));
+    }
+
+    @Test
+    void testSendItemsForOrder_WhenNothingToSend_ShouldLeaveARunningWindowAlone() {
+        // WHAT: Test pressing Send when there are no drafts
+        // WHY: An empty Send must not push back the items that are already counting down
+
+        // Given - no drafts
+        when(orderItemRepository.findByOrderIdAndStatus(1L, "draft")).thenReturn(List.of());
+
+        // When
+        List<OrderItem> sentItems = orderItemService.sendItemsForOrder(1L);
+
+        // Then
+        assertTrue(sentItems.isEmpty());
+        verify(orderItemRepository, never()).findByOrderIdAndStatus(1L, "limbo");
+        verify(orderItemRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void testRestartEditWindow_ShouldPushBackEveryItemStillCountingDown() {
+        // WHAT: Test restarting the edit window for an order
+        // WHY: A change during the window gives the whole order a fresh 15 seconds,
+        //      matching the single countdown the server sees on screen
+
+        // Given - two items in limbo, about to expire
+        testItem.setStatus("limbo");
+        testItem.setDelayExpiresAt(LocalDateTime.now().plusSeconds(2));
+
+        OrderItem second = new OrderItem();
+        second.setOrderItemId(2L);
+        second.setOrderId(1L);
+        second.setStatus("limbo");
+        second.setDelaySeconds(15);
+        second.setDelayExpiresAt(LocalDateTime.now().plusSeconds(2));
+
+        List<OrderItem> limboItems = Arrays.asList(testItem, second);
+        when(orderItemRepository.findByOrderIdAndStatus(1L, "limbo")).thenReturn(limboItems);
+
+        // When
+        orderItemService.restartEditWindow(1L);
+
+        // Then - both expire a full window from now (15 seconds + 1 for rendering)
+        for (OrderItem item : limboItems) {
+            assertTrue(item.getDelayExpiresAt().isAfter(LocalDateTime.now().plusSeconds(14)));
+            assertTrue(item.getDelayExpiresAt().isBefore(LocalDateTime.now().plusSeconds(17)));
+            assertEquals("limbo", item.getStatus());
+        }
+        verify(orderItemRepository, times(1)).saveAll(limboItems);
+    }
+
+    @Test
+    void testRestartEditWindow_WhenNoWindowIsRunning_ShouldDoNothing() {
+        // WHAT: Test restarting the window on an order with nothing in limbo
+        // WHY: Locked items must never be given a new window
+
+        // Given
+        when(orderItemRepository.findByOrderIdAndStatus(1L, "limbo")).thenReturn(List.of());
+
+        // When
+        orderItemService.restartEditWindow(1L);
+
+        // Then
+        verify(orderItemRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void testDeleteOrderItem_WhenInEditWindow_ShouldRestartTheWindowForTheRest() {
+        // WHAT: Test removing an item while the countdown is running
+        // WHY: The screen restarts its countdown on a removal; the remaining items must match
+
+        // Given - the item being removed is in limbo, and one other item is too
+        testItem.setStatus("limbo");
+        OrderItem remaining = new OrderItem();
+        remaining.setOrderItemId(2L);
+        remaining.setOrderId(1L);
+        remaining.setStatus("limbo");
+        remaining.setDelaySeconds(15);
+        remaining.setDelayExpiresAt(LocalDateTime.now().plusSeconds(2));
+
+        when(orderItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
+        when(orderItemRepository.findByOrderIdAndStatus(1L, "limbo")).thenReturn(Arrays.asList(remaining));
+
+        // When
+        orderItemService.deleteOrderItem(1L);
+
+        // Then
+        verify(orderItemRepository, times(1)).deleteById(1L);
+        assertTrue(remaining.getDelayExpiresAt().isAfter(LocalDateTime.now().plusSeconds(14)));
+    }
+
+    @Test
+    void testDeleteOrderItem_WhenDraft_ShouldNotTouchTheEditWindow() {
+        // WHAT: Test removing an item that was never sent
+        // WHY: Removing a draft is not a change to anything the kitchen is waiting on
+
+        // Given - testItem is a draft (from setUp)
+        when(orderItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
+
+        // When
+        orderItemService.deleteOrderItem(1L);
+
+        // Then
+        verify(orderItemRepository, never()).findByOrderIdAndStatus(any(), any());
+        verify(orderItemRepository, never()).saveAll(any());
+    }
 }

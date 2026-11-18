@@ -4,6 +4,7 @@ import com.notapos.entity.RestaurantTable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.List;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
@@ -24,6 +25,9 @@ class TableRepositoryTest extends BaseRepositoryTest {
 
     @Autowired
     private TableRepository tableRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;          // Runs plain SQL, the way the seed file does
 
     private RestaurantTable frontTable;
     private RestaurantTable backTable;
@@ -328,5 +332,57 @@ class TableRepositoryTest extends BaseRepositoryTest {
             tableRepository.save(duplicate);
             tableRepository.flush(); // Force database write to trigger constraint
         });
+    }
+
+    @Test
+    void testFindRegularTables_ShouldIncludeTablesWhoseFlagWasNeverSet() {
+        // WHAT: Test that a table with no Quick Order flag (NULL) counts as a regular table
+        // WHY: Databases seeded before the flag had a default hold NULL for every table.
+        //      Asking for "is_quick_order = false" skipped them all and the Floor Map was empty.
+
+        // Given - A table whose flag is NULL, and a Quick Order
+        RestaurantTable oldTable = new RestaurantTable();
+        oldTable.setTableNumber("OLD1");
+        oldTable.setSeatCount(4);
+        oldTable.setStatus("available");
+        oldTable.setIsQuickOrder(null);
+        tableRepository.save(oldTable);
+
+        RestaurantTable quickOrder = new RestaurantTable();
+        quickOrder.setTableNumber("QO1");
+        quickOrder.setSeatCount(0);
+        quickOrder.setStatus("available");
+        quickOrder.setIsQuickOrder(true);
+        tableRepository.save(quickOrder);
+
+        // When
+        List<RestaurantTable> regularTables = tableRepository.findRegularTables();
+
+        // Then - The 3 tables from setUp plus OLD1, but not the Quick Order
+        assertEquals(4, regularTables.size());
+        assertTrue(regularTables.stream().anyMatch(t -> "OLD1".equals(t.getTableNumber())));
+        assertTrue(regularTables.stream().noneMatch(t -> "QO1".equals(t.getTableNumber())));
+
+        // And the plain "= false" query is the one that misses it
+        assertTrue(tableRepository.findByIsQuickOrder(false).stream()
+                .noneMatch(t -> "OLD1".equals(t.getTableNumber())));
+    }
+
+    @Test
+    void testPlainSqlInsert_ShouldDefaultQuickOrderFlagToFalse() {
+        // WHAT: Test that a row inserted by plain SQL gets is_quick_order = false on its own
+        // WHY: The seed file inserts tables without mentioning this column
+
+        // Given - An insert that does not mention is_quick_order, like the seed file
+        jdbcTemplate.update(
+                "INSERT INTO tables (table_number, seat_count, status, created_at) "
+                        + "VALUES ('SEED1', 2, 'available', CURRENT_TIMESTAMP)");
+
+        // When
+        Boolean flag = jdbcTemplate.queryForObject(
+                "SELECT is_quick_order FROM tables WHERE table_number = 'SEED1'", Boolean.class);
+
+        // Then
+        assertEquals(Boolean.FALSE, flag);
     }
 }

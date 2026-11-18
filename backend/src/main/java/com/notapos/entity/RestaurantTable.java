@@ -61,7 +61,12 @@ public class RestaurantTable {
     @Column(name = "server_name", length = 50)
     private String serverName;
 
-    @Column(name = "is_quick_order")
+    // "default false" is for rows inserted by plain SQL (the seed file), which never mention this
+    // column. Without it those rows got NULL, and the Floor Map (which asks for
+    // is_quick_order = false) showed no tables at all on a freshly seeded database.
+    // Hibernate only applies this when it CREATES the table; databases made before this
+    // still hold NULLs, so TableRepository.findRegularTables treats NULL as "not a Quick Order".
+    @Column(name = "is_quick_order", columnDefinition = "boolean default false")
     private Boolean isQuickOrder = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)

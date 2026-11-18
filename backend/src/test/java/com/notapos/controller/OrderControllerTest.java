@@ -1,6 +1,10 @@
 package com.notapos.controller;
 
+import com.notapos.dto.OrderCheckView;
 import com.notapos.entity.Order;
+import com.notapos.exception.OrderStateException;
+import com.notapos.exception.ResourceNotFoundException;
+import com.notapos.service.OrderCheckService;
 import com.notapos.service.OrderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +40,9 @@ class OrderControllerTest {
 
     @MockBean
     private OrderService orderService;
+
+    @MockBean
+    private OrderCheckService orderCheckService;
 
     private Order testOrder;
 
@@ -225,5 +232,49 @@ class OrderControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(orderService, times(1)).deleteOrder(1L);
+    }
+
+    @Test
+    void testDeleteOrder_WhenOrderHasItems_ShouldReturn409() throws Exception {
+        // WHAT: Test DELETE /api/orders/{id} on an order that still has items
+        // WHY: Only an empty order can be cleared off its table; the screen shows the message
+
+        doThrow(new OrderStateException("Order #1 still has items on it. Remove them or close the check."))
+                .when(orderService).deleteOrder(1L);
+
+        mockMvc.perform(delete("/api/orders/1"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Order #1 still has items on it. Remove them or close the check."));
+    }
+
+    @Test
+    void testGetOrderCheck_ShouldReturnTheCheck() throws Exception {
+        // WHAT: Test GET /api/orders/{id}/check
+        // WHY: The Payment screen shows the backend's numbers, not its own arithmetic
+
+        when(orderCheckService.getCheck(1L)).thenReturn(new OrderCheckView(
+                1L, "open", 2, 1,
+                new BigDecimal("33.00"), new BigDecimal("0.99"), new BigDecimal("33.99"), new BigDecimal("0.03")));
+
+        mockMvc.perform(get("/api/orders/1/check"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderId").value(1))
+                .andExpect(jsonPath("$.itemCount").value(2))
+                .andExpect(jsonPath("$.unsentItemCount").value(1))
+                .andExpect(jsonPath("$.subtotal").value(33.00))
+                .andExpect(jsonPath("$.tax").value(0.99))
+                .andExpect(jsonPath("$.total").value(33.99))
+                .andExpect(jsonPath("$.taxRate").value(0.03));
+    }
+
+    @Test
+    void testGetOrderCheck_WhenOrderNotFound_ShouldReturn404() throws Exception {
+        // WHAT: Test GET /api/orders/{id}/check for an order that does not exist
+        // WHY: The screen needs a clear answer, not an empty check
+
+        when(orderCheckService.getCheck(99L)).thenThrow(new ResourceNotFoundException("Order not found with id: 99"));
+
+        mockMvc.perform(get("/api/orders/99/check"))
+                .andExpect(status().isNotFound());
     }
 }

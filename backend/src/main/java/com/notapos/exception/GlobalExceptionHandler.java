@@ -45,6 +45,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), null);
     }
 
+    @ExceptionHandler(OrderStateException.class)                                // Order is not in a state that allows the request -> 409
+    public ResponseEntity<ApiError> handleOrderState(OrderStateException ex) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), null);
+    }
+
     @ExceptionHandler(InvalidModifierSelectionException.class)                  // Chosen modifiers break the menu's rules -> 400
     public ResponseEntity<ApiError> handleInvalidModifierSelection(InvalidModifierSelectionException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);

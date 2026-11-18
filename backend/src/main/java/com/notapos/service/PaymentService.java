@@ -2,7 +2,9 @@ package com.notapos.service;
 import org.springframework.transaction.annotation.Transactional;
 import com.notapos.enums.OrderStatus;
 import com.notapos.enums.TableStatus;
+import com.notapos.exception.OrderStateException;
 import com.notapos.exception.ResourceNotFoundException;
+import com.notapos.dto.OrderCheckView;
 import com.notapos.entity.Payment;
 import com.notapos.repository.OrderRepository;
 import com.notapos.repository.PaymentRepository;
@@ -12,6 +14,7 @@ import com.notapos.entity.RestaurantTable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -30,14 +33,20 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
     private final TableRepository tableRepository;
+    private final OrderCheckService orderCheckService;      // Works out what the order owes
+    private final OrderItemService orderItemService;        // Ends the edit window when the check is closed
     
     @Autowired
     public PaymentService(PaymentRepository paymentRepository,
                          OrderRepository orderRepository,
-                         TableRepository tableRepository) {
+                         TableRepository tableRepository,
+                         OrderCheckService orderCheckService,
+                         OrderItemService orderItemService) {
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
         this.tableRepository = tableRepository;
+        this.orderCheckService = orderCheckService;
+        this.orderItemService = orderItemService;
     }
 
     public List<Payment> getAllPayments() {                         // Get all payments
@@ -69,27 +78,75 @@ public class PaymentService {
         return total != null ? total : BigDecimal.ZERO;
     }
 
+    /**
+     * Take payment for an order and close it.
+     *
+     * Everything here happens in one transaction: if any step fails, none of it
+     * is saved, so there is never a payment without a closed order or the reverse.
+     *
+     * Before any money is recorded the order is checked:
+     *   - it must exist (404)
+     *   - it must still be open (409) - stops a check being paid twice
+     *   - it must have no unsent items (409) - a draft was never made by the kitchen,
+     *     so the server has to send it or remove it first
+     *   - it must have something on it (409)
+     *   - the amount must equal the check the backend works out (409) - if another
+     *     screen added an item after this one loaded, the guest was shown an old total
+     */
     @Transactional
     public Payment createPayment(Payment payment) {
-        // Save the payment
-        Payment savedPayment = paymentRepository.save(payment);
-        
-        // Close the order
-        Optional<Order> orderOpt = orderRepository.findById(payment.getOrderId());
-        if (orderOpt.isPresent()) {
-            Order order = orderOpt.get();
-            order.setStatus(OrderStatus.CLOSED.getValue());
-            order.setClosedAt(LocalDateTime.now());
-            orderRepository.save(order);
-            
-            // Free up the table
-            Optional<RestaurantTable> tableOpt = tableRepository.findById(order.getTableId());
-            if (tableOpt.isPresent()) {
-                RestaurantTable table = tableOpt.get();
-                table.setStatus(TableStatus.AVAILABLE.getValue());
-                tableRepository.save(table);
-            }
+        Order order = orderRepository.findById(payment.getOrderId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + payment.getOrderId()));
+
+        if (!OrderStatus.OPEN.matches(order.getStatus())) {
+            throw new OrderStateException("Order #" + order.getOrderId() + " is already closed.");
         }
+
+        OrderCheckView check = orderCheckService.buildCheck(order);
+
+        if (check.unsentItemCount() > 0) {
+            throw new OrderStateException("This order has " + check.unsentItemCount()
+                    + " unsent item(s). Send or remove them before closing the check.");
+        }
+
+        if (check.itemCount() == 0) {
+            throw new OrderStateException("This order has no items to pay for.");
+        }
+
+        // compareTo, not equals: for BigDecimal, 33.9 and 33.90 are "equal" only with compareTo
+        if (payment.getAmount().compareTo(check.total()) != 0) {
+            throw new OrderStateException("The check is $" + check.total() + " but the payment was for $"
+                    + payment.getAmount().setScale(2, RoundingMode.HALF_UP)
+                    + ". The order changed - reopen it and try again.");
+        }
+
+        // Closing the check ends the edit window: anything still counting down goes to the kitchen now,
+        // so an item cannot be removed from a check that has already been paid.
+        orderItemService.sendOrderNow(order.getOrderId());
+
+        // Save the payment. The amount is the backend's own number, to the cent.
+        payment.setAmount(check.total());
+        if (payment.getTipAmount() == null) {
+            payment.setTipAmount(BigDecimal.ZERO);
+        }
+        Payment savedPayment = paymentRepository.save(payment);
+
+        // Close the order, and record what the check came to
+        order.setSubtotal(check.subtotal());
+        order.setTax(check.tax());
+        order.setTotal(check.total());
+        order.setStatus(OrderStatus.CLOSED.getValue());
+        order.setClosedAt(LocalDateTime.now());
+        orderRepository.save(order);
+
+        // Free up the table
+        Optional<RestaurantTable> tableOpt = tableRepository.findById(order.getTableId());
+        if (tableOpt.isPresent()) {
+            RestaurantTable table = tableOpt.get();
+            table.setStatus(TableStatus.AVAILABLE.getValue());
+            tableRepository.save(table);
+        }
+
         return savedPayment;
     }
 

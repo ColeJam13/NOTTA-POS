@@ -160,14 +160,16 @@ class TableServiceTest {
         
         // Given - Mock returns regular tables (not Quick Orders)
         List<RestaurantTable> regularTables = Arrays.asList(testTable);
-        when(tableRepository.findByIsQuickOrder(Boolean.FALSE)).thenReturn(regularTables);
+        when(tableRepository.findRegularTables()).thenReturn(regularTables);
 
         // When - Get regular tables (exclude Quick Orders)
         List<RestaurantTable> result = tableService.getTablesByQuickOrder(Boolean.FALSE);
 
-        // Then - Should get only regular tables
+        // Then - Should get only regular tables, through the query that also accepts
+        //        tables whose flag was never set (NULL) - a plain "= false" would miss those
         assertEquals(1, result.size());
-        verify(tableRepository, times(1)).findByIsQuickOrder(Boolean.FALSE);
+        verify(tableRepository, times(1)).findRegularTables();
+        verify(tableRepository, never()).findByIsQuickOrder(any());
     }
 
     @Test
