@@ -19,6 +19,18 @@ const pointerPosition = (event) => {
     return { x: point.clientX, y: point.clientY };
 };
 
+// The same position measured from the top-left corner of the floor itself.
+// Tables are placed inside the floor's border, so the border's thickness
+// (clientLeft / clientTop) is taken off as well.
+const positionOnFloor = (event, floorElement) => {
+    const floor = floorElement.getBoundingClientRect();
+    const pointer = pointerPosition(event);
+    return {
+        x: pointer.x - floor.left - floorElement.clientLeft,
+        y: pointer.y - floor.top - floorElement.clientTop
+    };
+};
+
 /**
  * Memoized Table Component - prevents unnecessary re-renders
  * Only re-renders if table data actually changes
@@ -131,13 +143,12 @@ function FloorMap({ setCurrentView, setSelectedTable }) {
     // so the table does not jump to put its corner under the finger.
     const handleDragStart = useMemo(() => {
         return (event, table) => {
-            const canvas = canvasRef.current.getBoundingClientRect();
-            const pointer = pointerPosition(event);
+            const pointer = positionOnFloor(event, canvasRef.current);
 
             dragRef.current = {
                 tableId: table.tableId,
-                grabX: pointer.x - canvas.left - table.xposition,
-                grabY: pointer.y - canvas.top - table.yposition,
+                grabX: pointer.x - table.xposition,
+                grabY: pointer.y - table.yposition,
                 width: event.currentTarget.offsetWidth,
                 height: event.currentTarget.offsetHeight
             };
@@ -150,16 +161,17 @@ function FloorMap({ setCurrentView, setSelectedTable }) {
         const drag = dragRef.current;
         if (!drag) return;
 
-        const canvas = canvasRef.current.getBoundingClientRect();
-        const pointer = pointerPosition(event);
+        const floor = canvasRef.current;
+        const pointer = positionOnFloor(event, floor);
 
-        let x = snapToGrid(pointer.x - canvas.left - drag.grabX);
-        let y = snapToGrid(pointer.y - canvas.top - drag.grabY);
+        let x = snapToGrid(pointer.x - drag.grabX);
+        let y = snapToGrid(pointer.y - drag.grabY);
 
-        // Keep the table on the floor. (A canvas with no size has not been laid out
-        // yet - only the top and left edges can be enforced then.)
-        if (canvas.width > 0) x = Math.min(x, Math.floor(canvas.width - drag.width));
-        if (canvas.height > 0) y = Math.min(y, Math.floor(canvas.height - drag.height));
+        // Keep the table on the floor. clientWidth / clientHeight are the floor's size
+        // inside its border. (A floor with no size has not been laid out yet - only the
+        // top and left edges can be enforced then.)
+        if (floor.clientWidth > 0) x = Math.min(x, floor.clientWidth - drag.width);
+        if (floor.clientHeight > 0) y = Math.min(y, floor.clientHeight - drag.height);
         x = Math.max(0, x);
         y = Math.max(0, y);
 
@@ -258,7 +270,7 @@ function FloorMap({ setCurrentView, setSelectedTable }) {
                     {editing ? (
                         <>
                             <span className="floor-edit-hint">
-                                Drag a table to move it. Tap one to select it, then ROTATE to turn it.
+                                Drag to move. Tap a table, then ROTATE to turn it.
                             </span>
                             <button className="floor-btn" onClick={rotateSelected} disabled={selectedTableId === null || saving}>
                                 ROTATE

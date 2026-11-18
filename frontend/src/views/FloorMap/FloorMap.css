@@ -3,7 +3,7 @@
   background: #1a1a2e;
   padding: 40px;
   color: #e0e0e0;
-  overflow: hidden;
+  overflow: auto;                       /* The floor can be taller or wider than the screen: scroll to reach every table */
 }
 
 .floor-map-page h2 {
@@ -45,6 +45,7 @@
   cursor: pointer;
   border-radius: 8px;
   transition: all 0.3s;
+  white-space: nowrap;                  /* Keep "SAVE LAYOUT" on one line */
 }
 
 .floor-btn:hover:not(:disabled) {
