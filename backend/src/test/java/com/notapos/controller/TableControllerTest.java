@@ -236,4 +236,61 @@ class TableControllerTest {
 
         verify(tableService).updateTable(eq(999L), any(RestaurantTable.class));
     }
+
+    @Test
+    void testUpdateLayout_ShouldReturnUpdatedTables() throws Exception {
+        // WHAT: Test PUT /api/tables/layout
+        // WHY: The Floor Map's edit mode saves every moved table with one request
+
+        when(tableService.updateLayout(any())).thenReturn(java.util.List.of(testTable));
+
+        mockMvc.perform(put("/api/tables/layout")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"tables\":[{\"tableId\":1,\"x\":320,\"y\":140,\"rotation\":90}]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].tableId").value(1));
+
+        verify(tableService).updateLayout(java.util.List.of(new com.notapos.dto.TablePositionRequest(1L, 320, 140, 90)));
+    }
+
+    @Test
+    void testUpdateLayout_WithBadValues_ShouldReturn400AndSaveNothing() throws Exception {
+        // WHAT: Test PUT /api/tables/layout with a negative position and an impossible rotation
+        // WHY: A table saved off the edge of the map could not be dragged back
+
+        mockMvc.perform(put("/api/tables/layout")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"tables\":[{\"tableId\":1,\"x\":-5,\"y\":140,\"rotation\":400}]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"));
+
+        verify(tableService, never()).updateLayout(any());
+    }
+
+    @Test
+    void testUpdateLayout_WithNoTables_ShouldReturn400() throws Exception {
+        // WHAT: Test PUT /api/tables/layout with an empty list
+        // WHY: Nothing to save is a mistake on the screen's side, not a success
+
+        mockMvc.perform(put("/api/tables/layout")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"tables\":[]}"))
+                .andExpect(status().isBadRequest());
+
+        verify(tableService, never()).updateLayout(any());
+    }
+
+    @Test
+    void testUpdateLayout_WhenATableDoesNotExist_ShouldReturn404() throws Exception {
+        // WHAT: Test PUT /api/tables/layout naming a table that does not exist
+        // WHY: The screen should hear that nothing was saved
+
+        when(tableService.updateLayout(any()))
+                .thenThrow(new com.notapos.exception.ResourceNotFoundException("Table not found with id: 99"));
+
+        mockMvc.perform(put("/api/tables/layout")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"tables\":[{\"tableId\":99,\"x\":10,\"y\":10,\"rotation\":0}]}"))
+                .andExpect(status().isNotFound());
+    }
 }
