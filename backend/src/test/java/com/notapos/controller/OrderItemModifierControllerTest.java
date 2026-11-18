@@ -1,5 +1,6 @@
 package com.notapos.controller;
 
+import com.notapos.dto.OrderItemModifierView;
 import com.notapos.entity.OrderItemModifier;
 import com.notapos.service.OrderItemModifierService;
 import org.junit.jupiter.api.BeforeEach;
@@ -149,5 +150,26 @@ class OrderItemModifierControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(orderItemModifierService).deleteOrderItemModifier(1L);
+    }
+
+    @Test
+    void testGetModifiersForOrder_ShouldReturnModifiersWithNames() throws Exception {
+        // WHAT: Test GET /api/order-item-modifiers/order/{orderId}
+        // WHY: The order screen shows each item's modifiers when a table is reopened
+
+        // Given - order 77: item 100 has French Toast (+$2.00)
+        when(orderItemModifierService.getModifierViewsForOrder(77L)).thenReturn(List.of(
+                new OrderItemModifierView(100L, 14L, "French Toast", new BigDecimal("2.00"))));
+
+        // When/Then
+        mockMvc.perform(get("/api/order-item-modifiers/order/77"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].orderItemId").value(100))
+                .andExpect(jsonPath("$[0].modifierId").value(14))
+                .andExpect(jsonPath("$[0].name").value("French Toast"))
+                .andExpect(jsonPath("$[0].priceAdjustment").value(2.00));
+
+        verify(orderItemModifierService).getModifierViewsForOrder(77L);
     }
 }

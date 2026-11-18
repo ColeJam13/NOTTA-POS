@@ -69,3 +69,15 @@ export const formatPaymentMethod = (method) => {
     if (!method) return 'UNKNOWN';
     return method.replace(/_/g, ' ').toUpperCase();
 };
+
+/**
+ * Format a modifier's upcharge for display (e.g., "+$2.00")
+ * @param {number} amount - The modifier's priceAdjustment
+ * @returns {string} - "+$2.00" for an upcharge, "-$1.00" for a discount, '' when the modifier is free
+ */
+export const formatUpcharge = (amount) => {
+    if (!amount) return '';
+
+    const sign = amount > 0 ? '+' : '-';
+    return `${sign}$${Math.abs(amount).toFixed(2)}`;
+};

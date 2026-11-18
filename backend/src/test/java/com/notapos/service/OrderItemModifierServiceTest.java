@@ -1,19 +1,38 @@
 package com.notapos.service;
 
+import com.notapos.dto.ModifierGroupView;
+import com.notapos.dto.ModifierOptionView;
+import com.notapos.dto.OrderItemModifierView;
+import com.notapos.dto.OrderItemModifiersRequest;
+import com.notapos.dto.OrderItemRequest;
+import com.notapos.entity.MenuItem;
+import com.notapos.entity.Modifier;
+import com.notapos.entity.OrderItem;
 import com.notapos.entity.OrderItemModifier;
+import com.notapos.exception.InvalidModifierSelectionException;
+import com.notapos.exception.ItemLockedException;
+import com.notapos.exception.ResourceNotFoundException;
+import com.notapos.repository.MenuItemRepository;
+import com.notapos.repository.ModifierRepository;
 import com.notapos.repository.OrderItemModifierRepository;
+import com.notapos.repository.OrderItemRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 /**
@@ -29,6 +48,18 @@ class OrderItemModifierServiceTest {
 
     @Mock
     private OrderItemModifierRepository orderItemModifierRepository;
+
+    @Mock
+    private OrderItemRepository orderItemRepository;
+
+    @Mock
+    private MenuItemRepository menuItemRepository;
+
+    @Mock
+    private ModifierRepository modifierRepository;
+
+    @Mock
+    private MenuModifierService menuModifierService;
 
     @InjectMocks
     private OrderItemModifierService orderItemModifierService;
@@ -173,5 +204,438 @@ class OrderItemModifierServiceTest {
 
         // Then - Repository delete should be called
         verify(orderItemModifierRepository, times(1)).deleteById(1L);
+    }
+
+    // ========================================================================
+    // Ringing in items WITH modifiers and kitchen notes
+    // ========================================================================
+
+    // ---- small builders to keep these tests readable ----
+
+    // Combo Plate ($15.00): Bread Choice (required, choose 1) and Add-Ons (optional, up to 2)
+    private static final Long COMBO_PLATE_ID = 1L;
+
+    private MenuItem comboPlate() {
+        MenuItem menuItem = new MenuItem();
+        menuItem.setMenuItemId(COMBO_PLATE_ID);
+        menuItem.setName("Combo Plate");
+        menuItem.setPrice(new BigDecimal("15.00"));
+        return menuItem;
+    }
+
+    private List<ModifierGroupView> comboPlateGroups() {
+        ModifierGroupView bread = new ModifierGroupView(2L, "Bread Choice", "Choose your bread", true, 1, List.of(
+                new ModifierOptionView(8L, "White Toast", new BigDecimal("0.00")),
+                new ModifierOptionView(14L, "French Toast", new BigDecimal("2.00"))));
+        ModifierGroupView addOns = new ModifierGroupView(5L, "Add-Ons", "Optional add-ons", false, 2, List.of(
+                new ModifierOptionView(22L, "Add Egg", new BigDecimal("2.00")),
+                new ModifierOptionView(23L, "Add Avocado", new BigDecimal("2.00")),
+                new ModifierOptionView(24L, "Add Chicken", new BigDecimal("4.00"))));
+        return List.of(bread, addOns);
+    }
+
+    private OrderItem savedItem(Long orderItemId, String status, boolean locked) {
+        OrderItem item = new OrderItem();
+        item.setOrderItemId(orderItemId);
+        item.setOrderId(77L);
+        item.setMenuItemId(COMBO_PLATE_ID);
+        item.setQuantity(1);
+        item.setPrice(new BigDecimal("15.00"));
+        item.setStatus(status);
+        item.setDelaySeconds(15);
+        item.setIsLocked(locked);
+        return item;
+    }
+
+    private OrderItemModifier modifierRow(Long rowId, Long orderItemId, Long modifierId, String priceAdjustment) {
+        OrderItemModifier row = new OrderItemModifier();
+        row.setOrderItemModifierId(rowId);
+        row.setOrderItemId(orderItemId);
+        row.setModifierId(modifierId);
+        row.setPriceAdjustment(new BigDecimal(priceAdjustment));
+        return row;
+    }
+
+    private Modifier modifier(Long modifierId, String name) {
+        Modifier modifier = new Modifier();
+        modifier.setModifierId(modifierId);
+        modifier.setName(name);
+        return modifier;
+    }
+
+    // Make the fake repository behave like the real one: hand back the item it was given, now with an ID
+    private void stubSaveToAssignId(Long newId) {
+        when(orderItemRepository.save(any(OrderItem.class))).thenAnswer(invocation -> {
+            OrderItem item = invocation.getArgument(0);
+            item.setOrderItemId(newId);
+            return item;
+        });
+    }
+
+    // The modifier rows that were handed to saveAll().
+    // An ArgumentCaptor "catches" the argument a mock was called with so the test can inspect it.
+    @SuppressWarnings("unchecked")
+    private List<OrderItemModifier> capturedSavedRows() {
+        ArgumentCaptor<List<OrderItemModifier>> captor = ArgumentCaptor.forClass(List.class);
+        verify(orderItemModifierRepository).saveAll(captor.capture());
+        return captor.getValue();
+    }
+
+    @Test
+    void testCreateOrderItemWithModifiers_ShouldSaveItemAsDraftWithUpchargesInPrice() {
+        // WHAT: Test ringing in an item with modifiers and a kitchen note
+        // WHY: The price charged must be menu price + upcharges, worked out by the backend
+
+        // Given - Combo Plate with French Toast (+$2) and Add Chicken (+$4)
+        when(menuItemRepository.findById(COMBO_PLATE_ID)).thenReturn(Optional.of(comboPlate()));
+        when(menuModifierService.getModifierGroupsForMenuItem(COMBO_PLATE_ID)).thenReturn(comboPlateGroups());
+        stubSaveToAssignId(100L);
+
+        // When
+        OrderItem created = orderItemModifierService.createOrderItemWithModifiers(
+                new OrderItemRequest(77L, COMBO_PLATE_ID, 1, "  no butter  ", Arrays.asList(24L, 14L)));
+
+        // Then - saved as an unlocked draft; 15.00 + 2.00 + 4.00 = 21.00
+        assertEquals(100L, created.getOrderItemId());
+        assertEquals(77L, created.getOrderId());
+        assertEquals(COMBO_PLATE_ID, created.getMenuItemId());
+        assertEquals(1, created.getQuantity());
+        assertEquals(new BigDecimal("21.00"), created.getPrice());
+        assertEquals("draft", created.getStatus());
+        assertFalse(created.getIsLocked());
+        assertEquals("no butter", created.getSpecialInstructions());       // Note is trimmed
+
+        // One row per chosen modifier, in picker order (Bread before Add-Ons), each with its upcharge
+        List<OrderItemModifier> rows = capturedSavedRows();
+        assertEquals(2, rows.size());
+        assertEquals(100L, rows.get(0).getOrderItemId());
+        assertEquals(14L, rows.get(0).getModifierId());
+        assertEquals(new BigDecimal("2.00"), rows.get(0).getPriceAdjustment());
+        assertEquals(24L, rows.get(1).getModifierId());
+        assertEquals(new BigDecimal("4.00"), rows.get(1).getPriceAdjustment());
+    }
+
+    @Test
+    void testCreateOrderItemWithModifiers_WithNoteOnly_ShouldKeepMenuPrice() {
+        // WHAT: Test ringing in a plain item (no modifier groups) with just a kitchen note
+        // WHY: Every item can carry a note, not only items with modifiers
+
+        // Given - a soda has no modifier groups
+        MenuItem soda = new MenuItem();
+        soda.setMenuItemId(40L);
+        soda.setName("Soda");
+        soda.setPrice(new BigDecimal("3.00"));
+        when(menuItemRepository.findById(40L)).thenReturn(Optional.of(soda));
+        when(menuModifierService.getModifierGroupsForMenuItem(40L)).thenReturn(List.of());
+        stubSaveToAssignId(101L);
+
+        // When - quantity left out, no modifier list at all
+        OrderItem created = orderItemModifierService.createOrderItemWithModifiers(
+                new OrderItemRequest(77L, 40L, null, "no ice", null));
+
+        // Then
+        assertEquals(new BigDecimal("3.00"), created.getPrice());
+        assertEquals(1, created.getQuantity());                             // Quantity defaults to 1
+        assertEquals("no ice", created.getSpecialInstructions());
+        assertTrue(capturedSavedRows().isEmpty());
+    }
+
+    @Test
+    void testCreateOrderItemWithModifiers_WithBlankNote_ShouldStoreNoNote() {
+        // WHAT: Test that a note of only spaces is stored as "no note"
+        // WHY: The kitchen ticket should not print an empty note line
+
+        // Given
+        when(menuItemRepository.findById(COMBO_PLATE_ID)).thenReturn(Optional.of(comboPlate()));
+        when(menuModifierService.getModifierGroupsForMenuItem(COMBO_PLATE_ID)).thenReturn(comboPlateGroups());
+        stubSaveToAssignId(100L);
+
+        // When
+        OrderItem created = orderItemModifierService.createOrderItemWithModifiers(
+                new OrderItemRequest(77L, COMBO_PLATE_ID, 1, "   ", List.of(8L)));
+
+        // Then
+        assertNull(created.getSpecialInstructions());
+    }
+
+    @Test
+    void testCreateOrderItemWithModifiers_WhenRequiredGroupNotAnswered_ShouldThrowAndSaveNothing() {
+        // WHAT: Test leaving out a required group
+        // WHY: The kitchen cannot make a Combo Plate without knowing the bread
+
+        // Given - only an optional add-on was chosen
+        when(menuItemRepository.findById(COMBO_PLATE_ID)).thenReturn(Optional.of(comboPlate()));
+        when(menuModifierService.getModifierGroupsForMenuItem(COMBO_PLATE_ID)).thenReturn(comboPlateGroups());
+
+        // When & Then
+        InvalidModifierSelectionException exception = assertThrows(InvalidModifierSelectionException.class, () ->
+                orderItemModifierService.createOrderItemWithModifiers(
+                        new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(22L))));
+
+        assertTrue(exception.getMessage().contains("Bread Choice"));
+        verify(orderItemRepository, never()).save(any());
+        verify(orderItemModifierRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    void testCreateOrderItemWithModifiers_WhenTooManyChosenFromGroup_ShouldThrow() {
+        // WHAT: Test picking more than a group's maxSelections
+        // WHY: "Bread Choice" allows one bread, "Add-Ons" allows two
+
+        // Given
+        when(menuItemRepository.findById(COMBO_PLATE_ID)).thenReturn(Optional.of(comboPlate()));
+        when(menuModifierService.getModifierGroupsForMenuItem(COMBO_PLATE_ID)).thenReturn(comboPlateGroups());
+
+        // When & Then - two breads
+        InvalidModifierSelectionException twoBreads = assertThrows(InvalidModifierSelectionException.class, () ->
+                orderItemModifierService.createOrderItemWithModifiers(
+                        new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L, 14L))));
+        assertTrue(twoBreads.getMessage().contains("Bread Choice"));
+
+        // ...and three add-ons where two are allowed
+        InvalidModifierSelectionException threeAddOns = assertThrows(InvalidModifierSelectionException.class, () ->
+                orderItemModifierService.createOrderItemWithModifiers(
+                        new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L, 22L, 23L, 24L))));
+        assertTrue(threeAddOns.getMessage().contains("Add-Ons"));
+
+        verify(orderItemRepository, never()).save(any());
+    }
+
+    @Test
+    void testCreateOrderItemWithModifiers_WhenModifierNotOfferedForItem_ShouldThrow() {
+        // WHAT: Test sending a modifier that does not belong to this menu item
+        // WHY: "Fries Size: Full" (ID 30) makes no sense on a Combo Plate
+
+        // Given
+        when(menuItemRepository.findById(COMBO_PLATE_ID)).thenReturn(Optional.of(comboPlate()));
+        when(menuModifierService.getModifierGroupsForMenuItem(COMBO_PLATE_ID)).thenReturn(comboPlateGroups());
+
+        // When & Then
+        InvalidModifierSelectionException exception = assertThrows(InvalidModifierSelectionException.class, () ->
+                orderItemModifierService.createOrderItemWithModifiers(
+                        new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L, 30L))));
+
+        assertTrue(exception.getMessage().contains("30"));
+        verify(orderItemRepository, never()).save(any());
+    }
+
+    @Test
+    void testCreateOrderItemWithModifiers_WhenSameModifierSentTwice_ShouldCountItOnce() {
+        // WHAT: Test a modifier ID that appears twice in the request
+        // WHY: A double tap must not charge an upcharge twice
+
+        // Given
+        when(menuItemRepository.findById(COMBO_PLATE_ID)).thenReturn(Optional.of(comboPlate()));
+        when(menuModifierService.getModifierGroupsForMenuItem(COMBO_PLATE_ID)).thenReturn(comboPlateGroups());
+        stubSaveToAssignId(100L);
+
+        // When - French Toast (+$2) sent twice
+        OrderItem created = orderItemModifierService.createOrderItemWithModifiers(
+                new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, Arrays.asList(14L, 14L)));
+
+        // Then - 15.00 + 2.00 once
+        assertEquals(new BigDecimal("17.00"), created.getPrice());
+        assertEquals(1, capturedSavedRows().size());
+    }
+
+    @Test
+    void testCreateOrderItemWithModifiers_WhenMenuItemMissing_ShouldThrowNotFound() {
+        // Given
+        when(menuItemRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(ResourceNotFoundException.class, () ->
+                orderItemModifierService.createOrderItemWithModifiers(
+                        new OrderItemRequest(77L, 999L, 1, null, List.of())));
+
+        verify(orderItemRepository, never()).save(any());
+    }
+
+    // ========================================================================
+    // Changing modifiers and notes on a saved item
+    // ========================================================================
+
+    @Test
+    void testReplaceModifiersForOrderItem_ShouldSwapModifiersAndRepriceItem() {
+        // WHAT: Test changing the modifiers on a saved draft
+        // WHY: A server fixes "White Toast" to "French Toast" before sending
+
+        // Given - a saved draft Combo Plate
+        OrderItem existing = savedItem(100L, "draft", false);
+        when(orderItemRepository.findById(100L)).thenReturn(Optional.of(existing));
+        when(menuItemRepository.findById(COMBO_PLATE_ID)).thenReturn(Optional.of(comboPlate()));
+        when(menuModifierService.getModifierGroupsForMenuItem(COMBO_PLATE_ID)).thenReturn(comboPlateGroups());
+        when(orderItemRepository.save(any(OrderItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When - now French Toast (+$2) with an allergy note
+        OrderItem updated = orderItemModifierService.replaceModifiersForOrderItem(
+                100L, new OrderItemModifiersRequest("nut allergy", List.of(14L)));
+
+        // Then - old modifiers removed, new one saved, price is 15.00 + 2.00
+        verify(orderItemModifierRepository, times(1)).deleteByOrderItemId(100L);
+        List<OrderItemModifier> rows = capturedSavedRows();
+        assertEquals(1, rows.size());
+        assertEquals(100L, rows.get(0).getOrderItemId());
+        assertEquals(14L, rows.get(0).getModifierId());
+
+        assertEquals(new BigDecimal("17.00"), updated.getPrice());
+        assertEquals("nut allergy", updated.getSpecialInstructions());
+        assertNull(updated.getDelayExpiresAt());                            // A draft has no timer to reset
+    }
+
+    @Test
+    void testReplaceModifiersForOrderItem_WhenInLimbo_ShouldRestartEditWindow() {
+        // WHAT: Test changing an item while its edit timer is running
+        // WHY: A changed item gets a fresh window so the kitchen never receives it half-edited
+
+        // Given - an item in limbo with 3 seconds left
+        OrderItem existing = savedItem(100L, "limbo", false);
+        existing.setDelayExpiresAt(LocalDateTime.now().plusSeconds(3));
+        when(orderItemRepository.findById(100L)).thenReturn(Optional.of(existing));
+        when(menuItemRepository.findById(COMBO_PLATE_ID)).thenReturn(Optional.of(comboPlate()));
+        when(menuModifierService.getModifierGroupsForMenuItem(COMBO_PLATE_ID)).thenReturn(comboPlateGroups());
+        when(orderItemRepository.save(any(OrderItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        OrderItem updated = orderItemModifierService.replaceModifiersForOrderItem(
+                100L, new OrderItemModifiersRequest(null, List.of(8L)));
+
+        // Then - expiry is pushed out to a full window again (15 seconds + 1 for rendering)
+        assertEquals("limbo", updated.getStatus());
+        assertTrue(updated.getDelayExpiresAt().isAfter(LocalDateTime.now().plusSeconds(14)));
+        assertTrue(updated.getDelayExpiresAt().isBefore(LocalDateTime.now().plusSeconds(17)));
+    }
+
+    @Test
+    void testReplaceModifiersForOrderItem_WhenLocked_ShouldThrowAndChangeNothing() {
+        // WHAT: Test changing an item that already went to the kitchen
+        // WHY: The kitchen may already be cooking it - too late to edit
+
+        // Given
+        when(orderItemRepository.findById(100L)).thenReturn(Optional.of(savedItem(100L, "pending", true)));
+
+        // When & Then
+        ItemLockedException exception = assertThrows(ItemLockedException.class, () ->
+                orderItemModifierService.replaceModifiersForOrderItem(
+                        100L, new OrderItemModifiersRequest("late change", List.of(14L))));
+
+        assertTrue(exception.getMessage().contains("locked item"));
+        verify(orderItemModifierRepository, never()).deleteByOrderItemId(any());
+        verify(orderItemModifierRepository, never()).saveAll(anyList());
+        verify(orderItemRepository, never()).save(any());
+    }
+
+    @Test
+    void testReplaceModifiersForOrderItem_WhenSelectionInvalid_ShouldKeepOldModifiers() {
+        // WHAT: Test replacing with a selection that breaks the rules
+        // WHY: A rejected change must not wipe out the modifiers the item already has
+
+        // Given - the new selection leaves out the required bread
+        when(orderItemRepository.findById(100L)).thenReturn(Optional.of(savedItem(100L, "draft", false)));
+        when(menuItemRepository.findById(COMBO_PLATE_ID)).thenReturn(Optional.of(comboPlate()));
+        when(menuModifierService.getModifierGroupsForMenuItem(COMBO_PLATE_ID)).thenReturn(comboPlateGroups());
+
+        // When & Then
+        assertThrows(InvalidModifierSelectionException.class, () ->
+                orderItemModifierService.replaceModifiersForOrderItem(
+                        100L, new OrderItemModifiersRequest(null, List.of())));
+
+        verify(orderItemModifierRepository, never()).deleteByOrderItemId(any());
+        verify(orderItemRepository, never()).save(any());
+    }
+
+    @Test
+    void testReplaceModifiersForOrderItem_WhenItemMissing_ShouldThrowNotFound() {
+        // Given
+        when(orderItemRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(ResourceNotFoundException.class, () ->
+                orderItemModifierService.replaceModifiersForOrderItem(
+                        999L, new OrderItemModifiersRequest(null, List.of())));
+    }
+
+    // ========================================================================
+    // Reading modifiers for the screen (with names)
+    // ========================================================================
+
+    @Test
+    void testGetModifierViewsForOrderItems_ShouldGroupModifiersByItemWithNames() {
+        // WHAT: Test looking up the modifiers for many order items at once
+        // WHY: The kitchen ticket needs names ("French Toast"), not modifier IDs
+
+        // Given - item 100 has two modifiers, item 101 has one; rows arrive out of order
+        when(orderItemModifierRepository.findByOrderItemIdIn(anyCollection())).thenReturn(Arrays.asList(
+                modifierRow(3L, 101L, 8L, "0.00"),
+                modifierRow(2L, 100L, 24L, "4.00"),
+                modifierRow(1L, 100L, 14L, "2.00")));
+        when(modifierRepository.findAllById(any())).thenReturn(Arrays.asList(
+                modifier(8L, "White Toast"), modifier(14L, "French Toast"), modifier(24L, "Add Chicken")));
+
+        // When - item 102 has no modifiers
+        Map<Long, List<OrderItemModifierView>> result =
+                orderItemModifierService.getModifierViewsForOrderItems(List.of(100L, 101L, 102L));
+
+        // Then - each item got only its own modifiers, in the order they were saved
+        assertEquals(2, result.size());
+        assertEquals(2, result.get(100L).size());
+        assertEquals("French Toast", result.get(100L).get(0).name());
+        assertEquals(new BigDecimal("2.00"), result.get(100L).get(0).priceAdjustment());
+        assertEquals("Add Chicken", result.get(100L).get(1).name());
+        assertEquals("White Toast", result.get(101L).get(0).name());
+        assertFalse(result.containsKey(102L));
+
+        // The whole point: ONE query for all items, not one per item
+        verify(orderItemModifierRepository, times(1)).findByOrderItemIdIn(anyCollection());
+        verify(orderItemModifierRepository, never()).findByOrderItemId(any());
+    }
+
+    @Test
+    void testGetModifierViewsForOrderItems_WhenNoItems_ShouldSkipQueries() {
+        // When
+        Map<Long, List<OrderItemModifierView>> result = orderItemModifierService.getModifierViewsForOrderItems(List.of());
+
+        // Then - empty map and no wasted queries
+        assertTrue(result.isEmpty());
+        verifyNoInteractions(orderItemModifierRepository, modifierRepository);
+    }
+
+    @Test
+    void testGetModifierViewsForOrderItems_WhenModifierWasDeleted_ShouldUsePlaceholderName() {
+        // Given - the modifier was removed from the menu after the order was placed
+        when(orderItemModifierRepository.findByOrderItemIdIn(anyCollection())).thenReturn(Arrays.asList(
+                modifierRow(1L, 100L, 999L, "1.00")));
+        when(modifierRepository.findAllById(any())).thenReturn(List.of());
+
+        // When
+        Map<Long, List<OrderItemModifierView>> result = orderItemModifierService.getModifierViewsForOrderItems(List.of(100L));
+
+        // Then - a placeholder name instead of a crash
+        assertEquals("Modifier 999", result.get(100L).get(0).name());
+    }
+
+    @Test
+    void testGetModifierViewsForOrder_ShouldReturnModifiersForEveryItemOnTheOrder() {
+        // WHAT: Test loading the modifiers for one whole order
+        // WHY: The order screen shows them when a server reopens a table
+
+        // Given - order 77 has items 100 and 101
+        when(orderItemRepository.findByOrderId(77L)).thenReturn(Arrays.asList(
+                savedItem(101L, "draft", false), savedItem(100L, "pending", true)));
+        when(orderItemModifierRepository.findByOrderItemIdIn(anyCollection())).thenReturn(Arrays.asList(
+                modifierRow(1L, 100L, 14L, "2.00"),
+                modifierRow(2L, 101L, 8L, "0.00")));
+        when(modifierRepository.findAllById(any())).thenReturn(Arrays.asList(
+                modifier(8L, "White Toast"), modifier(14L, "French Toast")));
+
+        // When
+        List<OrderItemModifierView> result = orderItemModifierService.getModifierViewsForOrder(77L);
+
+        // Then - one flat list, each entry naming the order item it belongs to
+        assertEquals(2, result.size());
+        assertEquals(100L, result.get(0).orderItemId());
+        assertEquals("French Toast", result.get(0).name());
+        assertEquals(101L, result.get(1).orderItemId());
+        assertEquals("White Toast", result.get(1).name());
     }
 }

@@ -86,6 +86,35 @@
   gap: 10px;
 }
 
+/* One ticket line: the item row plus its modifiers and note. Same dark background
+   as the row, so the three read as a single block. */
+.order-item-ticket {
+  background: #0f0f1e;
+  border-radius: 8px;
+}
+
+/* Modifiers, indented to line up under the item name (past the quantity column) */
+.ticket-modifiers {
+  list-style: none;
+  padding: 0 10px 8px 75px;
+  color: #c9a6ff;
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+.ticket-modifiers li::before {
+  content: '- ';
+}
+
+/* Kitchen note - gold so the line cook never misses an allergy */
+.ticket-note {
+  padding: 0 10px 10px 75px;
+  color: #ffd700;
+  font-size: 10px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
 .order-item-row {
   display: flex;
   justify-content: space-between;

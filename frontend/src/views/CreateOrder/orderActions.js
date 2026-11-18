@@ -1,4 +1,4 @@
-import { apiFetch } from '../../services/api';
+import { apiFetch, getJson } from '../../services/api';
 
 /**
  * Backend calls used by the Create Order screen.
@@ -93,25 +93,96 @@ export const openOrderForTable = async (table) => {
 };
 
 /**
+ * Load the modifier groups for the whole menu, in one request.
+ *
+ * @returns {Promise<Object>} - A lookup from menuItemId to that item's groups
+ *          (each group already contains its choices). Items with no modifiers
+ *          are not in the lookup, so "no entry" means "add it straight away".
+ */
+export const loadModifierGroupsByMenuItem = async () => {
+  const entries = await getJson('/api/menu-items/modifier-groups');
+
+  const groupsByMenuItemId = {};
+  entries.forEach(entry => {
+    groupsByMenuItemId[entry.menuItemId] = entry.groups;
+  });
+  return groupsByMenuItemId;
+};
+
+/**
  * Save one item to an order as a draft (not sent to the kitchen yet).
  *
+ * A plain item is saved exactly as before. An item with modifiers or a
+ * kitchen note goes to a second endpoint that saves the item, its modifiers,
+ * and its note together (all or nothing) and works out the price itself.
+ *
  * @param {number} orderId - Order to add the item to
- * @param {Object} item - Item with menuItemId, quantity, and price
+ * @param {Object} item - Item with menuItemId, quantity, and price; optionally
+ *                        modifiers (array) and specialInstructions (kitchen note)
  * @returns {Promise<Object>} - The saved order item, including its new orderItemId
+ * @throws {Error} - If the backend refuses the item (so a failed save is never mistaken for a saved one)
  */
 export const createDraftItem = async (orderId, item) => {
-  const response = await apiFetch('/api/order-items', {
-    method: 'POST',
+  const modifiers = item.modifiers || [];
+  const note = item.specialInstructions || '';
+  const isCustomized = modifiers.length > 0 || note !== '';
+
+  const response = isCustomized
+    ? await apiFetch('/api/order-items/with-modifiers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: orderId,
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          specialInstructions: note,
+          modifierIds: modifiers.map(modifier => modifier.modifierId)   // No price: the backend adds up menu price + upcharges
+        })
+      })
+    : await apiFetch('/api/order-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: orderId,
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          price: item.price,
+          status: 'draft'
+        })
+      });
+
+  if (!response.ok) {
+    throw new Error(`Saving item ${item.menuItemId} failed with status ${response.status}`);
+  }
+  return response.json();
+};
+
+/**
+ * Replace the modifiers and kitchen note on an item that is already saved.
+ *
+ * @param {number} orderItemId - The saved item to change
+ * @param {Object} selection - { modifiers: Array, specialInstructions: string }
+ * @returns {Promise<{locked: boolean, item: Object|null}>} - locked is true when the
+ *          item already went to the prep station and can no longer be changed;
+ *          otherwise item is the updated order item (with its new price)
+ */
+export const updateItemModifiers = async (orderItemId, selection) => {
+  const response = await apiFetch(`/api/order-items/${orderItemId}/modifiers`, {
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      orderId: orderId,
-      menuItemId: item.menuItemId,
-      quantity: item.quantity,
-      price: item.price,
-      status: 'draft'
+      specialInstructions: selection.specialInstructions,
+      modifierIds: selection.modifiers.map(modifier => modifier.modifierId)
     })
   });
-  return response.json();
+
+  // 409 Conflict = the edit window closed before this change arrived
+  if (response.status === 409) return { locked: true, item: null };
+
+  if (!response.ok) {
+    throw new Error(`Updating item ${orderItemId} failed with status ${response.status}`);
+  }
+  return { locked: false, item: await response.json() };
 };
 
 /**
@@ -127,6 +198,8 @@ export const createDraftItem = async (orderId, item) => {
  *                             null for items that did not need saving.
  *                             (Matching by position, not by menu item, keeps
  *                             two of the same dish from sharing one ID.)
+ *                             An item whose save FAILED also gets null, so the
+ *                             caller can spot it: it needed saving but has no ID.
  */
 export const saveNewDraftItems = (orderId, items) => {
   return Promise.all(
@@ -134,8 +207,14 @@ export const saveNewDraftItems = (orderId, items) => {
       const needsSaving = item.status === 'draft' && !item.orderItemId;
       if (!needsSaving) return null;
 
-      const created = await createDraftItem(orderId, item);
-      return created.orderItemId;
+      try {
+        const created = await createDraftItem(orderId, item);
+        return created.orderItemId;
+      } catch (error) {
+        // Do not let one failed item hide the IDs of the items that did save
+        console.error('Error saving draft item:', error);
+        return null;
+      }
     })
   );
 };
@@ -165,7 +244,8 @@ export const deleteOrderItem = async (orderItemId) => {
 };
 
 /**
- * Load every item from ALL open orders on a table, with menu item names attached.
+ * Load every item from ALL open orders on a table, with menu item names,
+ * modifiers, and kitchen notes attached.
  *
  * @param {number} tableId - Table to look up
  * @returns {Promise<{orderId: number, items: Array}|null>} - The order to keep adding
@@ -190,15 +270,31 @@ export const loadOpenOrderForTable = async (tableId) => {
     )
   );
 
+  // Fetch the modifiers chosen for those items (one request per open order, names included)
+  const allModifierArrays = await Promise.all(
+    openOrders.map(order => getJson(`/api/order-item-modifiers/order/${order.orderId}`))
+  );
+
+  // Group the modifiers by the order item they belong to
+  const modifiersByOrderItemId = {};
+  allModifierArrays.flat().forEach(modifier => {
+    if (!modifiersByOrderItemId[modifier.orderItemId]) {
+      modifiersByOrderItemId[modifier.orderItemId] = [];
+    }
+    modifiersByOrderItemId[modifier.orderItemId].push(modifier);
+  });
+
   // Flatten all items into one array
   const allItems = allItemArrays.flat();
   const formattedItems = allItems.map(item => ({
     orderItemId: item.orderItemId,
     menuItemId: item.menuItemId,
     name: menuData.find(m => m.menuItemId === item.menuItemId)?.name,
-    price: item.price,
+    price: item.price,                                                  // Already includes any modifier upcharges
     quantity: item.quantity,
-    status: item.status
+    status: item.status,
+    modifiers: modifiersByOrderItemId[item.orderItemId] || [],
+    specialInstructions: item.specialInstructions || ''
   }));
 
   console.log('Loaded all items from all orders:', formattedItems);

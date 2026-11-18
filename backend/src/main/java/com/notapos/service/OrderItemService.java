@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.exception.ItemLockedException;
 import com.notapos.entity.OrderItem;
+import com.notapos.repository.OrderItemModifierRepository;
 import com.notapos.repository.OrderItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,10 +27,13 @@ import java.util.Optional;
 public class OrderItemService {
     
     private final OrderItemRepository orderItemRepository;
+    private final OrderItemModifierRepository orderItemModifierRepository;     // Needed so deleting an item also deletes its modifiers
 
     @Autowired
-    public OrderItemService(OrderItemRepository orderItemRepository) {
+    public OrderItemService(OrderItemRepository orderItemRepository,
+                            OrderItemModifierRepository orderItemModifierRepository) {
         this.orderItemRepository = orderItemRepository;
+        this.orderItemModifierRepository = orderItemModifierRepository;
     }
 
     public List<OrderItem> getAllOrderItems() {                 // Get all order items
@@ -179,6 +183,9 @@ public class OrderItemService {
             throw new ItemLockedException("Cannot delete locked item. Item has been sent to kitchen.");
         }
 
+        // Remove the item's modifiers first. Tables are linked by plain ID columns (no database
+        // foreign keys), so nothing would clean these rows up automatically.
+        orderItemModifierRepository.deleteByOrderItemId(id);
         orderItemRepository.deleteById(id);
     }
 }

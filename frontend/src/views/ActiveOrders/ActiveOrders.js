@@ -7,7 +7,8 @@ import { apiFetch, getJson } from '../../services/api';
 function ActiveOrders({ setCurrentView, setSelectedTable }) {
   const [view, setView] = useState('FOH');
   // Each entry is one open order with its table info and items already attached:
-  // { orderId, tableNumber, isQuickOrder, serverName, items: [{ orderItemId, name, quantity, status, ... }] }
+  // { orderId, tableNumber, isQuickOrder, serverName,
+  //   items: [{ orderItemId, name, quantity, status, specialInstructions, modifiers: [{ modifierId, name }], ... }] }
   const [orders, setOrders] = useState([]);
 
   // One request returns open orders + their items + item names + table numbers.
@@ -97,7 +98,9 @@ function ActiveOrders({ setCurrentView, setSelectedTable }) {
                         <h3>{formatTableName(order)} - Order #{order.orderId}</h3>
                         <div className="order-items">
                         {sortedItems.map(item => (
-                            <div key={item.orderItemId} className="order-item-row">
+                            // One ticket line: the item row, then its modifiers and kitchen note underneath
+                            <div key={item.orderItemId} className="order-item-ticket">
+                            <div className="order-item-row">
                             <span>{item.quantity}x</span>
                             <span>{item.name}</span>
                             <span className={`status-${item.status}`}>{item.status}</span>
@@ -118,6 +121,21 @@ function ActiveOrders({ setCurrentView, setSelectedTable }) {
                               >
                                 COMPLETE
                               </button>
+                            )}
+                            </div>
+
+                            {/* What the kitchen needs to make the dish: modifiers, one per line */}
+                            {item.modifiers && item.modifiers.length > 0 && (
+                              <ul className="ticket-modifiers">
+                                {item.modifiers.map(modifier => (
+                                  <li key={modifier.modifierId}>{modifier.name}</li>
+                                ))}
+                              </ul>
+                            )}
+
+                            {/* Free-text kitchen note (allergies, "no onions", ...) */}
+                            {item.specialInstructions && (
+                              <p className="ticket-note">NOTE: {item.specialInstructions}</p>
                             )}
                             </div>
                         ))}
