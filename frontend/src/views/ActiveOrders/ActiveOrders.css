@@ -183,3 +183,67 @@
   box-shadow: 0 0 15px rgba(57, 255, 20, 0.6);
   transform: scale(1.05);
 }
+
+/* --- Kitchen display (BOH view) --- */
+
+/* The row of station buttons: ALL, KITCHEN, BAR, ... and SHOW DONE on the right */
+.kitchen-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 25px;
+}
+
+.station-btn {
+  padding: 12px 22px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  background: transparent;
+  border: 2px solid #39ff14;
+  color: #39ff14;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.station-btn.active {
+  background: #39ff14;
+  color: #1a1a2e;
+}
+
+.station-btn.done-toggle {
+  border-color: #888;
+  color: #888;
+  margin-left: 20px;
+}
+
+.station-btn.done-toggle.active {
+  background: #888;
+  color: #1a1a2e;
+}
+
+/* How long a ticket has been waiting, at the right end of its heading */
+.ticket-wait {
+  float: right;
+  color: #39ff14;
+}
+
+.ticket-wait.warning {
+  color: #ffd60a;
+}
+
+.ticket-wait.late {
+  color: #ff3366;
+}
+
+/* A finished ticket brought back with SHOW DONE */
+.order-card.done {
+  opacity: 0.55;
+  border-color: #666;
+}
+
+.ticket-done {
+  float: right;
+  color: #888;
+}
