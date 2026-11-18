@@ -28,6 +28,9 @@ const TABLES = [{ tableId: 1, tableNumber: 'W1', status: 'available', isQuickOrd
 const QUICK_ORDER_TABLES = [{ tableId: 2, tableNumber: 'QO1', status: 'available', isQuickOrder: true }];
 
 let orders;
+let tablesNow;            // what GET /api/tables?quickOrders=false returns
+let quickOrderTablesNow;  // what GET /api/tables?quickOrders=true returns
+let orderItemsNow;        // what GET /api/order-items returns
 
 const ORDER_ITEMS = [
   { orderItemId: 1, orderId: 10, menuItemId: 1, price: 16.0, quantity: 1, status: 'completed' },
@@ -50,14 +53,18 @@ beforeEach(() => {
     { orderId: 20, tableId: 2, status: 'closed', serverName: 'CJ', subtotal: 33.0, tax: 0.99, total: 33.99, createdAt: closedAt, closedAt }
   ];
 
+  tablesNow = TABLES;
+  quickOrderTablesNow = QUICK_ORDER_TABLES;
+  orderItemsNow = ORDER_ITEMS;
+
   global.fetch = jest.fn(async (url) => {
     const path = url.replace('http://localhost:8080', '');
     const json = (data) => ({ ok: true, status: 200, json: async () => data });
 
-    if (path === '/api/tables?quickOrders=false') return json(TABLES);
-    if (path === '/api/tables?quickOrders=true') return json(QUICK_ORDER_TABLES);
+    if (path === '/api/tables?quickOrders=false') return json(tablesNow);
+    if (path === '/api/tables?quickOrders=true') return json(quickOrderTablesNow);
     if (path === '/api/orders') return json(orders);
-    if (path === '/api/order-items') return json(ORDER_ITEMS);
+    if (path === '/api/order-items') return json(orderItemsNow);
     if (path === '/api/payments') return json(PAYMENTS);
     if (path === '/api/menu-items') return json(MENU);
     throw new Error(`Unexpected request in test: ${path}`);
@@ -102,4 +109,55 @@ test.each(SCREENS)('%s: a check closed before totals were recorded still shows i
   // Worked out from the items instead: the same 40.79
   const card = (await screen.findByRole('heading', { name: tableNumber })).closest('.table-card');
   expect(within(card).getByText('$40.79')).toBeInTheDocument();
+});
+
+// ============================================================================
+// ACTIVE view
+// ============================================================================
+
+// Seat the table (or Quick Order) with an open order: one item waiting on the kitchen, one finished, one still in its edit window
+const seatWithOpenOrder = () => {
+  const openedAt = new Date(Date.now() - 12 * 60 * 1000).toISOString();          // 12 minutes ago
+  tablesNow = [{ tableId: 1, tableNumber: 'W1', status: 'occupied', isQuickOrder: false, serverName: 'Sarah' }];
+  quickOrderTablesNow = [{ tableId: 2, tableNumber: 'QO1', status: 'occupied', isQuickOrder: true, serverName: 'Sarah' }];
+  orders = [
+    { orderId: 30, tableId: 1, status: 'open', serverName: 'Sarah', subtotal: 0, tax: 0, total: 0, createdAt: openedAt, closedAt: null },
+    { orderId: 40, tableId: 2, status: 'open', serverName: 'Sarah', subtotal: 0, tax: 0, total: 0, createdAt: openedAt, closedAt: null }
+  ];
+  orderItemsNow = [30, 40].flatMap(orderId => [
+    { orderItemId: orderId + 1, orderId, menuItemId: 1, price: 16.0, quantity: 1, status: 'pending' },
+    { orderItemId: orderId + 2, orderId, menuItemId: 2, price: 17.0, quantity: 1, status: 'completed' },
+    { orderItemId: orderId + 3, orderId, menuItemId: 2, price: 17.0, quantity: 1, status: 'limbo' }
+  ]);
+};
+
+test.each(SCREENS)('%s: an open check shows its amount, item counts, server, and age', async (_name, Screen, tableNumber) => {
+  seatWithOpenOrder();
+  render(<Screen setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+
+  const card = (await screen.findByRole('heading', { name: tableNumber })).closest('.table-card');
+  expect(within(card).getByText('$50.00')).toBeInTheDocument();                   // 16 + 17 + 17
+  expect(within(card).getByText('3 items')).toBeInTheDocument();
+  expect(within(card).getByText('1L 1P 1C')).toBeInTheDocument();                 // 1 in limbo, 1 pending, 1 completed
+  expect(within(card).getByText('Server: Sarah')).toBeInTheDocument();
+  expect(within(card).getByText('12m ago')).toBeInTheDocument();
+  expect(card).toHaveClass('border-purple');                                      // Something is still in its edit window
+});
+
+test.each(SCREENS)('%s: tapping an open check opens that table on the order screen', async (_name, Screen, tableNumber) => {
+  seatWithOpenOrder();
+  const setCurrentView = jest.fn();
+  const setSelectedTable = jest.fn();
+  render(<Screen setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />);
+
+  await userEvent.click((await screen.findByRole('heading', { name: tableNumber })).closest('.table-card'));
+
+  expect(setSelectedTable).toHaveBeenCalledWith(expect.objectContaining({ tableNumber, status: 'occupied' }));
+  expect(setCurrentView).toHaveBeenCalledWith('createOrder');
+});
+
+test.each(SCREENS)('%s: says so when nothing is open', async (name, Screen) => {
+  render(<Screen setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+
+  expect(await screen.findByText(name === 'Tables' ? 'No active tables' : 'No active Quick Orders')).toBeInTheDocument();
 });
