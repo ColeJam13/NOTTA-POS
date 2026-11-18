@@ -7,7 +7,7 @@ This file is read by Claude Code at the start of every session. It carries the c
 ## Layout
 
 ```
-backend/    Spring Boot 3.2 (Java 21, Maven), PostgreSQL
+backend/    Spring Boot 3.5 (Java 21, Maven), PostgreSQL
   src/main/java/com/notapos/
     controller/  REST endpoints (thin - no try/catch, no business logic)
     service/     business logic, @Transactional
