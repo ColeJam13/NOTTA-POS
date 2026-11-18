@@ -53,7 +53,13 @@ public class OrderCheckService {
 
     public OrderCheckView buildCheck(Order order) {                     // Add up the check for an order that is already loaded
         List<OrderItem> items = orderItemRepository.findByOrderId(order.getOrderId());
+        return buildCheck(order, items);
+    }
 
+    // Add up the check when the order's items are already loaded too. This one runs no
+    // queries, so a screen listing many checks can load all their items with a single
+    // query and call this once per check (see TableOverviewService).
+    public OrderCheckView buildCheck(Order order, List<OrderItem> items) {
         BigDecimal subtotal = BigDecimal.ZERO;
         int itemCount = 0;
         int unsentItemCount = 0;

@@ -267,4 +267,65 @@ class OrderRepositoryTest extends BaseRepositoryTest {
         assertEquals(new BigDecimal("30.00"), reloaded.getSubtotal());
         assertEquals(new BigDecimal("32.40"), reloaded.getTotal());
     }
+
+    @Test
+    void testFindByTableIdInAndStatus_ShouldReturnMatchingOrdersForAllGivenTables() {
+        // WHAT: Test finding orders with a status for many tables with one query
+        // WHY: The Tables screen needs every table's open order at once
+
+        // Given - A fresh open order on each of two tables, and a closed one
+        orderRepository.deleteAll();
+        Order openOnTable1 = new Order();
+        openOnTable1.setTableId(table1.getTableId());
+        openOnTable1.setStatus("open");
+        orderRepository.save(openOnTable1);
+
+        Order openOnTable2 = new Order();
+        openOnTable2.setTableId(table2.getTableId());
+        openOnTable2.setStatus("open");
+        orderRepository.save(openOnTable2);
+
+        Order closedOnTable1 = new Order();
+        closedOnTable1.setTableId(table1.getTableId());
+        closedOnTable1.setStatus("closed");
+        orderRepository.save(closedOnTable1);
+
+        // When - Ask for open orders on tables 1 and 3 (table 3 has none)
+        List<Order> open = orderRepository.findByTableIdInAndStatus(
+                List.of(table1.getTableId(), table3.getTableId()), "open");
+
+        // Then - Only table 1's open order
+        assertEquals(1, open.size());
+        assertEquals(table1.getTableId(), open.get(0).getTableId());
+        assertEquals("open", open.get(0).getStatus());
+    }
+
+    @Test
+    void testFindTop50ClosedOrders_ShouldReturnNewestFirstAndStopAtFifty() {
+        // WHAT: Test finding the most recently closed orders
+        // WHY: The CLOSED view shows recent checks. Without a limit it would download the
+        //      restaurant's whole history every few seconds.
+
+        // Given - 55 closed orders on table 1, each closed a minute after the one before
+        orderRepository.deleteAll();
+        java.time.LocalDateTime start = java.time.LocalDateTime.now().minusHours(2);
+        for (int i = 0; i < 55; i++) {
+            Order closed = new Order();
+            closed.setTableId(table1.getTableId());
+            closed.setStatus("closed");
+            closed.setClosedAt(start.plusMinutes(i));
+            orderRepository.save(closed);
+        }
+
+        // When
+        List<Order> recent = orderRepository.findTop50ByTableIdInAndStatusOrderByClosedAtDesc(
+                List.of(table1.getTableId()), "closed");
+
+        // Then - 50 orders, newest first
+        assertEquals(50, recent.size());
+        assertTrue(recent.get(0).getClosedAt().isAfter(recent.get(1).getClosedAt()));
+        assertTrue(recent.get(0).getClosedAt().isAfter(recent.get(49).getClosedAt()));
+        // The newest was closed 54 minutes after the first (compared to the second, to stay clear of rounding)
+        assertEquals(start.plusMinutes(54).withNano(0), recent.get(0).getClosedAt().withNano(0));
+    }
 }

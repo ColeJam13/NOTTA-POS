@@ -342,4 +342,32 @@ class PaymentRepositoryTest extends BaseRepositoryTest {
         assertEquals(new BigDecimal("12.00"), reloaded.getTipAmount());
         assertEquals("adjusted", reloaded.getStatus());
     }
+
+    @Test
+    void testFindByOrderIdIn_ShouldReturnPaymentsForAllGivenOrders() {
+        // WHAT: Test finding the payments for many orders with one query
+        // WHY: The CLOSED view lists many checks and needs each one's tip and payment method
+
+        // Given - A fresh payment on order 1 and on order 2, none on order 3
+        paymentRepository.deleteAll();
+        Payment first = new Payment();
+        first.setOrderId(order1.getOrderId());
+        first.setAmount(new BigDecimal("20.00"));
+        first.setPaymentMethod("cash");
+        paymentRepository.save(first);
+
+        Payment second = new Payment();
+        second.setOrderId(order2.getOrderId());
+        second.setAmount(new BigDecimal("30.00"));
+        second.setPaymentMethod("credit_card");
+        paymentRepository.save(second);
+
+        // When - Ask for orders 1 and 3
+        List<Payment> payments = paymentRepository.findByOrderIdIn(List.of(order1.getOrderId(), order3.getOrderId()));
+
+        // Then - Only order 1's payment
+        assertEquals(1, payments.size());
+        assertEquals(order1.getOrderId(), payments.get(0).getOrderId());
+        assertEquals("cash", payments.get(0).getPaymentMethod());
+    }
 }
