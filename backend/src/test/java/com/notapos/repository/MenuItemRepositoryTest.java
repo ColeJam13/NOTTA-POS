@@ -289,7 +289,7 @@ class MenuItemRepositoryTest extends BaseRepositoryTest {
         menuItemRepository.save(chickenCutty);
 
         // When
-        List<MenuItem> eightySixed = menuItemRepository.findByIs86dAndIsActive(true, true);
+        List<MenuItem> eightySixed = menuItemRepository.findByIs86dAndIsActiveOrderByMenuItemIdAsc(true, true);
 
         // Then
         assertEquals(1, eightySixed.size());
@@ -306,5 +306,26 @@ class MenuItemRepositoryTest extends BaseRepositoryTest {
 
         // Then
         assertFalse(reloaded.getIs86d());
+    }
+
+    @Test
+    void testFindByIsActiveOrderByMenuItemIdAsc_ShouldKeepItemsInPlaceAfterAnUpdate() {
+        // WHAT: Test that the menu comes back in the same order after an item is changed
+        // WHY: Servers find items by where they sit on the screen. Without a fixed order,
+        //      PostgreSQL moved a just-updated row (an item that was 86'd) to the end.
+
+        // Given - The order of the active items before anything changes
+        List<Long> before = menuItemRepository.findByIsActiveOrderByMenuItemIdAsc(true).stream()
+                .map(MenuItem::getMenuItemId).toList();
+
+        // When - The first item is 86'd (an UPDATE to its row)
+        chickenCutty.setIs86d(true);
+        menuItemRepository.saveAndFlush(chickenCutty);
+
+        // Then - Same items, same order, Chicken Cutty still first
+        List<Long> after = menuItemRepository.findByIsActiveOrderByMenuItemIdAsc(true).stream()
+                .map(MenuItem::getMenuItemId).toList();
+        assertEquals(before, after);
+        assertEquals(chickenCutty.getMenuItemId(), after.get(0));
     }
 }

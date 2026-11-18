@@ -75,14 +75,14 @@ class MenuItemServiceTest {
         MenuItem item2 = new MenuItem();
         item2.setIsActive(false);
         List<MenuItem> items = Arrays.asList(testMenuItem, item2);
-        when(menuItemRepository.findAll()).thenReturn(items);
+        when(menuItemRepository.findAllByOrderByMenuItemIdAsc()).thenReturn(items);
 
         // When - Get all items
         List<MenuItem> result = menuItemService.getAllMenuItems();
 
         // Then - Should get both active and inactive items
         assertEquals(2, result.size());
-        verify(menuItemRepository, times(1)).findAll();
+        verify(menuItemRepository, times(1)).findAllByOrderByMenuItemIdAsc();
     }
 
     @Test
@@ -92,7 +92,7 @@ class MenuItemServiceTest {
         
         // Given - Mock returns only active items
         List<MenuItem> activeItems = Arrays.asList(testMenuItem);
-        when(menuItemRepository.findByIsActive(true)).thenReturn(activeItems);
+        when(menuItemRepository.findByIsActiveOrderByMenuItemIdAsc(true)).thenReturn(activeItems);
 
         // When - Get active items
         List<MenuItem> result = menuItemService.getActiveMenuItems();
@@ -100,7 +100,7 @@ class MenuItemServiceTest {
         // Then - Should only get active items
         assertEquals(1, result.size());
         assertTrue(result.get(0).getIsActive());
-        verify(menuItemRepository, times(1)).findByIsActive(true);
+        verify(menuItemRepository, times(1)).findByIsActiveOrderByMenuItemIdAsc(true);
     }
 
     @Test
@@ -337,14 +337,14 @@ class MenuItemServiceTest {
 
         // Given
         testMenuItem.setIs86d(true);
-        when(menuItemRepository.findByIs86dAndIsActive(true, true)).thenReturn(List.of(testMenuItem));
+        when(menuItemRepository.findByIs86dAndIsActiveOrderByMenuItemIdAsc(true, true)).thenReturn(List.of(testMenuItem));
 
         // When
         List<MenuItem> result = menuItemService.get86dMenuItems();
 
         // Then
         assertEquals(1, result.size());
-        verify(menuItemRepository, times(1)).findByIs86dAndIsActive(true, true);
+        verify(menuItemRepository, times(1)).findByIs86dAndIsActiveOrderByMenuItemIdAsc(true, true);
     }
 
     @Test
