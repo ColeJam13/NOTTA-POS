@@ -7,7 +7,10 @@
  *      the guest would see one total on the order and be charged another.
  */
 
-// Sales tax rate as a decimal (0.03 = 3%)
+// Sales tax rate as a decimal (0.03 = 3%).
+// The backend works out every check that is actually charged, using its own copy of
+// this number: notta.tax-rate in backend/src/main/resources/application.properties.
+// This copy is for the running total on the order screen. Change both together.
 export const TAX_RATE = 0.03;
 
 // Tax rate as a display label, e.g. "3%"
@@ -17,8 +20,13 @@ export const TAX_RATE_LABEL = `${(TAX_RATE * 100).toFixed(TAX_RATE * 100 % 1 ===
  * Round a dollar amount to whole cents.
  * Floating point math can produce values like 10.299999; this fixes them
  * before they are added together or sent to the backend.
+ *
+ * Number.EPSILON is the smallest difference JavaScript can tell apart near 1.
+ * Adding it nudges a value that should sit exactly on half a cent (0.495 is
+ * really stored as 0.49499999...) over the line, so it rounds up to 0.50 -
+ * the same answer the backend's HALF_UP rounding gives.
  */
-const roundToCents = (amount) => Math.round(amount * 100) / 100;
+const roundToCents = (amount) => Math.round((amount + Number.EPSILON) * 100) / 100;
 
 /**
  * Add up the upcharges of the modifiers chosen for one item.
@@ -64,4 +72,23 @@ export const calculateOrderTotals = (items) => {
   const total = roundToCents(subtotal + tax);
 
   return { subtotal, tax, total };
+};
+
+/**
+ * Subtotal, tax, and total for an order that has been paid.
+ *
+ * The backend records these on the order when the payment goes through, so
+ * that is the number to show. Orders closed before the backend started
+ * recording them hold zeros; for those the amounts are worked out from the
+ * items instead.
+ *
+ * @param {Object} order - A closed order (subtotal, tax, total may be 0 on older orders)
+ * @param {Array} items - That order's items
+ * @returns {{subtotal: number, tax: number, total: number}} - Amounts in dollars
+ */
+export const closedOrderTotals = (order, items) => {
+  if (order && order.total > 0) {
+    return { subtotal: order.subtotal, tax: order.tax, total: order.total };
+  }
+  return calculateOrderTotals(items);
 };

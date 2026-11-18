@@ -1,4 +1,4 @@
-import { calculateOrderTotals, modifierUpcharge, priceWithModifiers } from './totals';
+import { calculateOrderTotals, closedOrderTotals, modifierUpcharge, priceWithModifiers } from './totals';
 
 /**
  * Tests for the shared money math.
@@ -38,4 +38,27 @@ test('order totals include upcharges because they are already part of each item 
 
   // 23.00 subtotal, 3% tax = 0.69, total = 23.69
   expect(calculateOrderTotals([comboPlate, fries])).toEqual({ subtotal: 23, tax: 0.69, total: 23.69 });
+});
+
+test('tax that lands on exactly half a cent rounds up, the same as the backend', () => {
+  // 16.50 x 3% = 0.495. JavaScript stores that as 0.49499999..., which would round DOWN to 0.49
+  // while the backend rounds half a cent up to 0.50 - a one cent difference between the order
+  // screen and the check.
+  expect(calculateOrderTotals([{ price: 16.5, quantity: 1 }])).toEqual({ subtotal: 16.5, tax: 0.5, total: 17 });
+});
+
+test('order totals multiply price by quantity and treat a missing quantity as one', () => {
+  expect(calculateOrderTotals([{ price: 3.5, quantity: 3 }, { price: 6 }]).subtotal).toBe(16.5);
+});
+
+test('closedOrderTotals uses the amounts the backend recorded when the check was paid', () => {
+  const order = { orderId: 1, subtotal: 33, tax: 0.99, total: 33.99 };
+  // The items disagree on purpose: the recorded amounts win
+  expect(closedOrderTotals(order, [{ price: 5, quantity: 1 }])).toEqual({ subtotal: 33, tax: 0.99, total: 33.99 });
+});
+
+test('closedOrderTotals works the amounts out from the items for orders closed before totals were recorded', () => {
+  const olderOrder = { orderId: 1, subtotal: 0, tax: 0, total: 0 };
+  expect(closedOrderTotals(olderOrder, [{ price: 16, quantity: 1 }, { price: 17, quantity: 1 }]))
+    .toEqual({ subtotal: 33, tax: 0.99, total: 33.99 });
 });

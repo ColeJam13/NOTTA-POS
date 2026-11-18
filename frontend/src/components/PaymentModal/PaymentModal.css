@@ -307,3 +307,10 @@
 .tip-input::placeholder {
   color: #64748b;
 }
+/* Shown in place of the form while the check is loading, or if it could not be loaded */
+.payment-check-message {
+  color: #9ca3af;
+  font-size: 16px;
+  text-align: center;
+  padding: 40px 20px;
+}

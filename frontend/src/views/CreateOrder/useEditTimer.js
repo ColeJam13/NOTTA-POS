@@ -68,6 +68,15 @@ export function useEditTimer(onExpire) {
     setSecondsLeft(EDIT_WINDOW_SECONDS);
   }, []);
 
+  // Pick up a countdown that is already running on the backend (used when a table is
+  // reopened during its edit window). Unlike start(), the display begins at the seconds
+  // actually left instead of a full 15.
+  const resume = useCallback((expiresAt) => {
+    const remaining = Math.floor((expiresAt - new Date()) / 1000);
+    setTimerExpires(expiresAt);
+    setSecondsLeft(Math.min(EDIT_WINDOW_SECONDS, Math.max(1, remaining)));
+  }, []);
+
   // Stop immediately and show the "locked" state (used by Send Now)
   const finishNow = useCallback(() => {
     setSecondsLeft(0);
@@ -79,12 +88,20 @@ export function useEditTimer(onExpire) {
     setSecondsLeft(current => (current === 0 ? null : current));
   }, []);
 
+  // Back to "no timer has run" (used when the screen starts over after a check is closed)
+  const reset = useCallback(() => {
+    setTimerExpires(null);
+    setSecondsLeft(null);
+  }, []);
+
   return {
     isRunning: timerExpires !== null,
     secondsLeft,
     start,
     restart,
+    resume,
     finishNow,
-    clearLockedMessage
+    clearLockedMessage,
+    reset
   };
 }

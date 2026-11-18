@@ -3,6 +3,7 @@ import NavBar from '../../components/NavBar/NavBar';
 import { formatTableName, formatTimeAgo, formatPaymentMethod } from '../../utils/formatters';
 import './Financials.css';
 import { apiFetch } from '../../services/api';
+import { closedOrderTotals } from '../../utils/totals';
 
 function Financials({ setCurrentView, setSelectedTable }) {
     const [timePeriod, setTimePeriod] = useState('today');
@@ -57,8 +58,12 @@ function Financials({ setCurrentView, setSelectedTable }) {
                 endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
                 break;
             case 'custom':
-                startDate = customStartDate ? new Date(customStartDate) : new Date(0);
-                endDate = customEndDate ? new Date(customEndDate) : new Date();
+                // A date box gives text like "2026-11-18". new Date("2026-11-18") reads that as
+                // midnight in UTC, which is the evening BEFORE in US time zones, so picking
+                // today as both dates found nothing. Adding a time of day makes JavaScript
+                // read it as local time, and the end date runs to the last moment of its day.
+                startDate = customStartDate ? new Date(`${customStartDate}T00:00:00`) : new Date(0);
+                endDate = customEndDate ? new Date(`${customEndDate}T23:59:59.999`) : new Date();
                 break;
             default:
                 startDate = new Date(now.setHours(0, 0, 0, 0));
@@ -86,6 +91,7 @@ function Financials({ setCurrentView, setSelectedTable }) {
         if (filteredOrders.length === 0) {
             return {
                 totalRevenue: 0,
+                totalTax: 0,
                 totalTips: 0,
                 orderCount: 0,
                 avgOrderValue: 0,
@@ -97,6 +103,7 @@ function Financials({ setCurrentView, setSelectedTable }) {
 
                                                                             // Calculate revenue and tips
         let totalRevenue = 0;
+        let totalTax = 0;
         let totalTips = 0;
         const paymentMethodTotals = {};
 
@@ -118,8 +125,9 @@ function Financials({ setCurrentView, setSelectedTable }) {
 
                                                                             // Calculate order subtotal from items
             const items = orderItems.filter(item => item.orderId === order.orderId);
-            const orderTotal = items.reduce((sum, item) => sum + item.price, 0);
-            totalRevenue += orderTotal;
+            const checkTotals = closedOrderTotals(order, items);            // Revenue is sales before tax; tax is tracked separately
+            totalRevenue += checkTotals.subtotal;
+            totalTax += checkTotals.tax;
         });
 
                                                                             // Calculate total of all payment amounts for percentage calculation
@@ -141,7 +149,7 @@ function Financials({ setCurrentView, setSelectedTable }) {
             .map(order => {
                 const payment = payments.find(p => p.orderId === order.orderId);
                 const items = orderItems.filter(item => item.orderId === order.orderId);
-                const orderTotal = items.reduce((sum, item) => sum + item.price, 0);
+                const orderTotal = closedOrderTotals(order, items).total;   // The check as paid, tax included (matches the payment amount)
                 const table = tables.find(t => t.tableId === order.tableId);
                 
                 return {
@@ -160,6 +168,7 @@ function Financials({ setCurrentView, setSelectedTable }) {
 
         return {
             totalRevenue,
+            totalTax,
             totalTips,
             orderCount: filteredOrders.length,
             avgOrderValue,
@@ -229,6 +238,7 @@ function Financials({ setCurrentView, setSelectedTable }) {
                     <div className="stat-card">
                         <div className="stat-label">Total Revenue</div>
                         <div className="stat-value large">${metrics.totalRevenue.toFixed(2)}</div>
+                        <div className="stat-note">before tax</div>
                     </div>
 
                     <div className="stat-card">
@@ -253,7 +263,10 @@ function Financials({ setCurrentView, setSelectedTable }) {
 
                     <div className="stat-card">
                         <div className="stat-label">Total w/ Tips</div>
-                        <div className="stat-value">${(metrics.totalRevenue + metrics.totalTips).toFixed(2)}</div>
+                        {/* Everything collected: sales + tax + tips. Tax used to be left out, so this
+                            never matched the payment amounts in the breakdown below. */}
+                        <div className="stat-value">${(metrics.totalRevenue + metrics.totalTax + metrics.totalTips).toFixed(2)}</div>
+                        <div className="stat-note">includes ${metrics.totalTax.toFixed(2)} tax</div>
                     </div>
                 </div>
 

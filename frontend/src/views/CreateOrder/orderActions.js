@@ -63,10 +63,16 @@ export const createQuickOrderTable = async () => {
 };
 
 /**
- * Open a new order on a table and mark the table as occupied.
+ * Open a new order on a table. The backend marks the table as occupied in the
+ * same step (this used to be a second request from here; if it failed, the
+ * Floor Map showed a table with an open check as free).
+ *
+ * If the table already has an open order - another server opened it a moment
+ * ago - the backend answers with that order instead of starting a second check.
  *
  * @param {Object} table - The table the order belongs to
- * @returns {Promise<number>} - The new order's ID
+ * @returns {Promise<number>} - The order's ID
+ * @throws {Error} - If the backend refuses to open the order
  */
 export const openOrderForTable = async (table) => {
   const orderResponse = await apiFetch('/api/orders', {
@@ -79,15 +85,11 @@ export const openOrderForTable = async (table) => {
       serverName: table.serverName || 'Unknown'
     })
   });
+  if (!orderResponse.ok) {
+    throw new Error(`Opening an order on table ${table.tableId} failed with status ${orderResponse.status}`);
+  }
   const order = await orderResponse.json();
   console.log('Order created', order);
-
-  // Mark table as occupied
-  await apiFetch(`/api/tables/${table.tableId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: 'occupied' })
-  });
 
   return order.orderId;
 };
@@ -234,13 +236,38 @@ export const sendOrderNow = (orderId) => {
   });
 };
 
-// Delete a saved order item. Returns true only if the backend confirmed the delete.
+/**
+ * Delete a saved order item.
+ *
+ * @param {number} orderItemId - The saved item to remove
+ * @returns {Promise<{deleted: boolean, locked: boolean}>} - deleted is true only if the
+ *          backend confirmed the delete. locked is true when the backend refused because
+ *          the item already went to the prep station (409 Conflict).
+ */
 export const deleteOrderItem = async (orderItemId) => {
   const deleteResponse = await apiFetch(`/api/order-items/${orderItemId}`, {
     method: 'DELETE'
   });
   console.log('Delete response status:', deleteResponse.status);
-  return deleteResponse.ok;
+  return { deleted: deleteResponse.ok, locked: deleteResponse.status === 409 };
+};
+
+/**
+ * Clear an empty order off its table, so the table is free again.
+ * Used when the guests leave before ordering, or every item was removed:
+ * there is nothing to pay, so there is no payment to close the order.
+ *
+ * @param {number} orderId - The open order to clear (must have no items)
+ * @returns {Promise<{cleared: boolean, message: string}>} - message is the backend's
+ *          reason when it refuses (for example, the order still has items on it)
+ */
+export const clearEmptyOrder = async (orderId) => {
+  const response = await apiFetch(`/api/orders/${orderId}`, { method: 'DELETE' });
+  if (response.ok) return { cleared: true, message: '' };
+
+  // Error responses from the backend always carry a "message" written for the person at the screen
+  const error = await response.json().catch(() => null);
+  return { cleared: false, message: error?.message || 'The table could not be cleared.' };
 };
 
 /**
@@ -293,6 +320,7 @@ export const loadOpenOrderForTable = async (tableId) => {
     price: item.price,                                                  // Already includes any modifier upcharges
     quantity: item.quantity,
     status: item.status,
+    delayExpiresAt: item.delayExpiresAt,                                // When this item's edit window closes (only meaningful while status is 'limbo')
     modifiers: modifiersByOrderItemId[item.orderItemId] || [],
     specialInstructions: item.specialInstructions || ''
   }));

@@ -3,6 +3,7 @@ import NavBar from '../../components/NavBar/NavBar';
 import { formatTableName, formatTimeAgo, formatDateTime, formatPaymentMethod } from '../../utils/formatters';
 import './Tables.css';
 import { apiFetch } from '../../services/api';
+import { closedOrderTotals } from '../../utils/totals';
 
 function Tables({ setCurrentView, setSelectedTable }) {
     const [view, setView] = useState('active');
@@ -132,7 +133,9 @@ function Tables({ setCurrentView, setSelectedTable }) {
                 name: menuItems.find(m => m.menuItemId === item.menuItemId)?.name || 'Unknown Item'
             }));
             
-            const subtotal = items.reduce((sum, item) => sum + item.price, 0);
+            // Subtotal, tax, and total as recorded when the check was paid.
+            // (The total here used to be subtotal + tip, which left the tax out.)
+            const checkTotals = closedOrderTotals(order, items);
             const timeAgo = formatTimeAgo(order.closedAt || order.createdAt);
 
             return {
@@ -140,10 +143,11 @@ function Tables({ setCurrentView, setSelectedTable }) {
                 table: table,
                 serverName: order.serverName,
                 items: itemsWithNames,
-                subtotal,
+                subtotal: checkTotals.subtotal,
+                tax: checkTotals.tax,
                 tipAmount: payment?.tipAmount || 0,
                 paymentMethod: payment?.paymentMethod || 'Unknown',
-                total: subtotal + (payment?.tipAmount || 0),
+                total: checkTotals.total + (payment?.tipAmount || 0),         // What the guest paid: check + tip
                 timeAgo,
                 createdAt: order.createdAt,
                 closedAt: order.closedAt
@@ -268,6 +272,10 @@ function Tables({ setCurrentView, setSelectedTable }) {
                             <div className="modal-total-row">
                                 <span>Subtotal:</span>
                                 <span>${selectedClosedOrder.subtotal.toFixed(2)}</span>
+                            </div>
+                            <div className="modal-total-row">
+                                <span>Tax:</span>
+                                <span>${selectedClosedOrder.tax.toFixed(2)}</span>
                             </div>
                             <div className="modal-total-row">
                                 <span>Tip:</span>
