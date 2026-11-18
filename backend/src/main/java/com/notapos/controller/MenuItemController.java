@@ -92,6 +92,21 @@ public class MenuItemController {
         return ResponseEntity.ok(activated);
     }
 
+    @GetMapping("/86")                                                              // Get everything that is 86'd right now
+    public ResponseEntity<List<MenuItem>> get86dMenuItems() {
+        return ResponseEntity.ok(menuItemService.get86dMenuItems());
+    }
+
+    @PutMapping("/{id}/86")                                                         // 86 an item: out for now, still shown on the menu
+    public ResponseEntity<MenuItem> eightySixMenuItem(@PathVariable Long id) {
+        return ResponseEntity.ok(menuItemService.set86d(id, true));
+    }
+
+    @PutMapping("/{id}/un-86")                                                      // Put an 86'd item back on
+    public ResponseEntity<MenuItem> unEightySixMenuItem(@PathVariable Long id) {
+        return ResponseEntity.ok(menuItemService.set86d(id, false));
+    }
+
     @DeleteMapping("/{id}")                                                         // Delete menu item
     public ResponseEntity<Void> deleteMenuItem(@PathVariable Long id) {
         menuItemService.deleteMenuItem(id);

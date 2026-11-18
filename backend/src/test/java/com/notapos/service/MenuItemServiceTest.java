@@ -281,4 +281,77 @@ class MenuItemServiceTest {
         // Then - Repository delete should be called
         verify(menuItemRepository, times(1)).deleteById(1L);
     }
+
+    @Test
+    void testSet86d_True_ShouldMarkItemAs86d() {
+        // WHAT: Test 86'ing an item
+        // WHY: The kitchen ran out. The item stays on the menu (still active) but cannot be ordered.
+
+        // Given - An active item that is not 86'd
+        when(menuItemRepository.findById(1L)).thenReturn(Optional.of(testMenuItem));
+        when(menuItemRepository.save(any(MenuItem.class))).thenReturn(testMenuItem);
+
+        // When
+        MenuItem result = menuItemService.set86d(1L, true);
+
+        // Then - 86'd, and still on the menu
+        assertTrue(result.getIs86d());
+        assertTrue(result.getIsActive());
+        verify(menuItemRepository, times(1)).save(testMenuItem);
+    }
+
+    @Test
+    void testSet86d_False_ShouldPutItemBackOn() {
+        // WHAT: Test un-86'ing an item
+        // WHY: The kitchen has it again
+
+        // Given - An 86'd item
+        testMenuItem.setIs86d(true);
+        when(menuItemRepository.findById(1L)).thenReturn(Optional.of(testMenuItem));
+        when(menuItemRepository.save(any(MenuItem.class))).thenReturn(testMenuItem);
+
+        // When
+        MenuItem result = menuItemService.set86d(1L, false);
+
+        // Then
+        assertFalse(result.getIs86d());
+    }
+
+    @Test
+    void testSet86d_WhenNotFound_ShouldThrowException() {
+        // WHAT: Test 86'ing an item that does not exist
+        // WHY: Becomes a 404 for the screen
+
+        // Given
+        when(menuItemRepository.findById(99L)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(com.notapos.exception.ResourceNotFoundException.class, () -> menuItemService.set86d(99L, true));
+        verify(menuItemRepository, never()).save(any());
+    }
+
+    @Test
+    void testGet86dMenuItems_ShouldAskForActiveItemsThatAre86d() {
+        // WHAT: Test listing what is 86'd right now
+        // WHY: The 86 board shows this list. Items taken off the menu entirely are not on it.
+
+        // Given
+        testMenuItem.setIs86d(true);
+        when(menuItemRepository.findByIs86dAndIsActive(true, true)).thenReturn(List.of(testMenuItem));
+
+        // When
+        List<MenuItem> result = menuItemService.get86dMenuItems();
+
+        // Then
+        assertEquals(1, result.size());
+        verify(menuItemRepository, times(1)).findByIs86dAndIsActive(true, true);
+    }
+
+    @Test
+    void testNewMenuItem_ShouldNotBe86d() {
+        // WHAT: Test the starting value of the 86 flag
+        // WHY: A new item is available until someone says otherwise
+
+        assertFalse(new MenuItem().getIs86d());
+    }
 }

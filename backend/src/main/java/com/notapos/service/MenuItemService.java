@@ -96,6 +96,19 @@ public class MenuItemService {
         return menuItemRepository.save(menuItem);
     }
 
+    public List<MenuItem> get86dMenuItems() {                           // Get everything on the menu that is 86'd right now
+        return menuItemRepository.findByIs86dAndIsActive(true, true);
+    }
+
+    @Transactional
+    public MenuItem set86d(Long id, boolean is86d) {                    // 86 an item (true) or put it back on (false)
+        MenuItem menuItem = menuItemRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Menu item not found with id: " + id));
+
+        menuItem.setIs86d(is86d);
+        return menuItemRepository.save(menuItem);
+    }
+
     @Transactional
     public void deleteMenuItem(Long id) {           // Completely delete item from repository (not reccomended, use deativateMenuItem() instead to preserve history)
         menuItemRepository.deleteById(id);

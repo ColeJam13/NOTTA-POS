@@ -278,4 +278,33 @@ class MenuItemRepositoryTest extends BaseRepositoryTest {
         MenuItem deactivated = menuItemRepository.findById(itemId).orElseThrow();
         assertFalse(deactivated.getIsActive());
     }
+
+    @Test
+    void testFindByIs86dAndIsActive_ShouldReturnOnlyItemsOnTheMenuThatAre86d() {
+        // WHAT: Test finding what is 86'd right now
+        // WHY: The 86 board lists these. An item taken off the menu entirely is not "86'd".
+
+        // Given - Chicken Cutty (active) is 86'd; nothing else is
+        chickenCutty.setIs86d(true);
+        menuItemRepository.save(chickenCutty);
+
+        // When
+        List<MenuItem> eightySixed = menuItemRepository.findByIs86dAndIsActive(true, true);
+
+        // Then
+        assertEquals(1, eightySixed.size());
+        assertEquals("Chicken Cutty", eightySixed.get(0).getName());
+    }
+
+    @Test
+    void testSave_ShouldStartItemsAsNot86d() {
+        // WHAT: Test the stored starting value of the 86 flag
+        // WHY: Everything is available until someone 86's it
+
+        // Given/When - Pancakes was saved in setUp without touching the flag
+        MenuItem reloaded = menuItemRepository.findById(pancakes.getMenuItemId()).orElseThrow();
+
+        // Then
+        assertFalse(reloaded.getIs86d());
+    }
 }

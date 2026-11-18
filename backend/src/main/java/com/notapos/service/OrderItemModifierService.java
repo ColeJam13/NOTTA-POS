@@ -13,6 +13,7 @@ import com.notapos.entity.OrderItemModifier;
 import com.notapos.enums.OrderItemStatus;
 import com.notapos.exception.InvalidModifierSelectionException;
 import com.notapos.exception.ItemLockedException;
+import com.notapos.exception.ItemUnavailableException;
 import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.repository.MenuItemRepository;
 import com.notapos.repository.ModifierRepository;
@@ -175,6 +176,12 @@ public class OrderItemModifierService {
     public OrderItem createOrderItemWithModifiers(OrderItemRequest request) {
         MenuItem menuItem = menuItemRepository.findById(request.menuItemId())
                 .orElseThrow(() -> new ResourceNotFoundException("Menu item not found with id: " + request.menuItemId()));
+
+        // An 86'd item cannot be rung in. The order screen greys it out, but a screen that
+        // has not refreshed yet could still send it.
+        if (Boolean.TRUE.equals(menuItem.getIs86d())) {
+            throw new ItemUnavailableException(menuItem.getName() + " is 86'd and cannot be ordered right now.");
+        }
 
         // Check the choices against the menu's rules BEFORE anything is saved
         List<ModifierOptionView> chosen = validateSelection(menuItem, request.modifierIds());

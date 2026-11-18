@@ -358,4 +358,67 @@ class MenuItemControllerTest {
 
         verify(menuItemService).activateMenuItem(999L);
     }
+
+    @Test
+    void testEightySixMenuItem_ShouldReturnItemMarked86d() throws Exception {
+        // WHAT: Test PUT /api/menu-items/{id}/86
+        // WHY: The kitchen 86's an item from the board
+
+        // Given
+        testItem.setIs86d(true);
+        when(menuItemService.set86d(1L, true)).thenReturn(testItem);
+
+        // When/Then
+        mockMvc.perform(put("/api/menu-items/1/86"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.is86d").value(true));
+
+        verify(menuItemService).set86d(1L, true);
+    }
+
+    @Test
+    void testUnEightySixMenuItem_ShouldReturnItemBackOn() throws Exception {
+        // WHAT: Test PUT /api/menu-items/{id}/un-86
+        // WHY: The kitchen has the item again
+
+        // Given
+        testItem.setIs86d(false);
+        when(menuItemService.set86d(1L, false)).thenReturn(testItem);
+
+        // When/Then
+        mockMvc.perform(put("/api/menu-items/1/un-86"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.is86d").value(false));
+
+        verify(menuItemService).set86d(1L, false);
+    }
+
+    @Test
+    void testEightySixMenuItem_WhenNotFound_ShouldReturn404() throws Exception {
+        // WHAT: Test PUT /api/menu-items/{id}/86 when the item does not exist
+        // WHY: The board should hear about it instead of showing a change that did not happen
+
+        // Given
+        when(menuItemService.set86d(99L, true))
+                .thenThrow(new com.notapos.exception.ResourceNotFoundException("Menu item not found with id: 99"));
+
+        // When/Then
+        mockMvc.perform(put("/api/menu-items/99/86"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void testGet86dMenuItems_ShouldReturnList() throws Exception {
+        // WHAT: Test GET /api/menu-items/86
+        // WHY: Lists everything that is 86'd right now
+
+        // Given
+        testItem.setIs86d(true);
+        when(menuItemService.get86dMenuItems()).thenReturn(java.util.List.of(testItem));
+
+        // When/Then
+        mockMvc.perform(get("/api/menu-items/86"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].is86d").value(true));
+    }
 }
