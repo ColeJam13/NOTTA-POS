@@ -29,6 +29,7 @@ Documentation/            spec sheet, data model, UX mockups
 ## Running it
 
 - Backend: `cd backend && mvn spring-boot:run` (port 8080). Needs a local PostgreSQL database; connection settings are in `backend/src/main/resources/application.properties`. Hibernate creates the tables (`ddl-auto=update`); the seed SQL file is loaded by hand.
+- Two settings in `application.properties` are specific to this app: `notta.cors.allowed-origins` (the addresses the frontend may be opened from, comma-separated; add the tablet-facing address here) and `notta.tax-rate`.
 - Frontend: `cd frontend && npm install && npm start` (port 3000). To point at a different backend, set `REACT_APP_API_URL` in `frontend/.env.local`.
 - Backend tests: `cd backend && mvn test`. Repository tests use Testcontainers, so Docker must be running.
 - Frontend tests: `cd frontend && npm test -- --watchAll=false`. Strict build: `CI=true npm run build` (lint warnings fail it).
@@ -58,6 +59,11 @@ When pair-programming interactively instead of automating: ask before writing co
 - **Prefer a data-model change over a React workaround.** Example: Quick Orders were kept off the floor map with an `is_quick_order` column, not a frontend filter.
 - **Frontend requests** go through `apiFetch` / `getJson` / `sendJson` in `services/api.js`. Never hardcode the backend address.
 - **Money math** goes through `utils/totals.js`.
+- **The backend works out the check.** `OrderCheckService` adds up an order's sent items, tax, and total; `GET /api/orders/{id}/check` returns it and the Payment modal shows it. `PaymentService.createPayment` charges that number and refuses (409) anything that does not match it. `utils/totals.js` is only for the running total on the order screen and for orders closed before totals were recorded. Draft items are not on the check.
+- **An order is only closed by a payment or cleared when empty.** `PaymentService.createPayment` refuses an order that is missing, already closed, empty, or holding unsent items, then records subtotal, tax, and total on the order. `OrderService.deleteOrder` clears an empty open order and frees its table; it refuses anything else. Refusals throw `OrderStateException` (409) with a message written for the person at the screen, and the frontend shows that message as-is.
+- **A table has one open order.** `OrderService.createOrder` marks the table occupied in the same transaction and returns the existing open order if the table already has one. The frontend does not set table status.
+- **One edit window per order.** Sending, removing, or changing an item during the window restarts it for every item on that order still counting down (`OrderItemService.restartEditWindow`), because the screen shows a single countdown. Paying ends it.
+- **The order screen is rebuilt on every visit.** `App.js` gives `CreateOrder` a new `key` each time the view is opened, so no state carries over from the previous table. Do not add state to `CreateOrder` that is meant to survive leaving the screen.
 - **Item price includes upcharges.** `OrderItem.price` is the price of one item with its modifier upcharges already added, so every screen that sums `price` is correct without knowing about modifiers. For items with modifiers or a note the backend works the price out itself (`OrderItemModifierService`); the request carries no price.
 - **Modifiers are saved with the item, not after it.** `POST /api/order-items/with-modifiers` saves the item, its modifiers, and its note in one transaction and checks the choices against the menu's rules (`MenuModifierService` supplies the rules to both the picker and the check). Do not go back to one request per modifier: a half-saved item would reach the kitchen without its modifiers.
 - **Frontend structure:** `views/` for screens, `components/` for shared pieces, one CSS file per component or view. Pieces private to one screen live in that screen's folder (see `views/CreateOrder/`).
@@ -72,12 +78,16 @@ When pair-programming interactively instead of automating: ask before writing co
 - A slow Floor Map load once turned out to be a Firefox-on-localhost issue, not the code. Measure backend response times before changing code for performance.
 - On PostgreSQL 15+, the application's database user needs an explicit `CREATE` grant on the `public` schema on a new machine.
 - Testcontainers must be 1.21.4 or newer to work with current Docker engines.
+- The seed file inserts rows with plain SQL and only names some columns. A new column that the app filters on needs a database default (see `is_quick_order` on `RestaurantTable`), or a freshly seeded database behaves differently from the owner's. A missing default once left the Floor Map empty.
+- Click through a full service (seat, send, pay, reopen, clear) on a freshly seeded database before calling a flow done. Feature 1 was verified from the Create Order button and never touched the Floor Map, so the empty map went unnoticed.
 
 ## Current state (November 2026)
 
 Merged: CI, and a cleanup pass covering eight audit findings (central API module, typed exceptions and validation, transactions, status enums, shared totals, `GET /api/orders/active`, `CreateOrder.js` split into five files with behavior tests).
 
-Built: feature 1, modifiers and kitchen notes (see the feature plan below for what it covers).
+Merged: feature 1, modifiers and kitchen notes (see the feature plan below for what it covers).
+
+Built: a working-state pass over the core flow (seat, send, change, pay, clear). It fixed the empty Floor Map on a fresh database, checks that charged for unsaved items, tax missing from closed checks, the lost countdown when a table is reopened, tables that could not be freed, and the order screen keeping the previous table's order.
 
 Known gaps left open on purpose:
 
@@ -85,10 +95,15 @@ Known gaps left open on purpose:
 - Entity status fields are `String`, not enum-typed.
 - `OrderItemService.updateOrderItem` resets the edit timer only when status is `pending`, but pending items are locked and rejected earlier in the method, so the reset never runs. It probably should check `limbo`. A test asserts the current behavior.
 - `GET /api/menu-items` returns active items whether or not `?active=true` is passed.
-- `subtotal`, `tax`, and `total` on orders are never written (nothing calls `PUT /api/orders/{id}/totals`). Totals are computed on the frontend only.
+- `subtotal`, `tax`, and `total` on orders are written when the order is paid. Orders closed before that hold zeros; `closedOrderTotals` in `utils/totals.js` falls back to the items for those. Nothing calls `PUT /api/orders/{id}/totals` or `PUT /api/orders/{id}/close`.
+- The tax rate lives in two places: `notta.tax-rate` (backend, the one that is charged) and `TAX_RATE` in `utils/totals.js` (the order screen's running total). They must be changed together.
+- Timestamps are `LocalDateTime` with no time zone, and the countdown and "5m ago" labels compare them with the device's own clock. A tablet whose clock is off, or a backend in another time zone, would show wrong times and a wrong countdown.
+- One payment closes the whole order. There are no split checks, partial payments, refunds, or voids of sent items.
+- Every Quick Order creates a row in `tables` that is never removed.
 - The plain `POST /api/order-items` endpoint does not check modifier rules, so an item with required groups could be saved bare through it. The order screen never does this (anything with modifiers or a note goes through `/with-modifiers`).
 - The item lists on the Tables, Quick Orders, and Financials screens do not print modifiers or notes yet. Their totals are right, because upcharges are part of each item's price.
-- Changing an item during the edit window restarts the countdown for that item on the backend and for the whole order on screen, so the other items lock on the backend at their original time while the screen still shows seconds left. Adding and removing items during the window have always behaved the same way.
+- The order screen does not refresh while it is open. Item statuses changed elsewhere (kitchen starts an item, another server adds one) show up only when the table is reopened. The Payment modal is not affected: it reads the check from the backend.
+- Parallel draft saves give items IDs that do not follow ring-in order, and Active Orders sorts by ID, so a ticket can list items in a different order than the server entered them.
 - `backend/target/`, `backend/restaurant.db`, and `.DS_Store` are committed. The README still describes SQLite.
 - The nav bar shows a hardcoded user and a hardcoded notification count; the search box does nothing.
 
