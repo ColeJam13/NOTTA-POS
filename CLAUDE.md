@@ -124,10 +124,13 @@ Build in this order, one pull request each.
 - Backend has `isActive` on `MenuItem` (a soft delete). The data model doc calls for a separate `is_86d` flag: 86'd means temporarily out, not removed from the menu.
 - Build: `is86d` column, 86 / un-86 endpoints, a board screen for kitchen and managers, and 86'd items shown greyed out and untappable on the order screen (visible, so servers know it is out rather than wondering where it went). The order screen should pick up changes within a few seconds.
 
-### 3. Editable floor map
+### 3. Editable floor map (built)
 
-- Backend has `xPosition`, `yPosition`, `rotation`, `shape` on tables. `TableService.updateTable` only saves `status`.
-- Build: a layout endpoint that saves position and rotation, and an edit mode on the Floor Map with drag and drop and an explicit Save. Outside edit mode a tap still opens the table's order.
+- `PUT /api/tables/layout` takes `{ "tables": [{ tableId, x, y, rotation }] }` and saves the whole list in one transaction (`TableService.updateLayout`). It only changes position and rotation. `TableService.updateTable` still only saves `status`.
+- EDIT LAYOUT on the Floor Map switches to edit mode: drag a table to move it (snaps to a 10 pixel grid, cannot leave the floor), tap one to select it, ROTATE turns it 45 degrees. Nothing is saved until SAVE LAYOUT; CANCEL puts everything back. Only the tables that changed are sent.
+- In edit mode the screen works on a copy of the tables and stops its 3-second refresh. Outside edit mode a tap still opens the table's order.
+- Dragging uses mouse and touch events, not pointer events, because the test browser (jsdom) does not support pointer events.
+- Not built: adding or removing tables, changing a table's shape or seat count, and sections.
 
 ### 4. Staff profiles and roles
 
