@@ -55,7 +55,7 @@ When pair-programming interactively instead of automating: ask before writing co
 - **Validation:** `@Valid` on create endpoints, with constraint annotations on the entity fields.
 - **Transactions:** services are `@Transactional(readOnly = true)` at class level; methods that write add `@Transactional`.
 - **Status values:** use the enums' `getValue()` and `matches()`. Do not type status strings by hand. Entity status fields are still `String` columns, so the database and JSON hold lowercase text (`draft`, `limbo`, `pending`, `fired`, `completed`).
-- **Avoid N+1 queries:** when a screen needs several entities together, add one endpoint that returns a DTO built from batched `WHERE ... IN` queries (see `ActiveOrderService`). `JOIN FETCH` does not apply because entities are not linked by JPA relationships.
+- **Avoid N+1 queries:** when a screen needs several entities together, add one endpoint that returns a DTO built from batched `WHERE ... IN` queries (see `ActiveOrderService` and `TableOverviewService`). `JOIN FETCH` does not apply because entities are not linked by JPA relationships.
 - **Prefer a data-model change over a React workaround.** Example: Quick Orders were kept off the floor map with an `is_quick_order` column, not a frontend filter.
 - **Frontend requests** go through `apiFetch` / `getJson` / `sendJson` in `services/api.js`. Never hardcode the backend address.
 - **Money math** goes through `utils/totals.js`.
@@ -67,6 +67,7 @@ When pair-programming interactively instead of automating: ask before writing co
 - **Item price includes upcharges.** `OrderItem.price` is the price of one item with its modifier upcharges already added, so every screen that sums `price` is correct without knowing about modifiers. For items with modifiers or a note the backend works the price out itself (`OrderItemModifierService`); the request carries no price.
 - **Modifiers are saved with the item, not after it.** `POST /api/order-items/with-modifiers` saves the item, its modifiers, and its note in one transaction and checks the choices against the menu's rules (`MenuModifierService` supplies the rules to both the picker and the check). Do not go back to one request per modifier: a half-saved item would reach the kitchen without its modifiers.
 - **Frontend structure:** `views/` for screens, `components/` for shared pieces, one CSS file per component or view. Pieces private to one screen live in that screen's folder (see `views/CreateOrder/`).
+- **Tables and Quick Orders are one component.** `components/TableChecks` draws both screens from `GET /api/tables/overview`; `views/Tables/Tables.js` and `views/QuickOrders/QuickOrders.js` only pass it which tables to ask for and what the screen is called. A change to one screen belongs in `TableChecks`, so the other gets it too.
 - **Separation of concerns:** payment actions stay separate from order actions.
 - JSON quirk: `xPosition` / `yPosition` on tables serialize as `xposition` / `yposition`.
 
@@ -92,7 +93,7 @@ Built: a working-state pass over the core flow (seat, send, change, pay, clear).
 
 Known gaps left open on purpose:
 
-- Tables, Quick Orders, and Financials screens still download several lists and match them up in the browser. Only Active Orders uses a combined endpoint.
+- The Financials screen still downloads every order, payment, order item, and table and adds them up in the browser. Active Orders, Tables, and Quick Orders each use one combined endpoint.
 - Entity status fields are `String`, not enum-typed.
 - `OrderItemService.updateOrderItem` resets the edit timer only when status is `pending`, but pending items are locked and rejected earlier in the method, so the reset never runs. It probably should check `limbo`. A test asserts the current behavior.
 - `GET /api/menu-items` returns active items whether or not `?active=true` is passed.
@@ -102,7 +103,7 @@ Known gaps left open on purpose:
 - One payment closes the whole order. There are no split checks, partial payments, refunds, or voids of sent items.
 - Every Quick Order creates a row in `tables` that is never removed.
 - The plain `POST /api/order-items` endpoint does not check modifier rules, so an item with required groups could be saved bare through it. The order screen never does this (anything with modifiers or a note goes through `/with-modifiers`).
-- The item lists on the Tables, Quick Orders, and Financials screens do not print modifiers or notes yet. Their totals are right, because upcharges are part of each item's price.
+- The Tables and Quick Orders screens show the 50 most recently closed checks, not all of them. There is no way to page back further or search for an older check.
 - The order screen does not refresh while it is open. Item statuses changed elsewhere (kitchen starts an item, another server adds one) show up only when the table is reopened. The Payment modal is not affected: it reads the check from the backend.
 - Parallel draft saves give items IDs that do not follow ring-in order, and Active Orders sorts by ID, so a ticket can list items in a different order than the server entered them.
 - The nav bar shows a hardcoded user and a hardcoded notification count; the search box does nothing.
