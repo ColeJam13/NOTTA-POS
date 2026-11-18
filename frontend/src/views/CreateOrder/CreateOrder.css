@@ -369,3 +369,28 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* An 86'd menu item: still shown, greyed out, and not tappable */
+.menu-item-card.is-86d {
+  opacity: 0.45;
+  border-color: #666;
+  cursor: not-allowed;
+}
+
+.menu-item-card.is-86d:hover {
+  background: #16213e;
+  box-shadow: none;
+  transform: none;
+}
+
+.menu-item-card.is-86d h3 {
+  color: #888;
+  text-decoration: line-through;
+}
+
+.menu-item-card .eighty-six-label {
+  color: #ff3366;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}

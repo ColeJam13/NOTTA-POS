@@ -50,6 +50,7 @@ function NavBar({ currentView, setCurrentView, setSelectedTable, confirmLeave })
         <button className={`nav-btn ${currentView === 'quickOrders' ? 'active' : ''}`} onClick={() => goTo('quickOrders')}>QUICK ORDERS</button>
         <button className={`nav-btn ${currentView === 'activeOrders' ? 'active' : ''}`} onClick={() => goTo('activeOrders')}>ACTIVE ORDERS</button>
         <button className={`nav-btn ${currentView === 'createOrder' ? 'active' : ''}`} onClick={() => goTo('createOrder')}>CREATE ORDER</button>
+        <button className={`nav-btn ${currentView === 'eightySix' ? 'active' : ''}`} onClick={() => goTo('eightySix')}>86 BOARD</button>
         <button className={`nav-btn ${currentView === 'financials' ? 'active' : ''}`} onClick={() => goTo('financials')}>FINANCIALS</button>
         <button className={`nav-btn ${currentView === 'challenges' ? 'active' : ''}`} onClick={() => goTo('challenges')}>CHALLENGES</button>
       </div>

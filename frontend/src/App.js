@@ -7,6 +7,7 @@ import Tables from './views/Tables';
 import QuickOrders from './views/QuickOrders';
 import Financials from './views/Financials';
 import Challenges from './views/Challenges';
+import EightySixBoard from './views/EightySixBoard';
 import './App.css';
 
 function App() {
@@ -51,6 +52,10 @@ function App() {
 
   if (currentView === 'financials') {
     return <Financials setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;  
+  }
+
+  if (currentView === 'eightySix') {
+    return <EightySixBoard setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;
   }
 
   if (currentView === 'challenges') {

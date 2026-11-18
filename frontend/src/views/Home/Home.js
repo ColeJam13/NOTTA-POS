@@ -28,6 +28,9 @@ function Home({ setCurrentView }) {
         <button className="landing-btn" onClick={() => setCurrentView('createOrder')}>
           CREATE ORDER
         </button>
+        <button className="landing-btn" onClick={() => setCurrentView('eightySix')}>
+          86 BOARD
+        </button>
         <button className="landing-btn" onClick={() => setCurrentView('financials')}>
           FINANCIALS
         </button>

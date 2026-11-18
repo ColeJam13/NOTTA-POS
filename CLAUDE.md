@@ -119,10 +119,14 @@ Build in this order, one pull request each.
 - `POST /api/order-items/with-modifiers` and `PUT /api/order-items/{id}/modifiers` save and replace an item's modifiers and note. `GET /api/order-item-modifiers/order/{orderId}` returns an order's modifiers with names.
 - `ActiveOrderItemView` carries `modifiers`, and the Active Orders screen prints modifiers and notes under each item in both views.
 
-### 2. 86 board
+### 2. 86 board (built)
 
-- Backend has `isActive` on `MenuItem` (a soft delete). The data model doc calls for a separate `is_86d` flag: 86'd means temporarily out, not removed from the menu.
-- Build: `is86d` column, 86 / un-86 endpoints, a board screen for kitchen and managers, and 86'd items shown greyed out and untappable on the order screen (visible, so servers know it is out rather than wondering where it went). The order screen should pick up changes within a few seconds.
+- `MenuItem.is86d` (column `is_86d`, default false) means out for now. It is separate from `isActive`: an inactive item is off the menu and hidden, an 86'd item stays on the menu.
+- `PUT /api/menu-items/{id}/86` and `/un-86` change it. `GET /api/menu-items/86` lists what is out.
+- `views/EightySixBoard/` is the board: what is 86'd now at the top, the whole menu by category below, tap to 86 or put back on. It refreshes every 3 seconds.
+- On the order screen `MenuPanel.js` shows an 86'd item greyed out, marked 86'D, and untappable. `CreateOrder.js` reloads the menu every 5 seconds to pick up changes.
+- The backend refuses to ring in an 86'd item (`ItemUnavailableException`, 409), in both `OrderItemService.createOrderItem` and `OrderItemModifierService.createOrderItemWithModifiers`. Items already sent are not affected when their menu item is 86'd afterwards.
+- Not built: who may 86 (needs staff roles), a count of how many are left, and 86'ing a single modifier.
 
 ### 3. Editable floor map
 

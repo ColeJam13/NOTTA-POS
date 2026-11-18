@@ -60,6 +60,7 @@ let editWindowMs;     // how far in the future the fake backend says the edit wi
 let savedMenuItemIds; // orderItemId -> menuItemId for items the fake backend has "saved"
 let refuseItemSaves;  // true = the fake backend answers 400 to saving an item with modifiers
 let itemsAreLocked;   // true = the fake backend answers 409 (already sent to kitchen) to modifier changes and removals
+let menuNow;          // what GET /api/menu-items returns right now (a test can 86 an item by replacing this)
 let orderCheck;       // what GET /api/orders/77/check returns (the check as the backend works it out)
 let paymentRefusal;   // a message = the fake backend answers 409 with that message to a payment
 
@@ -90,6 +91,7 @@ beforeEach(() => {
   savedMenuItemIds = {};
   refuseItemSaves = false;
   itemsAreLocked = false;
+  menuNow = MENU;
   orderCheck = { orderId: 77, status: 'open', itemCount: 1, unsentItemCount: 0, subtotal: 17.0, tax: 0.51, total: 17.51, taxRate: 0.03 };
   paymentRefusal = null;
 
@@ -100,7 +102,7 @@ beforeEach(() => {
     calls.push(`${method} ${path}`);
     requests.push({ method, path, body });
 
-    if (method === 'GET' && path === '/api/menu-items') return jsonResponse(MENU);
+    if (method === 'GET' && path === '/api/menu-items') return jsonResponse(menuNow);
     if (method === 'GET' && path === '/api/menu-items/modifier-groups') return jsonResponse(MODIFIER_GROUPS);
     if (method === 'GET' && path === '/api/tables') return jsonResponse([]);
     if (method === 'POST' && path === '/api/tables') {
@@ -875,3 +877,43 @@ test('leaving the screen is not questioned when everything on the order is saved
   expect(confirmSpy).not.toHaveBeenCalled();
   expect(setCurrentView).toHaveBeenCalledWith('floorMap');
 });
+
+// ============================================================================
+// 86'd items
+// ============================================================================
+
+test('an 86\'d item stays on the menu, greyed out, and cannot be added', async () => {
+  menuNow = MENU.map(item => (item.name === 'Fries' ? { ...item, is86d: true } : item));
+  const { container } = await renderScreen();
+
+  // It is still shown, marked 86'D in place of its price
+  const friesCard = menuCard('Fries').closest('.menu-item-card');
+  expect(friesCard).toHaveClass('is-86d');
+  expect(within(friesCard).getByText("86'D")).toBeInTheDocument();
+  expect(within(friesCard).queryByText('$6.00')).not.toBeInTheDocument();
+
+  // Tapping it does nothing; other items still work
+  await userEvent.click(menuCard('Fries'));
+  await userEvent.click(menuCard('Chicken Cutty'));
+  expect(within(orderList(container)).queryByText('Fries')).not.toBeInTheDocument();
+  expect(within(orderList(container)).getByText('Chicken Cutty')).toBeInTheDocument();
+});
+
+test('an item 86\'d after it was added is caught at Send, and the server is told which one', async () => {
+  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  const { container } = await renderScreen();
+  await userEvent.click(menuCard('Fries'));
+
+  // The kitchen 86's Fries. The order screen picks the change up on its next menu refresh (5 seconds).
+  menuNow = MENU.map(item => (item.name === 'Fries' ? { ...item, is86d: true } : item));
+  await waitFor(
+    () => expect(menuCard('Fries').closest('.menu-item-card')).toHaveClass('is-86d'),
+    { timeout: 7000 }
+  );
+
+  await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
+
+  expect(alertSpy).toHaveBeenCalledWith("Fries was just 86'd. Remove it from the order first.");
+  expect(calls).not.toContain('POST /api/orders');                   // Nothing was created or sent
+  expect(within(orderList(container)).getByText('Fries')).toBeInTheDocument();
+}, 12000);
