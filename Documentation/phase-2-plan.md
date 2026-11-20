@@ -64,7 +64,12 @@ Build:
 
 - Optimistic locking on `Order`: a `@Version` column. The database then rejects the second of two saves that started from the same copy of the row, and that becomes a clear 409 ("this check was just changed on another terminal").
 - A database guarantee of one open order per table. In PostgreSQL that is a partial unique index: unique on `table_id` where `status = 'open'`. `ddl-auto=update` cannot create one, which is the reason for the decision in the next point.
-- **Owner decision D1:** adopt Flyway (versioned SQL migration files that run at start-up) and switch `ddl-auto` to `validate`. Recommended, because the schema now has rules Hibernate cannot express and silent schema changes at start-up are a risk on a database holding real sales. If the answer is no, create the index from a start-up check instead and say so in the pull request.
+- **Decided (D1): adopt Flyway.** Flyway runs versioned SQL files (`V1__baseline.sql`, `V2__...sql`) at start-up, in order, and records which have run, so every database goes through the same schema changes. Do this as its own pull request before the locking work:
+  - `V1` is a baseline that matches the schema Hibernate creates today, so a brand-new database and the owner's existing one end up identical. Use Flyway's baseline setting so the existing database is marked as already at `V1` instead of being rebuilt.
+  - Switch `ddl-auto` from `update` to `validate`: Hibernate then checks that the tables match the entities and refuses to start if they do not, but never changes them.
+  - From then on every new column, table, or index is a new migration file in the same pull request as the entity change. Add that rule to `CLAUDE.md`.
+  - The seed data stays a separate hand-loaded file; do not make it a migration.
+  - Test the owner's case specifically: start the new build against a database created by the old one, with data in it, and confirm nothing is lost.
 - Disable the pay button while a payment request is in flight, if it is not already.
 
 Done when: a test fires two payments at one order and exactly one succeeds, and a repository test shows the second open order on a table is rejected by the database itself.
@@ -123,7 +128,7 @@ Build:
 
 ## Part B: features
 
-**Owner decision D4:** confirm this order. Items 1 to 4 are from the original roadmap. Item 5 was not on it and is a recommendation.
+**Owner decision D4:** confirm this order. Items 1 to 4 are from the original roadmap. Item 5 was not on it and is a recommendation. Item 6 is the owner's longer-term idea, recorded here so earlier work does not close it off.
 
 ### B1. Working notifications
 
@@ -145,21 +150,47 @@ Move colors into CSS variables on a root class, add a theme picker for managers,
 
 `CLAUDE.md` lists it as a known gap: one payment closes the whole order, with no split checks, partial payments, voids of sent items, or comps. These are everyday floor actions. A sensible first slice is void and comp with a manager PIN and a reason, each recorded with who approved it, followed by split by item and split evenly.
 
+### B6. Staff phones as terminals (later; think about it, do not build yet)
+
+The owner's idea: servers and bartenders install the app on their own phones, the phones talk to a server running inside the restaurant, and payment could go through Square. The restaurant then needs no dedicated terminals.
+
+How it fits what exists:
+
+- The frontend is already a web app, so the shortest route to "an app on the phone" is an installable web app (a PWA: a website the phone can add to its home screen and open full-screen like an app). That avoids writing and publishing separate iPhone and Android apps. A native app only becomes necessary if a feature demands it.
+- A server inside the restaurant is the original "runs without the internet" idea for this project. In practice it is one small machine on the restaurant's network running the backend, the database, and serving the frontend.
+
+What it would take, roughly in order:
+
+1. **Phone-sized screens.** The order screen, tables, and payment are laid out for a tablet. They need a narrow layout with large tap targets.
+2. **Serve the app from the restaurant's server** and make it installable. Installable web apps require HTTPS, and HTTPS on a private network address needs a certificate plan. This is the least obvious part and should be investigated first.
+3. **Part A is a hard requirement, not a nicety.** Personal phones on the restaurant Wi-Fi mean any device can reach the backend. A3 (lock the API) and A4 (per-device lockout, sign-out) must be finished, and sessions should move from memory to the database so a backend restart does not sign out the whole floor mid-shift.
+4. **Joining a phone to the restaurant.** A QR code on the manager's screen that carries the server address is the usual approach; staff then sign in with their PIN as now.
+5. **Card payments through Square.** The app must never see or store card numbers; Square's own software handles the card, which keeps this project out of card-security compliance scope. Two routes exist as of November 2026 and need re-checking when this is built:
+   - Square's Point of Sale API works from a mobile web page: the app hands an amount to the Square app on the same phone, Square takes the card (reader or tap-to-pay on the phone), and returns the result. It carries an amount only, not the itemized check.
+   - Square's Mobile Payments SDK gives a smoother checkout inside one app, but only for native iPhone and Android apps.
+   The payment record needs a field for the processor's transaction reference, and `PaymentService.createPayment` needs a "card approved by processor" path alongside today's flow.
+6. **Flaky Wi-Fi.** A phone that drops off the network mid-order should hold the order and retry, not lose it. Decide how much offline behavior is worth building.
+
+Design choices in earlier steps that keep this open: keep all business rules on the backend (A1 already moves pricing there), keep the frontend talking only through `services/api.js`, and avoid anything that assumes a large screen or a mouse in new screens.
+
+Open questions for the owner when this is picked up: installable web app or native apps, whether each restaurant uses its own Square account, how tips are entered on a phone handed to a guest, and what a server does when their phone dies mid-shift.
+
 ## Decisions needed from the owner
 
 | | Decision | Needed before |
 |---|---|---|
-| D1 | Adopt Flyway migrations and stop Hibernate from changing the schema at start-up? | A2 |
+| D1 | Adopt Flyway migrations and stop Hibernate from changing the schema at start-up? **Decided 2026-11-20: yes.** | A2 |
 | D2 | Confirm or correct the role matrix | A3 |
 | D3 | How shared terminals sign people out | A4 |
 | D4 | Feature order for Part B, and whether B5 is in | Part B |
 | D5 | Notifications: who sends to whom, acknowledged or not | B1 |
 | D6 | Challenges: which measures and what period | B3 |
+| D7 | Staff phones: installable web app or native apps, and the Square account model | B6 |
 
 Ask these at the point they are needed. Do not guess and build.
 
 ## How to start
 
 1. Housekeeping pull request: delete the merged remote branches, and add the process rules above to `CLAUDE.md`.
-2. Ask the owner D1 and D2 together, since A2 and A3 follow closely.
+2. Ask the owner D2 while A1 is in progress, since A3 follows closely. D1 is already decided.
 3. Start A1.
