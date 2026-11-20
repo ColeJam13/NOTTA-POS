@@ -168,15 +168,6 @@ Build in this order, one pull request each.
 - `ActiveOrderItemView` carries `prepStationId` and `sentAt` for this.
 - Not built: sound or flashing on a new ticket, a "bump" button for a whole ticket, per-station default (each tablet remembering its station), and routing tickets to printers.
 
-### Kitchen display (built, not in the original plan)
-
-- The BOH view of Active Orders (`views/ActiveOrders/ActiveOrders.js`) is the kitchen display. The FOH view is unchanged.
-- Station buttons (ALL, plus one per prep station from `GET /api/prep-stations`) show a station only its own items. An item whose menu item has no station is shown to every station.
-- Each ticket shows how long its oldest unfinished item has been waiting (yellow at 10 minutes, red at 15; the constants are at the top of the file). Tickets are listed longest wait first.
-- A ticket with nothing left to make drops off the view. SHOW DONE brings finished tickets back.
-- `ActiveOrderItemView` carries `prepStationId` and `sentAt` for this.
-- Not built: sound or flashing on a new ticket, a "bump" button for a whole ticket, per-station default (each tablet remembering its station), and routing tickets to printers.
-
 ### Later
 
 Challenges and leaderboard on real data (needs staff profiles), host view with waitlist, switchable themes, working notifications.

@@ -67,14 +67,16 @@ function NavBar({ currentView, setCurrentView, setSelectedTable, confirmLeave })
       </div>
       
       <div className="navbar-bottom">
-        <button className={`nav-btn ${currentView === 'floorMap' ? 'active' : ''}`} onClick={() => goTo('floorMap')}>FLOOR MAP</button>
-        <button className={`nav-btn ${currentView === 'activeTables' ? 'active' : ''}`} onClick={() => goTo('activeTables')}>TABLES</button>
-        <button className={`nav-btn ${currentView === 'quickOrders' ? 'active' : ''}`} onClick={() => goTo('quickOrders')}>QUICK ORDERS</button>
-        <button className={`nav-btn ${currentView === 'activeOrders' ? 'active' : ''}`} onClick={() => goTo('activeOrders')}>ACTIVE ORDERS</button>
-        <button className={`nav-btn ${currentView === 'createOrder' ? 'active' : ''}`} onClick={() => goTo('createOrder')}>CREATE ORDER</button>
-        <button className={`nav-btn ${currentView === 'eightySix' ? 'active' : ''}`} onClick={() => goTo('eightySix')}>86 BOARD</button>
-        <button className={`nav-btn ${currentView === 'financials' ? 'active' : ''}`} onClick={() => goTo('financials')}>FINANCIALS</button>
-        <button className={`nav-btn ${currentView === 'challenges' ? 'active' : ''}`} onClick={() => goTo('challenges')}>CHALLENGES</button>
+        {/* Only the screens this person's role may open are offered (see utils/roles.js) */}
+        {NAV_BUTTONS.filter(button => canOpenScreen(staff?.role, button.view)).map(button => (
+          <button
+            key={button.view}
+            className={`nav-btn ${currentView === button.view ? 'active' : ''}`}
+            onClick={() => goTo(button.view)}
+          >
+            {button.label}
+          </button>
+        ))}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import FloorMap from './FloorMap';
+import { StaffContext } from '../../context/StaffContext';
 
 /**
  * Behavior tests for the Floor Map and its edit mode.
@@ -183,4 +184,31 @@ test('when the layout cannot be saved, the screen says so and keeps the changes'
   expect(screen.getByRole('button', { name: 'CANCEL' })).toBeInTheDocument();
   expect(table('W1')).toHaveStyle({ left: '200px', top: '150px' });
   await waitFor(() => expect(screen.getByRole('button', { name: 'SAVE LAYOUT' })).toBeEnabled());
+});
+
+// ============================================================================
+// Who may edit the layout
+// ============================================================================
+
+// Draw the map as it looks to a signed-in person with the given role
+const renderMapAs = async (role) => {
+  render(
+    <StaffContext.Provider value={{ staff: { staffId: 1, name: 'Test', role }, signOut: jest.fn() }}>
+      <FloorMap setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />
+    </StaffContext.Provider>
+  );
+  await screen.findByText('W1');
+};
+
+test('a manager is offered EDIT LAYOUT', async () => {
+  await renderMapAs('manager');
+
+  expect(screen.getByRole('button', { name: 'EDIT LAYOUT' })).toBeInTheDocument();
+});
+
+test('a server sees the map but is not offered EDIT LAYOUT', async () => {
+  await renderMapAs('server');
+
+  expect(screen.getByTestId('table-W1')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'EDIT LAYOUT' })).not.toBeInTheDocument();
 });

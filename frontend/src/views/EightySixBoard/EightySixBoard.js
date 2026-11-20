@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import NavBar from '../../components/NavBar';
 import { apiFetch, getJson } from '../../services/api';
+import { useStaff } from '../../context/StaffContext';
+import { canDo } from '../../utils/roles';
 import './EightySixBoard.css';
 
 // How often the board asks the backend for the latest menu, in milliseconds
@@ -19,6 +21,11 @@ const REFRESH_MS = 3000;
  */
 function EightySixBoard({ setCurrentView, setSelectedTable }) {
   const [menuItems, setMenuItems] = useState([]);
+
+  // Servers and hosts can read the board; the kitchen, the bar, and managers can change it
+  // (the backend refuses anyone else too)
+  const { staff } = useStaff();
+  const canChange = canDo(staff?.role, 'change-86');
   const [errorMessage, setErrorMessage] = useState('');
 
   const loadMenu = useCallback(() => {
@@ -69,6 +76,10 @@ function EightySixBoard({ setCurrentView, setSelectedTable }) {
 
         {errorMessage && <p className="eighty-six-error" role="alert">{errorMessage}</p>}
 
+        {!canChange && (
+          <p className="eighty-six-read-only">Only the kitchen, the bar, and managers can change what is 86'd.</p>
+        )}
+
         {/* What is out right now */}
         <section className="eighty-six-now" aria-label="86'd now">
           <h3>86'D NOW ({eightySixed.length})</h3>
@@ -81,10 +92,11 @@ function EightySixBoard({ setCurrentView, setSelectedTable }) {
                   key={item.menuItemId}
                   className="eighty-six-chip"
                   aria-label={`Put ${item.name} back on`}
+                  disabled={!canChange}
                   onClick={() => toggle86(item)}
                 >
                   <span>{item.name}</span>
-                  <small>TAP TO PUT BACK ON</small>
+                  {canChange && <small>TAP TO PUT BACK ON</small>}
                 </button>
               ))}
             </div>
@@ -103,6 +115,7 @@ function EightySixBoard({ setCurrentView, setSelectedTable }) {
                     key={item.menuItemId}
                     className={`eighty-six-item ${item.is86d ? 'is-86d' : ''}`}
                     aria-pressed={item.is86d}                     // Tells screen readers (and tests) whether the item is 86'd
+                    disabled={!canChange}
                     onClick={() => toggle86(item)}
                   >
                     <span className="eighty-six-item-name">{item.name}</span>

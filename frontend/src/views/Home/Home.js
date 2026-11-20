@@ -38,30 +38,12 @@ function Home({ setCurrentView }) {
       </div>
       
       <div className="home-buttons">
-        <button className="landing-btn" onClick={() => setCurrentView('floorMap')}>
-          FLOOR MAP
-        </button>
-        <button className="landing-btn" onClick={() => setCurrentView('activeTables')}>
-          TABLES
-        </button>
-        <button className="landing-btn" onClick={() => setCurrentView('quickOrders')}>
-          QUICK ORDERS
-        </button>
-        <button className="landing-btn" onClick={() => setCurrentView('activeOrders')}>
-          ACTIVE ORDERS
-        </button>
-        <button className="landing-btn" onClick={() => setCurrentView('createOrder')}>
-          CREATE ORDER
-        </button>
-        <button className="landing-btn" onClick={() => setCurrentView('eightySix')}>
-          86 BOARD
-        </button>
-        <button className="landing-btn" onClick={() => setCurrentView('financials')}>
-          FINANCIALS
-        </button>
-        <button className="landing-btn" onClick={() => setCurrentView('challenges')}>
-          CHALLENGES
-        </button>
+        {/* Only the screens this person's role may open are offered (see utils/roles.js) */}
+        {HOME_BUTTONS.filter(button => canOpenScreen(staff?.role, button.view)).map(button => (
+          <button key={button.view} className="landing-btn" onClick={() => setCurrentView(button.view)}>
+            {button.label}
+          </button>
+        ))}
       </div>
     </div>
   );

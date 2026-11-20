@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import EightySixBoard from './EightySixBoard';
+import { StaffContext } from '../../context/StaffContext';
 
 /**
  * Behavior tests for the 86 board.
@@ -116,4 +117,42 @@ test('when the backend refuses a change, the board says so and the item stays as
     expect(within(category('Savory')).getByRole('button', { name: /Chicken Cutty/ })).toHaveAttribute('aria-pressed', 'false')
   );
   expect(within(nowBox()).getByText("86'D NOW (1)")).toBeInTheDocument();
+});
+
+// ============================================================================
+// Who may change the board
+// ============================================================================
+
+// Draw the board as it looks to a signed-in person with the given role
+const renderBoardAs = async (role) => {
+  render(
+    <StaffContext.Provider value={{ staff: { staffId: 1, name: 'Test', role }, signOut: jest.fn() }}>
+      <EightySixBoard setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />
+    </StaffContext.Provider>
+  );
+  await screen.findByRole('button', { name: /Chicken Cutty/ });
+};
+
+test('a server can read the board but not change it', async () => {
+  await renderBoardAs('server');
+
+  // What is out is still shown...
+  expect(within(nowBox()).getByText("86'D NOW (1)")).toBeInTheDocument();
+  expect(screen.getByText("Only the kitchen, the bar, and managers can change what is 86'd.")).toBeInTheDocument();
+
+  // ...but nothing on the board can be tapped
+  expect(within(category('Savory')).getByRole('button', { name: /Chicken Cutty/ })).toBeDisabled();
+  expect(within(nowBox()).getByRole('button', { name: 'Put Latte back on' })).toBeDisabled();
+  await userEvent.click(within(category('Savory')).getByRole('button', { name: /Chicken Cutty/ }));
+  expect(calls.filter(c => c.startsWith('PUT'))).toEqual([]);
+});
+
+test('kitchen staff can change the board', async () => {
+  await renderBoardAs('kitchen');
+
+  expect(screen.queryByText(/Only the kitchen, the bar, and managers/)).not.toBeInTheDocument();
+  await userEvent.click(within(category('Savory')).getByRole('button', { name: /Chicken Cutty/ }));
+
+  expect(await within(nowBox()).findByRole('button', { name: 'Put Chicken Cutty back on' })).toBeInTheDocument();
+  expect(calls).toContain('PUT /api/menu-items/1/86');
 });

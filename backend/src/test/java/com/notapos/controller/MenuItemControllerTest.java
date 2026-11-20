@@ -386,7 +386,7 @@ class MenuItemControllerTest {
         when(menuItemService.set86d(1L, true)).thenReturn(testItem);
 
         // When/Then
-        mockMvc.perform(put("/api/menu-items/1/86"))
+        mockMvc.perform(put("/api/menu-items/1/86").header("X-Staff-Token", managerToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.is86d").value(true));
 
@@ -403,7 +403,7 @@ class MenuItemControllerTest {
         when(menuItemService.set86d(1L, false)).thenReturn(testItem);
 
         // When/Then
-        mockMvc.perform(put("/api/menu-items/1/un-86"))
+        mockMvc.perform(put("/api/menu-items/1/un-86").header("X-Staff-Token", managerToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.is86d").value(false));
 
@@ -420,7 +420,7 @@ class MenuItemControllerTest {
                 .thenThrow(new com.notapos.exception.ResourceNotFoundException("Menu item not found with id: 99"));
 
         // When/Then
-        mockMvc.perform(put("/api/menu-items/99/86"))
+        mockMvc.perform(put("/api/menu-items/99/86").header("X-Staff-Token", managerToken))
                 .andExpect(status().isNotFound());
     }
 
@@ -437,5 +437,51 @@ class MenuItemControllerTest {
         mockMvc.perform(get("/api/menu-items/86"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].is86d").value(true));
+    }
+
+    @Test
+    void testEightySixMenuItem_WhenSignedInAsAServer_ShouldReturn403() throws Exception {
+        // WHAT: Test PUT /api/menu-items/{id}/86 signed in as a server
+        // WHY: The kitchen, the bar, and managers decide what is out - not the floor
+
+        mockMvc.perform(put("/api/menu-items/1/86").header("X-Staff-Token", serverToken))
+                .andExpect(status().isForbidden());
+
+        verify(menuItemService, never()).set86d(any(), anyBoolean());
+    }
+
+    @Test
+    void testEightySixMenuItem_WhenSignedInAsKitchen_ShouldBeAllowed() throws Exception {
+        // WHAT: Test PUT /api/menu-items/{id}/86 signed in as kitchen staff
+        // WHY: The kitchen is who knows first that something has run out
+
+        String kitchenToken = sessions.createSession(902L, "Test Cook", StaffRole.KITCHEN);
+        testItem.setIs86d(true);
+        when(menuItemService.set86d(1L, true)).thenReturn(testItem);
+
+        mockMvc.perform(put("/api/menu-items/1/86").header("X-Staff-Token", kitchenToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void testUnEightySixMenuItem_WhenNobodyIsSignedIn_ShouldReturn401() throws Exception {
+        // WHAT: Test PUT /api/menu-items/{id}/un-86 with no sign-in
+        // WHY: Putting an item back on is as much a decision as taking it off
+
+        mockMvc.perform(put("/api/menu-items/1/un-86"))
+                .andExpect(status().isUnauthorized());
+
+        verify(menuItemService, never()).set86d(any(), anyBoolean());
+    }
+
+    @Test
+    void testGetMenuItems_WhenNobodyIsSignedIn_ShouldStillWork() throws Exception {
+        // WHAT: Test that reading the menu needs no sign-in
+        // WHY: Only the endpoints marked @RequiresRole are restricted
+
+        when(menuItemService.getActiveMenuItems()).thenReturn(java.util.List.of(testItem));
+
+        mockMvc.perform(get("/api/menu-items"))
+                .andExpect(status().isOk());
     }
 }

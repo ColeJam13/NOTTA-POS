@@ -74,7 +74,9 @@ Git ignores `backend/application-local.properties`, so it stays on your computer
 
 **3. Start the app** with `./start.sh`. The first start creates the tables.
 
-**4. Demo data.** With the app started once, load the demo restaurant's menu, modifiers, and tables:
+**4. Sign in.** The app opens on a PIN pad. A new database starts with one person: a manager whose PIN is **1234**. Sign in with it, open STAFF, and give that manager a new PIN before anything else. Then add your staff there, each with a role and a PIN of their own.
+
+**5. Demo data.** With the app started once, load the demo restaurant's menu, modifiers, and tables:
 
 ```bash
 psql -h localhost -U nottauser -d notta_pos -f backend/peach-blossom-seed-data.sql
