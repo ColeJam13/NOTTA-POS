@@ -134,3 +134,8 @@ replay_pid*
 HELP.md
 .gradle
 spring-shell.log
+
+# ============================================================================
+# Settings for one computer only (database password and the like)
+# ============================================================================
+application-local.properties

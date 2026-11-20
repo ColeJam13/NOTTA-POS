@@ -37,35 +37,61 @@ Challenges is a mock-up with sample data. See `CLAUDE.md` for the build plan and
 
 You need Java 21, Maven, Node.js, and PostgreSQL.
 
-**1. Database (first time only).** Create a database and a user that match `backend/src/main/resources/application.properties`. On PostgreSQL 15 or newer the user also needs permission to create tables:
+Once the first-time setup below is done, one command starts everything:
+
+```bash
+./start.sh
+```
+
+It starts the database if it is not running, then the backend and the frontend, and opens the app in your browser. Press Ctrl+C in that terminal to stop it all. If something does not start, the script says what, and the full output is in `logs/backend.log` and `logs/frontend.log`.
+
+To stop being asked for your computer password every time, tell PostgreSQL to start with the machine (once):
+
+```bash
+sudo systemctl enable postgresql
+```
+
+### First-time setup
+
+**1. Database.** Create a database and a user. Pick your own password. On PostgreSQL 15 or newer the user also needs permission to create tables:
 
 ```sql
 CREATE DATABASE notta_pos;
-CREATE USER nottauser WITH PASSWORD 'the password from application.properties';
+CREATE USER nottauser WITH PASSWORD 'pick-a-password';
 GRANT ALL PRIVILEGES ON DATABASE notta_pos TO nottauser;
 \c notta_pos
 GRANT CREATE ON SCHEMA public TO nottauser;
 ```
 
-**2. Backend** (port 8080). The first start creates the tables.
+**2. Tell the app the password.** The password is not kept in git. Copy the example settings file and put your password in the copy:
 
 ```bash
-cd backend && mvn spring-boot:run
+cp backend/application-local.properties.example backend/application-local.properties
 ```
 
-**3. Demo data (first time only).** With the backend started once, load the demo restaurant's menu, modifiers, and tables:
+Git ignores `backend/application-local.properties`, so it stays on your computer.
+
+**3. Start the app** with `./start.sh`. The first start creates the tables.
+
+**4. Demo data.** With the app started once, load the demo restaurant's menu, modifiers, and tables:
 
 ```bash
 psql -h localhost -U nottauser -d notta_pos -f backend/peach-blossom-seed-data.sql
 ```
 
-**4. Frontend** (port 3000).
+### Starting the pieces by hand
+
+`./start.sh` runs these for you. They are here for when you want the backend's output in front of you.
+
+```bash
+cd backend && mvn spring-boot:run
+```
 
 ```bash
 cd frontend && npm install && npm start
 ```
 
-Open http://localhost:3000.
+The backend is on port 8080 and the frontend on port 3000. Open http://localhost:3000.
 
 ### Using it from another device
 
