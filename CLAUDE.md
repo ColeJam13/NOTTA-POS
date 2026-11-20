@@ -12,10 +12,12 @@ backend/    Spring Boot 3.5 (Java 21, Maven), PostgreSQL
     controller/  REST endpoints (thin - no try/catch, no business logic)
     service/     business logic, @Transactional
     repository/  Spring Data JPA interfaces
-    entity/      11 JPA entities, linked by plain ID columns (not @ManyToOne)
+    entity/      12 JPA entities, linked by plain ID columns (not @ManyToOne)
     dto/         response shapes that combine several entities
-    enums/       status values (OrderItemStatus, OrderStatus, TableStatus, PaymentStatus)
-    exception/   ResourceNotFoundException, ItemLockedException, GlobalExceptionHandler
+    enums/       status values (OrderItemStatus, OrderStatus, TableStatus, PaymentStatus) and StaffRole
+    exception/   one exception per kind of refusal, and GlobalExceptionHandler, which turns each into a status code
+    security/    StaffSessionInterceptor (sign-in sessions) and @RequiresRole
+    config/      WebConfig (CORS, registers the interceptor), FirstManagerSetup
     scheduled/   TimerScheduledTask - locks items when the edit window expires
   peach-blossom-seed-data.sql   menu, modifiers, and tables for the demo restaurant
 frontend/   React 19 (Create React App), lucide-react icons
@@ -23,7 +25,7 @@ frontend/   React 19 (Create React App), lucide-react icons
   src/utils/              formatters.js, totals.js (tax rate + order math)
   src/components/         shared pieces (NavBar, PaymentModal)
   src/views/              one folder per screen
-Documentation/            spec sheet, data model, UX mockups
+Documentation/            spec sheet, data model, UX mockups, and phase-2-plan.md (the current work order)
 ```
 
 ## Running it
@@ -48,6 +50,14 @@ Documentation/            spec sheet, data model, UX mockups
 7. **Tests come with the code.** Each service method and endpoint gets tests in the existing style (Mockito for services, `@WebMvcTest` for controllers, Testcontainers for repositories). For frontend refactors, write behavior tests against the old code first.
 8. **Refer to file and method names, not line numbers.** Line numbers go stale.
 9. Plain, direct communication. No emojis.
+
+Process rules, added 2026-11-20. They come out of the merge of pull request #273: it was built on top of seven other unmerged branches, GitHub reported conflicts, and resolving them in the web editor removed the role checks on 86 and floor layout, removed the tests that would have caught it, and left `main` not compiling until #274.
+
+10. **One pull request open at a time, each branched from an up-to-date `main`.** Wait for the owner to merge before starting the next. No branch is built on top of another unmerged branch.
+11. **Conflicts are never resolved in GitHub's web editor.** If GitHub shows conflicts, the owner says so, and Claude resolves them locally and re-runs the tests before anything reaches `main`.
+12. **Delete a branch once its pull request is merged.**
+13. **Bugs get a failing test first.** Write the test that reproduces the defect, watch it fail, then fix it.
+14. **Keep this file current** in the same pull request as the change it describes.
 
 When pair-programming interactively instead of automating: ask before writing code, go one file and one concept at a time, and let the owner type the changes.
 
@@ -91,11 +101,15 @@ When pair-programming interactively instead of automating: ask before writing co
 
 ## Current state (November 2026)
 
-Merged: CI, and a cleanup pass covering eight audit findings (central API module, typed exceptions and validation, transactions, status enums, shared totals, `GET /api/orders/active`, `CreateOrder.js` split into five files with behavior tests).
+Everything through pull request #274 is merged, and `main` passes CI (547 backend tests, 134 frontend tests). Built: CI and the first cleanup pass, modifiers and kitchen notes, the working-state pass over the core flow, the 86 board, the editable floor map, combined endpoints for Tables, Quick Orders, and Financials, the kitchen display, Spring Boot 3.5, the start script, and staff profiles with PIN sign-in and roles.
 
-Merged: feature 1, modifiers and kitchen notes (see the feature plan below for what it covers).
+**The work order from here is `Documentation/phase-2-plan.md`.** It was written after an independent review of #263 to #274. Read it before starting anything. In short:
 
-Built: a working-state pass over the core flow (seat, send, change, pay, clear). It fixed the empty Floor Map on a fresh database, checks that charged for unsaved items, tax missing from closed checks, the lost countdown when a table is reopened, tables that could not be freed, and the order screen keeping the previous table's order.
+- Part A fixes defects and open doors in what is built, in order: A1 one server-side ring-in path, A2 two terminals on one check (Flyway migrations come first), A3 lock the API, A4 sign-in hardening, A5 one tax rate, ticket order, and the clock.
+- Part B is features: notifications, host view with waitlist, challenges on real data, themes, check handling.
+- It lists decisions that are the owner's (D2 to D7). Ask each one when it is needed. Do not guess and build.
+
+Some items in the list below are scheduled in that plan (the plain ring-in endpoint, the two tax rates, ticket order, the clock, the open API, sign-out, the starting PIN). They stay listed here until the pull request that fixes each one removes it.
 
 Known gaps left open on purpose:
 
@@ -120,7 +134,7 @@ Known gaps left open on purpose:
 
 ## Feature plan
 
-Build in this order, one pull request each.
+The original four features, all built. What comes next is in `Documentation/phase-2-plan.md`.
 
 ### 1. Modifiers and kitchen notes (built)
 
@@ -137,7 +151,8 @@ Build in this order, one pull request each.
 - `views/EightySixBoard/` is the board: what is 86'd now at the top, the whole menu by category below, tap to 86 or put back on. It refreshes every 3 seconds.
 - On the order screen `MenuPanel.js` shows an 86'd item greyed out, marked 86'D, and untappable. `CreateOrder.js` reloads the menu every 5 seconds to pick up changes.
 - The backend refuses to ring in an 86'd item (`ItemUnavailableException`, 409), in both `OrderItemService.createOrderItem` and `OrderItemModifierService.createOrderItemWithModifiers`. Items already sent are not affected when their menu item is 86'd afterwards.
-- Not built: who may 86 (needs staff roles), a count of how many are left, and 86'ing a single modifier.
+- Who may 86: the kitchen, bartenders, and managers (see feature 4). Everyone else can read the board.
+- Not built: a count of how many are left, and 86'ing a single modifier.
 
 ### 3. Editable floor map (built)
 
