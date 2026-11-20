@@ -28,6 +28,12 @@ public class Order {
     
     @Column(name = "server_name", length = 50)
     private String serverName;
+
+    // The staff member who opened the order (null on orders opened before sign-in existed).
+    // serverName above is kept as well: it is what the screens print, and it still reads
+    // correctly if that person is later renamed or removed.
+    @Column(name = "staff_id")
+    private Long staffId;
     
     @Column(name = "order_type", nullable = false, length = 20)
     private String orderType = "dine_in";
@@ -126,6 +132,14 @@ public class Order {
 
     public void setServerName(String serverName) {
         this.serverName = serverName;
+    }
+
+    public Long getStaffId() {
+        return staffId;
+    }
+
+    public void setStaffId(Long staffId) {
+        this.staffId = staffId;
     }
 
     @PrePersist

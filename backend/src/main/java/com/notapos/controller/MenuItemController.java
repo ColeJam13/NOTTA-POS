@@ -1,5 +1,7 @@
 package com.notapos.controller;
 
+import com.notapos.enums.StaffRole;
+import com.notapos.security.RequiresRole;
 import jakarta.validation.Valid;
 import com.notapos.entity.MenuItem;
 import com.notapos.service.MenuItemService;
@@ -97,11 +99,13 @@ public class MenuItemController {
         return ResponseEntity.ok(menuItemService.get86dMenuItems());
     }
 
+    @RequiresRole({StaffRole.MANAGER, StaffRole.KITCHEN, StaffRole.BARTENDER})          // The people who know what has run out
     @PutMapping("/{id}/86")                                                         // 86 an item: out for now, still shown on the menu
     public ResponseEntity<MenuItem> eightySixMenuItem(@PathVariable Long id) {
         return ResponseEntity.ok(menuItemService.set86d(id, true));
     }
 
+    @RequiresRole({StaffRole.MANAGER, StaffRole.KITCHEN, StaffRole.BARTENDER})
     @PutMapping("/{id}/un-86")                                                      // Put an 86'd item back on
     public ResponseEntity<MenuItem> unEightySixMenuItem(@PathVariable Long id) {
         return ResponseEntity.ok(menuItemService.set86d(id, false));

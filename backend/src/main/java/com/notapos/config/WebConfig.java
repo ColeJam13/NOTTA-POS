@@ -1,8 +1,10 @@
 package com.notapos.config;
 
+import com.notapos.security.StaffSessionInterceptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
@@ -29,8 +31,18 @@ public class WebConfig implements WebMvcConfigurer {
     // comma-separated setting into an array for us.
     private final String[] allowedOrigins;
 
-    public WebConfig(@Value("${notta.cors.allowed-origins:http://localhost:3000}") String[] allowedOrigins) {
+    // Checks who is signed in before each request reaches a controller
+    private final StaffSessionInterceptor staffSessionInterceptor;
+
+    public WebConfig(@Value("${notta.cors.allowed-origins:http://localhost:3000}") String[] allowedOrigins,
+                     StaffSessionInterceptor staffSessionInterceptor) {
         this.allowedOrigins = allowedOrigins;
+        this.staffSessionInterceptor = staffSessionInterceptor;
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(staffSessionInterceptor).addPathPatterns("/api/**");
     }
 
     @Override
