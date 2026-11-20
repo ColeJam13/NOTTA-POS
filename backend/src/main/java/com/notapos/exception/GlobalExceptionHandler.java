@@ -60,6 +60,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), null);
     }
 
+    @ExceptionHandler(OrderNotOpenException.class)                              // The check was closed (usually on another terminal) -> 409 with a code the screen can check
+    public ResponseEntity<ApiError> handleOrderNotOpen(OrderNotOpenException ex) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), null, OrderNotOpenException.CODE);
+    }
+
     @ExceptionHandler(ItemLockedException.class)                                // Item already sent to kitchen -> 409
     public ResponseEntity<ApiError> handleItemLocked(ItemLockedException ex) {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), null);
@@ -96,7 +101,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 "Validation failed",
-                fieldErrors);
+                fieldErrors,
+                null);
 
         return ResponseEntity.badRequest().body(body);
     }
@@ -108,12 +114,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     private ResponseEntity<ApiError> buildResponse(HttpStatus status, String message, Map<String, String> fieldErrors) {
+        return buildResponse(status, message, fieldErrors, null);           // Most errors have no code
+    }
+
+    private ResponseEntity<ApiError> buildResponse(HttpStatus status, String message, Map<String, String> fieldErrors, String code) {
         ApiError body = new ApiError(
                 LocalDateTime.now(),
                 status.value(),
                 status.getReasonPhrase(),
                 message,
-                fieldErrors);
+                fieldErrors,
+                code);
         return ResponseEntity.status(status).body(body);
     }
 }

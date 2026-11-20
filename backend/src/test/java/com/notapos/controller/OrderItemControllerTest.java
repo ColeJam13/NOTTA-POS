@@ -131,44 +131,6 @@ class OrderItemControllerTest {
     }
 
     @Test
-    void testCreateOrderItem_ShouldReturnCreated() throws Exception {
-        // WHAT: Test POST /api/order-items to create new item
-        // WHY: Add items to order
-        
-        // Given - Service returns created item
-        when(orderItemService.createOrderItem(any(OrderItem.class))).thenReturn(testItem);
-
-        // When/Then - POST request should return 201 Created
-        mockMvc.perform(post("/api/order-items")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"orderId\":1,\"menuItemId\":1,\"quantity\":1,\"price\":17.00}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.orderItemId").value(1))
-                .andExpect(jsonPath("$.status").value("draft"));
-
-        verify(orderItemService, times(1)).createOrderItem(any(OrderItem.class));
-    }
-
-    @Test
-    void testUpdateOrderItem_WhenExists_ShouldReturnUpdated() throws Exception {
-        // WHAT: Test PUT /api/order-items/{id} to update item
-        // WHY: Edit item details during delay window
-        
-        // Given - Service returns updated item
-        testItem.setQuantity(2);
-        when(orderItemService.updateOrderItem(eq(1L), any(OrderItem.class))).thenReturn(testItem);
-
-        // When/Then - PUT request should return 200 OK
-        mockMvc.perform(put("/api/order-items/1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"orderId\":1,\"menuItemId\":1,\"quantity\":2,\"price\":17.00}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.quantity").value(2));
-
-        verify(orderItemService, times(1)).updateOrderItem(eq(1L), any(OrderItem.class));
-    }
-
-    @Test
     void testDeleteOrderItem_ShouldReturn204() throws Exception {
         // WHAT: Test DELETE /api/order-items/{id}
         // WHY: Remove mistakenly added items
@@ -373,25 +335,6 @@ class OrderItemControllerTest {
     // ========== ERROR SCENARIO TESTS ==========
 
     @Test
-    void testUpdateOrderItem_WhenItemLocked_ShouldReturnConflict() throws Exception {
-        // WHAT: Test PUT /api/order-items/{id} when update fails
-        // WHY: Handle locked items or validation errors
-        
-        // Given - Service throws exception
-        when(orderItemService.updateOrderItem(eq(1L), any(OrderItem.class)))
-                .thenThrow(new ItemLockedException("Item is locked"));
-
-        // When/Then - PUT request should return 409 Conflict (item exists but is locked)
-        mockMvc.perform(put("/api/order-items/1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"orderId\":1,\"menuItemId\":1,\"quantity\":2,\"price\":17.00}"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("Item is locked"));
-
-        verify(orderItemService, times(1)).updateOrderItem(eq(1L), any(OrderItem.class));
-    }
-
-    @Test
     void testSendItemNow_WhenServiceThrowsException_ShouldReturn404() throws Exception {
         // WHAT: Test PUT /api/order-items/{id}/send-now when item doesn't exist
         // WHY: Handle missing items
@@ -460,17 +403,17 @@ class OrderItemControllerTest {
     // ------------------------------------------------------------------------
 
     @Test
-    void testCreateOrderItemWithModifiers_ShouldReturnCreated() throws Exception {
-        // WHAT: Test POST /api/order-items/with-modifiers
+    void testRingInItem_ShouldReturnCreated() throws Exception {
+        // WHAT: Test POST /api/order-items
         // WHY: Ring in an item together with its modifiers and kitchen note
 
         // Given - Service returns the saved item, priced with its upcharge
         testItem.setPrice(new BigDecimal("19.00"));
         testItem.setSpecialInstructions("no onions");
-        when(orderItemModifierService.createOrderItemWithModifiers(any(OrderItemRequest.class))).thenReturn(testItem);
+        when(orderItemModifierService.ringInItem(any(OrderItemRequest.class))).thenReturn(testItem);
 
         // When/Then - POST request should return 201 Created (note: the request carries no price)
-        mockMvc.perform(post("/api/order-items/with-modifiers")
+        mockMvc.perform(post("/api/order-items")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":1,\"menuItemId\":1,\"quantity\":1,\"specialInstructions\":\"no onions\",\"modifierIds\":[14,16]}"))
                 .andExpect(status().isCreated())
@@ -480,52 +423,52 @@ class OrderItemControllerTest {
                 .andExpect(jsonPath("$.status").value("draft"));
 
         // The controller handed the service exactly what was sent
-        verify(orderItemModifierService, times(1)).createOrderItemWithModifiers(
+        verify(orderItemModifierService, times(1)).ringInItem(
                 new OrderItemRequest(1L, 1L, 1, "no onions", List.of(14L, 16L)));
     }
 
     @Test
-    void testCreateOrderItemWithModifiers_WhenOrderIdMissing_ShouldReturn400() throws Exception {
-        // WHAT: Test POST /api/order-items/with-modifiers without an order
+    void testRingInItem_WhenOrderIdMissing_ShouldReturn400() throws Exception {
+        // WHAT: Test POST /api/order-items without an order
         // WHY: @Valid rejects the request before it reaches the service
 
-        mockMvc.perform(post("/api/order-items/with-modifiers")
+        mockMvc.perform(post("/api/order-items")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"menuItemId\":1,\"modifierIds\":[14]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Validation failed"))
                 .andExpect(jsonPath("$.fieldErrors.orderId").exists());
 
-        verify(orderItemModifierService, never()).createOrderItemWithModifiers(any());
+        verify(orderItemModifierService, never()).ringInItem(any());
     }
 
     @Test
-    void testCreateOrderItemWithModifiers_WhenNoteTooLong_ShouldReturn400() throws Exception {
+    void testRingInItem_WhenNoteTooLong_ShouldReturn400() throws Exception {
         // WHAT: Test a kitchen note longer than the 500 characters the database column holds
         // WHY: Reject it with a clear message instead of a database error
 
         String longNote = "x".repeat(501);
 
-        mockMvc.perform(post("/api/order-items/with-modifiers")
+        mockMvc.perform(post("/api/order-items")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":1,\"menuItemId\":1,\"specialInstructions\":\"" + longNote + "\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.specialInstructions").exists());
 
-        verify(orderItemModifierService, never()).createOrderItemWithModifiers(any());
+        verify(orderItemModifierService, never()).ringInItem(any());
     }
 
     @Test
-    void testCreateOrderItemWithModifiers_WhenSelectionInvalid_ShouldReturn400() throws Exception {
+    void testRingInItem_WhenSelectionInvalid_ShouldReturn400() throws Exception {
         // WHAT: Test POST with modifiers that break the menu's rules
         // WHY: A required group left unanswered is the caller's mistake (400), not a server error (500)
 
         // Given - Service rejects the selection
-        when(orderItemModifierService.createOrderItemWithModifiers(any(OrderItemRequest.class)))
+        when(orderItemModifierService.ringInItem(any(OrderItemRequest.class)))
                 .thenThrow(new InvalidModifierSelectionException("\"Bread Choice\" must be chosen for Combo Plate"));
 
         // When/Then
-        mockMvc.perform(post("/api/order-items/with-modifiers")
+        mockMvc.perform(post("/api/order-items")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":1,\"menuItemId\":1,\"modifierIds\":[]}"))
                 .andExpect(status().isBadRequest())
@@ -584,5 +527,71 @@ class OrderItemControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"modifierIds\":[]}"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void testRingInItem_WithAPriceInTheRequest_ShouldIgnoreIt() throws Exception {
+        // WHAT: Test POST /api/order-items with a "price" the screen should never send
+        // WHY: The request type has no price field at all, so a price in the JSON has nowhere
+        //      to go. The service never sees it and works the price out from the menu.
+
+        OrderItem saved = new OrderItem();
+        saved.setOrderItemId(5L);
+        saved.setPrice(new BigDecimal("17.00"));
+        when(orderItemModifierService.ringInItem(any())).thenReturn(saved);
+
+        mockMvc.perform(post("/api/order-items")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderId\":1,\"menuItemId\":2,\"quantity\":1,\"price\":0.01,\"status\":\"completed\",\"modifierIds\":[]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.price").value(17.00));
+
+        // What reached the service: the order, the menu item, the quantity, no note, no modifiers - and nothing else
+        verify(orderItemModifierService).ringInItem(
+                new com.notapos.dto.OrderItemRequest(1L, 2L, 1, null, java.util.List.of()));
+    }
+
+    @Test
+    void testRingInItem_WhenTheCheckWasClosedElsewhere_ShouldReturn409WithACode() throws Exception {
+        // WHAT: Test POST /api/order-items when the order is no longer open
+        // WHY: The order screen checks the code (not the wording) to know it must tell the
+        //      server the check was closed and reload the table
+
+        when(orderItemModifierService.ringInItem(any())).thenThrow(
+                new com.notapos.exception.OrderNotOpenException("This check was already closed, most likely on another terminal. Nothing was added or sent."));
+
+        mockMvc.perform(post("/api/order-items")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderId\":1,\"menuItemId\":2,\"quantity\":1,\"modifierIds\":[]}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ORDER_NOT_OPEN"))
+                .andExpect(jsonPath("$.message").value("This check was already closed, most likely on another terminal. Nothing was added or sent."));
+    }
+
+    @Test
+    void testSendItemsForOrder_WhenTheCheckWasClosedElsewhere_ShouldReturn409WithACode() throws Exception {
+        // WHAT: Test POST /api/order-items/order/{id}/send when the order is no longer open
+        // WHY: Same signal to the screen as ringing in
+
+        when(orderItemService.sendItemsForOrder(1L)).thenThrow(
+                new com.notapos.exception.OrderNotOpenException("This check was already closed."));
+
+        mockMvc.perform(post("/api/order-items/order/1/send"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ORDER_NOT_OPEN"));
+    }
+
+    @Test
+    void testOtherConflicts_ShouldCarryNoCode() throws Exception {
+        // WHAT: Test that an ordinary 409 (a locked item) has no code
+        // WHY: The code marks ONE situation. A screen must not mistake "this item already
+        //      went to the kitchen" for "this check was closed".
+
+        doThrow(new com.notapos.exception.ItemLockedException("Cannot delete locked item. Item has been sent to kitchen."))
+                .when(orderItemService).deleteOrderItem(1L);
+
+        mockMvc.perform(delete("/api/order-items/1"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.nullValue()));
     }
 }

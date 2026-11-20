@@ -70,15 +70,12 @@ public class OrderItemController {
         return ResponseEntity.ok(orderItemService.getItemsByOrder(orderId));
     }
 
+    // Ring in one item, with its modifiers and kitchen note if it has any. This is the only
+    // way to add an item to an order. The request has no price: the backend works it out
+    // (a "price" sent anyway is ignored). See OrderItemModifierService.ringInItem for the rules.
     @PostMapping                                                                            // Create new order item, add to order
-    public ResponseEntity<OrderItem> createOrderItem(@Valid @RequestBody OrderItem orderItem) {
-        OrderItem created = orderItemService.createOrderItem(orderItem);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
-    }
-
-    @PostMapping("/with-modifiers")                                                         // Create new order item together with its modifiers + kitchen note (price is worked out by the backend)
-    public ResponseEntity<OrderItem> createOrderItemWithModifiers(@Valid @RequestBody OrderItemRequest request) {
-        OrderItem created = orderItemModifierService.createOrderItemWithModifiers(request);
+    public ResponseEntity<OrderItem> ringInItem(@Valid @RequestBody OrderItemRequest request) {
+        OrderItem created = orderItemModifierService.ringInItem(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -87,14 +84,6 @@ public class OrderItemController {
             @PathVariable Long id,
             @Valid @RequestBody OrderItemModifiersRequest request) {
         OrderItem updated = orderItemModifierService.replaceModifiersForOrderItem(id, request);
-        return ResponseEntity.ok(updated);
-    }
-
-    @PutMapping("/{id}")                                            // Update Order Item
-    public ResponseEntity<OrderItem> updateOrderItem(
-            @PathVariable Long id,
-            @RequestBody OrderItem orderItem) {
-        OrderItem updated = orderItemService.updateOrderItem(id, orderItem);
         return ResponseEntity.ok(updated);
     }
 

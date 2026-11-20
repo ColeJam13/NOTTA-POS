@@ -39,7 +39,7 @@ class OrderItemServiceTest {
     private OrderItemModifierRepository orderItemModifierRepository;
 
     @Mock
-    private com.notapos.repository.MenuItemRepository menuItemRepository;
+    private com.notapos.repository.OrderRepository orderRepository;
 
     @InjectMocks
     private OrderItemService orderItemService;
@@ -57,20 +57,19 @@ class OrderItemServiceTest {
         testItem.setStatus("draft");
         testItem.setDelaySeconds(15);
         testItem.setIsLocked(false);
+
+        // Order 1 (the order testItem is on) exists and is open. "lenient" because the tests
+        // that never send anything do not look the order up, and Mockito would otherwise
+        // complain about a stub that was not used.
+        lenient().when(orderRepository.findById(1L)).thenReturn(Optional.of(order(1L, "open")));
     }
 
-    @Test
-    void testCreateOrderItem_ShouldStartAsDraft() {
-        // Given
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(testItem);
-
-        // When
-        OrderItem created = orderItemService.createOrderItem(testItem);
-
-        // Then
-        assertEquals("draft", created.getStatus());
-        assertFalse(created.getIsLocked());
-        verify(orderItemRepository, times(1)).save(testItem);
+    private com.notapos.entity.Order order(Long orderId, String status) {
+        com.notapos.entity.Order order = new com.notapos.entity.Order();
+        order.setOrderId(orderId);
+        order.setTableId(1L);
+        order.setStatus(status);
+        return order;
     }
 
     @Test
@@ -93,39 +92,71 @@ class OrderItemServiceTest {
     }
 
     @Test
-    void testUpdateOrderItem_WhenPending_ShouldResetTimer() {
-        // Given
-        testItem.setStatus("pending");
-        testItem.setDelayExpiresAt(LocalDateTime.now().plusSeconds(5)); // Expiring soon
-        
-        OrderItem updatedItem = new OrderItem();
-        updatedItem.setQuantity(2);
-        updatedItem.setPrice(new BigDecimal("17.00"));
-        
-        when(orderItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(testItem);
+    void testRequireOpenOrder_WhenOpen_ShouldReturnTheOrder() {
+        // WHAT: Test the check every ring-in, send, and change starts with
+        // WHY: An open order passes straight through
 
-        // When
-        OrderItem result = orderItemService.updateOrderItem(1L, updatedItem);
-
-        // Then
-        assertEquals("pending", result.getStatus());
-        assertTrue(result.getDelayExpiresAt().isAfter(LocalDateTime.now().plusSeconds(10)));
-        verify(orderItemRepository, times(1)).save(testItem);
+        assertEquals(1L, orderItemService.requireOpenOrder(1L).getOrderId());
     }
 
     @Test
-    void testUpdateOrderItem_WhenLocked_ShouldThrowException() {
-        // Given
-        testItem.setIsLocked(true);
-        when(orderItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
+    void testRequireOpenOrder_WhenClosed_ShouldThrow() {
+        // WHAT: Test the check on a check that was already paid
+        // WHY: Server B closed it on another terminal while server A still had it on screen.
+        //      Becomes a 409 with a code the order screen recognizes.
 
-        // When & Then
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            orderItemService.updateOrderItem(1L, new OrderItem());
-        });
-        
-        assertTrue(exception.getMessage().contains("Cannot update locked item"));
+        when(orderRepository.findById(2L)).thenReturn(Optional.of(order(2L, "closed")));
+
+        com.notapos.exception.OrderNotOpenException exception = assertThrows(
+                com.notapos.exception.OrderNotOpenException.class, () -> orderItemService.requireOpenOrder(2L));
+        assertTrue(exception.getMessage().contains("already closed"));
+    }
+
+    @Test
+    void testRequireOpenOrder_WhenTheOrderDoesNotExist_ShouldThrow() {
+        // WHAT: Test the check on an order ID that is not in the database
+        // WHY: Tables are linked by plain ID columns, so nothing else would stop an item
+        //      being attached to an order that does not exist
+
+        when(orderRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(com.notapos.exception.ResourceNotFoundException.class, () -> orderItemService.requireOpenOrder(99L));
+    }
+
+    @Test
+    void testSendItemsForOrder_OnAClosedOrder_ShouldThrowAndSendNothing() {
+        // WHAT: Test pressing Send for a check that was already paid
+        // WHY: Items sent on a closed check were never billed and never seen by the kitchen
+
+        when(orderRepository.findById(2L)).thenReturn(Optional.of(order(2L, "closed")));
+
+        assertThrows(com.notapos.exception.OrderNotOpenException.class, () -> orderItemService.sendItemsForOrder(2L));
+        verify(orderItemRepository, never()).findByOrderIdAndStatus(any(), any());
+        verify(orderItemRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void testSendOrderNow_OnAClosedOrder_ShouldThrowAndSendNothing() {
+        // WHAT: Test pressing Send Now for a check that was already paid
+        // WHY: Same rule as Send
+
+        when(orderRepository.findById(2L)).thenReturn(Optional.of(order(2L, "closed")));
+
+        assertThrows(com.notapos.exception.OrderNotOpenException.class, () -> orderItemService.sendOrderNow(2L));
+        verify(orderItemRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void testSendItemNow_OnAClosedOrder_ShouldThrowAndLeaveTheItemAlone() {
+        // WHAT: Test sending one item straight to the kitchen on a closed check
+        // WHY: Same rule, for the one-item version
+
+        testItem.setOrderId(2L);
+        when(orderItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
+        when(orderRepository.findById(2L)).thenReturn(Optional.of(order(2L, "closed")));
+
+        assertThrows(com.notapos.exception.OrderNotOpenException.class, () -> orderItemService.sendItemNow(1L));
+        assertEquals("draft", testItem.getStatus());
         verify(orderItemRepository, never()).save(any());
     }
 
@@ -641,46 +672,5 @@ class OrderItemServiceTest {
         // Then
         verify(orderItemRepository, never()).findByOrderIdAndStatus(any(), any());
         verify(orderItemRepository, never()).saveAll(any());
-    }
-
-    @Test
-    void testCreateOrderItem_WhenMenuItemIs86d_ShouldThrowAndSaveNothing() {
-        // WHAT: Test ringing in an item the kitchen has 86'd
-        // WHY: The order screen greys 86'd items out, but a screen that has not refreshed
-        //      yet could still send one. The backend has the final say.
-
-        // Given - menu item 1 is 86'd
-        com.notapos.entity.MenuItem menuItem = new com.notapos.entity.MenuItem();
-        menuItem.setMenuItemId(1L);
-        menuItem.setName("Chicken Cutty");
-        menuItem.setIs86d(true);
-        when(menuItemRepository.findById(1L)).thenReturn(Optional.of(menuItem));
-
-        // When & Then
-        com.notapos.exception.ItemUnavailableException exception = assertThrows(
-                com.notapos.exception.ItemUnavailableException.class,
-                () -> orderItemService.createOrderItem(testItem));
-        assertTrue(exception.getMessage().contains("Chicken Cutty"));
-        verify(orderItemRepository, never()).save(any());
-    }
-
-    @Test
-    void testCreateOrderItem_WhenMenuItemIsAvailable_ShouldSave() {
-        // WHAT: Test ringing in an item that is not 86'd
-        // WHY: The 86 check must not get in the way of a normal order
-
-        // Given - menu item 1 is available
-        com.notapos.entity.MenuItem menuItem = new com.notapos.entity.MenuItem();
-        menuItem.setMenuItemId(1L);
-        menuItem.setName("Chicken Cutty");
-        when(menuItemRepository.findById(1L)).thenReturn(Optional.of(menuItem));
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(testItem);
-
-        // When
-        OrderItem created = orderItemService.createOrderItem(testItem);
-
-        // Then
-        assertEquals("draft", created.getStatus());
-        verify(orderItemRepository, times(1)).save(testItem);
     }
 }
