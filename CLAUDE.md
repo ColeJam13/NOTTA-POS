@@ -55,10 +55,11 @@ When pair-programming interactively instead of automating: ask before writing co
 - **Validation:** `@Valid` on create endpoints, with constraint annotations on the entity fields.
 - **Transactions:** services are `@Transactional(readOnly = true)` at class level; methods that write add `@Transactional`.
 - **Status values:** use the enums' `getValue()` and `matches()`. Do not type status strings by hand. Entity status fields are still `String` columns, so the database and JSON hold lowercase text (`draft`, `limbo`, `pending`, `fired`, `completed`).
-- **Avoid N+1 queries:** when a screen needs several entities together, add one endpoint that returns a DTO built from batched `WHERE ... IN` queries (see `ActiveOrderService` and `TableOverviewService`). `JOIN FETCH` does not apply because entities are not linked by JPA relationships.
+- **Avoid N+1 queries:** when a screen needs several entities together, add one endpoint that returns a DTO built from batched `WHERE ... IN` queries (see `ActiveOrderService`, `TableOverviewService`, and `FinancialsReportService`). `JOIN FETCH` does not apply because entities are not linked by JPA relationships.
 - **Prefer a data-model change over a React workaround.** Example: Quick Orders were kept off the floor map with an `is_quick_order` column, not a frontend filter.
 - **Frontend requests** go through `apiFetch` / `getJson` / `sendJson` in `services/api.js`. Never hardcode the backend address.
 - **Money math** goes through `utils/totals.js`.
+- **Reports are added up on the backend.** `GET /api/reports/financials?from=...&to=...` returns the Financials screen's numbers for the checks closed in a period, using `BigDecimal`. The screen only picks the period and draws the answer. `from` and `to` are local date-times with no zone (`2026-11-18T00:00:00`), the same clock orders are stamped with.
 - **The backend works out the check.** `OrderCheckService` adds up an order's sent items, tax, and total; `GET /api/orders/{id}/check` returns it and the Payment modal shows it. `PaymentService.createPayment` charges that number and refuses (409) anything that does not match it. `utils/totals.js` is only for the running total on the order screen and for orders closed before totals were recorded. Draft items are not on the check.
 - **An order is only closed by a payment or cleared when empty.** `PaymentService.createPayment` refuses an order that is missing, already closed, empty, or holding unsent items, then records subtotal, tax, and total on the order. `OrderService.deleteOrder` clears an empty open order and frees its table; it refuses anything else. Refusals throw `OrderStateException` (409) with a message written for the person at the screen, and the frontend shows that message as-is.
 - **A table has one open order.** `OrderService.createOrder` marks the table occupied in the same transaction and returns the existing open order if the table already has one. The frontend does not set table status.
@@ -93,11 +94,11 @@ Built: a working-state pass over the core flow (seat, send, change, pay, clear).
 
 Known gaps left open on purpose:
 
-- The Financials screen still downloads every order, payment, order item, and table and adds them up in the browser. Active Orders, Tables, and Quick Orders each use one combined endpoint.
+- The Financials report loads once per period and does not refresh on its own; pick the period again to see checks closed since.
 - Entity status fields are `String`, not enum-typed.
 - `OrderItemService.updateOrderItem` resets the edit timer only when status is `pending`, but pending items are locked and rejected earlier in the method, so the reset never runs. It probably should check `limbo`. A test asserts the current behavior.
 - `GET /api/menu-items` returns active items whether or not `?active=true` is passed.
-- `subtotal`, `tax`, and `total` on orders are written when the order is paid. Orders closed before that hold zeros; `closedOrderTotals` in `utils/totals.js` falls back to the items for those. Nothing calls `PUT /api/orders/{id}/totals` or `PUT /api/orders/{id}/close`.
+- `subtotal`, `tax`, and `total` on orders are written when the order is paid. Orders closed before that hold zeros; the backend works their amounts out from their items wherever it reports on closed checks (`TableOverviewService`, `FinancialsReportService`). Nothing calls `PUT /api/orders/{id}/totals` or `PUT /api/orders/{id}/close`.
 - The tax rate lives in two places: `notta.tax-rate` (backend, the one that is charged) and `TAX_RATE` in `utils/totals.js` (the order screen's running total). They must be changed together.
 - Timestamps are `LocalDateTime` with no time zone, and the countdown and "5m ago" labels compare them with the device's own clock. A tablet whose clock is off, or a backend in another time zone, would show wrong times and a wrong countdown.
 - One payment closes the whole order. There are no split checks, partial payments, refunds, or voids of sent items.

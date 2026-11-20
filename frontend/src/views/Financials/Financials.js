@@ -2,39 +2,43 @@ import { useState, useEffect } from 'react';
 import NavBar from '../../components/NavBar/NavBar';
 import { formatTableName, formatTimeAgo, formatPaymentMethod } from '../../utils/formatters';
 import './Financials.css';
-import { apiFetch } from '../../services/api';
-import { closedOrderTotals } from '../../utils/totals';
+import { getJson } from '../../services/api';
 
+// Write a Date the way the backend reads it: "2026-11-18T00:00:00", in this device's own
+// time with no time zone. (toISOString() would convert to UTC, which is a different clock
+// from the one the backend stamps orders with.)
+const toLocalDateTime = (date) => {
+    const pad = (number) => String(number).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+        `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
+// What the screen shows before the first report arrives, or if it cannot be loaded
+const EMPTY_REPORT = {
+    orderCount: 0,
+    revenue: 0,
+    tax: 0,
+    tips: 0,
+    totalCollected: 0,
+    avgOrderValue: 0,
+    avgTipPercent: 0,
+    paymentBreakdown: [],
+    recentTransactions: []
+};
+
+/**
+ * Financials screen: sales, tips, and payment methods for a time period.
+ *
+ * The numbers come from the backend (GET /api/reports/financials), which adds
+ * up the checks closed in the period. This screen only picks the period and
+ * draws the answer. It used to download every order, payment, order item, and
+ * table and do the adding up here.
+ */
 function Financials({ setCurrentView, setSelectedTable }) {
     const [timePeriod, setTimePeriod] = useState('today');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
-    const [orders, setOrders] = useState([]);
-    const [payments, setPayments] = useState([]);
-    const [orderItems, setOrderItems] = useState([]);
-    const [tables, setTables] = useState([]);
-
-    useEffect(() => {                                                       // Load orders, payments, order items, and tables on mount
-        apiFetch('/api/orders')
-            .then(response => response.json())
-            .then(data => setOrders(data))
-            .catch(error => console.error('Error fetching orders:', error));
-
-        apiFetch('/api/payments')
-            .then(response => response.json())
-            .then(data => setPayments(data))
-            .catch(error => console.error('Error fetching payments:', error));
-
-        apiFetch('/api/order-items')
-            .then(response => response.json())
-            .then(data => setOrderItems(data))
-            .catch(error => console.error('Error fetching order items:', error));
-
-        apiFetch('/api/tables')
-            .then(response => response.json())
-            .then(data => setTables(data))
-            .catch(error => console.error('Error fetching tables:', error));
-    }, []);
+    const [report, setReport] = useState(EMPTY_REPORT);
 
                                                                             // Get date range based on selected period
     const getDateRange = () => {
@@ -51,7 +55,7 @@ function Financials({ setCurrentView, setSelectedTable }) {
                 weekStart.setDate(now.getDate() - now.getDay());
                 weekStart.setHours(0, 0, 0, 0);
                 startDate = weekStart;
-                endDate = new Date();
+                endDate = new Date(new Date().setHours(23, 59, 59, 999));      // Through the end of today, so a check closed a second from now is still counted
                 break;
             case 'month':
                 startDate = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -62,8 +66,8 @@ function Financials({ setCurrentView, setSelectedTable }) {
                 // midnight in UTC, which is the evening BEFORE in US time zones, so picking
                 // today as both dates found nothing. Adding a time of day makes JavaScript
                 // read it as local time, and the end date runs to the last moment of its day.
-                startDate = customStartDate ? new Date(`${customStartDate}T00:00:00`) : new Date(0);
-                endDate = customEndDate ? new Date(`${customEndDate}T23:59:59.999`) : new Date();
+                startDate = customStartDate ? new Date(`${customStartDate}T00:00:00`) : new Date(2000, 0, 1);
+                endDate = customEndDate ? new Date(`${customEndDate}T23:59:59.999`) : new Date(new Date().setHours(23, 59, 59, 999));
                 break;
             default:
                 startDate = new Date(now.setHours(0, 0, 0, 0));
@@ -73,112 +77,30 @@ function Financials({ setCurrentView, setSelectedTable }) {
         return { startDate, endDate };
     };
 
-                                                                            // Filter closed orders by date range
-    const getFilteredOrders = () => {
-        const { startDate, endDate } = getDateRange();
-        
-        return orders.filter(order => {
-            if (order.status !== 'closed' || !order.closedAt) return false;
-            const closedDate = new Date(order.closedAt);
-            return closedDate >= startDate && closedDate <= endDate;
-        });
+    // The period as two pieces of text. Text (not Date objects) so the effect below only
+    // runs again when the period really changes, not on every redraw.
+    const { startDate, endDate } = getDateRange();
+    const from = toLocalDateTime(startDate);
+    const to = toLocalDateTime(endDate);
+
+    useEffect(() => {                                                       // Load the report on mount, and again whenever the period changes
+        getJson(`/api/reports/financials?from=${from}&to=${to}`)
+            .then(data => setReport(data))
+            .catch(error => console.error('Error fetching financials report:', error));
+    }, [from, to]);
+
+    // The names the screen below has always used for these numbers
+    const metrics = {
+        totalRevenue: report.revenue,
+        totalTax: report.tax,
+        totalTips: report.tips,
+        totalCollected: report.totalCollected,
+        orderCount: report.orderCount,
+        avgOrderValue: report.avgOrderValue,
+        avgTipPercent: report.avgTipPercent,
+        paymentBreakdown: report.paymentBreakdown,
+        recentTransactions: report.recentTransactions
     };
-
-                                                                            // Calculate financial metrics
-    const calculateMetrics = () => {
-        const filteredOrders = getFilteredOrders();
-        
-        if (filteredOrders.length === 0) {
-            return {
-                totalRevenue: 0,
-                totalTax: 0,
-                totalTips: 0,
-                orderCount: 0,
-                avgOrderValue: 0,
-                avgTipPercent: 0,
-                paymentBreakdown: {},
-                recentTransactions: []
-            };
-        }
-
-                                                                            // Calculate revenue and tips
-        let totalRevenue = 0;
-        let totalTax = 0;
-        let totalTips = 0;
-        const paymentMethodTotals = {};
-
-        filteredOrders.forEach(order => {
-            const payment = payments.find(p => p.orderId === order.orderId);
-            if (payment) {
-                const tipAmount = parseFloat(payment.tipAmount) || 0;
-                const paymentAmount = parseFloat(payment.amount) || 0;
-                
-                totalTips += tipAmount;
-                
-                                                                            // Track payment method totals (using payment.amount which is the subtotal)
-                const method = payment.paymentMethod || 'unknown';
-                if (!paymentMethodTotals[method]) {
-                    paymentMethodTotals[method] = 0;
-                }
-                paymentMethodTotals[method] += paymentAmount;
-            }
-
-                                                                            // Calculate order subtotal from items
-            const items = orderItems.filter(item => item.orderId === order.orderId);
-            const checkTotals = closedOrderTotals(order, items);            // Revenue is sales before tax; tax is tracked separately
-            totalRevenue += checkTotals.subtotal;
-            totalTax += checkTotals.tax;
-        });
-
-                                                                            // Calculate total of all payment amounts for percentage calculation
-        const totalPaymentAmount = Object.values(paymentMethodTotals).reduce((sum, amount) => sum + amount, 0);
-
-                                                                            // Calculate payment breakdown percentages (based on total payment amounts, not order items)
-        const paymentBreakdown = {};
-        Object.keys(paymentMethodTotals).forEach(method => {
-            paymentBreakdown[method] = {
-                amount: paymentMethodTotals[method],
-                percent: totalPaymentAmount > 0 ? (paymentMethodTotals[method] / totalPaymentAmount * 100).toFixed(1) : 0
-            };
-        });
-
-                                                                            // Get recent transactions (last 10)
-        const recentTransactions = filteredOrders
-            .sort((a, b) => new Date(b.closedAt) - new Date(a.closedAt))
-            .slice(0, 10)
-            .map(order => {
-                const payment = payments.find(p => p.orderId === order.orderId);
-                const items = orderItems.filter(item => item.orderId === order.orderId);
-                const orderTotal = closedOrderTotals(order, items).total;   // The check as paid, tax included (matches the payment amount)
-                const table = tables.find(t => t.tableId === order.tableId);
-                
-                return {
-                    orderId: order.orderId,
-                    table: table,
-                    serverName: order.serverName || 'N/A',
-                    closedAt: order.closedAt,
-                    total: orderTotal,
-                    tip: parseFloat(payment?.tipAmount) || 0,
-                    paymentMethod: payment?.paymentMethod || 'Unknown'
-                };
-            });
-
-        const avgOrderValue = totalRevenue / filteredOrders.length;
-        const avgTipPercent = totalRevenue > 0 ? (totalTips / totalRevenue * 100) : 0;
-
-        return {
-            totalRevenue,
-            totalTax,
-            totalTips,
-            orderCount: filteredOrders.length,
-            avgOrderValue,
-            avgTipPercent,
-            paymentBreakdown,
-            recentTransactions
-        };
-    };
-
-    const metrics = calculateMetrics();
 
     return (
         <div className="page-with-nav">
@@ -265,27 +187,22 @@ function Financials({ setCurrentView, setSelectedTable }) {
                         <div className="stat-label">Total w/ Tips</div>
                         {/* Everything collected: sales + tax + tips. Tax used to be left out, so this
                             never matched the payment amounts in the breakdown below. */}
-                        <div className="stat-value">${(metrics.totalRevenue + metrics.totalTax + metrics.totalTips).toFixed(2)}</div>
+                        <div className="stat-value">${metrics.totalCollected.toFixed(2)}</div>
                         <div className="stat-note">includes ${metrics.totalTax.toFixed(2)} tax</div>
                     </div>
                 </div>
 
               <div className="payment-breakdown">
                   <h3>Payment Method Breakdown</h3>
-                  {Object.keys(metrics.paymentBreakdown).length > 0 ? (
-                      // Sort payment methods in consistent order: CASH, CREDIT CARD, DEBIT CARD, GIFT CARD
-                      Object.keys(metrics.paymentBreakdown)
-                          .sort((a, b) => {
-                              const order = { 'cash': 1, 'credit_card': 2, 'debit_card': 3, 'gift_card': 4 };
-                              return (order[a] || 99) - (order[b] || 99);
-                          })
-                          .map(method => (
-                          <div key={method} className="payment-row">
-                              <div className="payment-label">{formatPaymentMethod(method)}:</div>
-                              <div className="payment-amount">${metrics.paymentBreakdown[method].amount.toFixed(2)}</div>
+                  {metrics.paymentBreakdown.length > 0 ? (
+                      // The backend sends the methods in a consistent order: CASH, CREDIT CARD, DEBIT CARD, GIFT CARD
+                      metrics.paymentBreakdown.map(row => (
+                          <div key={row.paymentMethod} className="payment-row">
+                              <div className="payment-label">{formatPaymentMethod(row.paymentMethod)}:</div>
+                              <div className="payment-amount">${row.amount.toFixed(2)}</div>
                               <div className="payment-bar-container">
-                                  <div className="payment-bar" style={{ width: `${metrics.paymentBreakdown[method].percent}%` }}>
-                                      <span className="payment-percent">{metrics.paymentBreakdown[method].percent}%</span>
+                                  <div className="payment-bar" style={{ width: `${row.percent}%` }}>
+                                      <span className="payment-percent">{row.percent.toFixed(1)}%</span>
                                   </div>
                               </div>
                           </div>
@@ -302,8 +219,8 @@ function Financials({ setCurrentView, setSelectedTable }) {
                             {metrics.recentTransactions.map((transaction) => (
                                 <div key={transaction.orderId} className="transaction-item">
                                     <div className="transaction-info">
-                                        <div className="transaction-table">{formatTableName(transaction.table)}</div>
-                                        <div className="transaction-server">Server: {transaction.serverName}</div>
+                                        <div className="transaction-table">{formatTableName(transaction)}</div>
+                                        <div className="transaction-server">Server: {transaction.serverName || 'N/A'}</div>
                                         <div className="transaction-time">{formatTimeAgo(transaction.closedAt)}</div>
                                         <div className="transaction-method">{formatPaymentMethod(transaction.paymentMethod)}</div>
                                     </div>
