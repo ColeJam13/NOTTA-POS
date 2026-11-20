@@ -122,7 +122,9 @@ public class ActiveOrderService {
                             item.getPrice(),
                             item.getStatus(),
                             item.getSpecialInstructions(),
-                            modifiersByOrderItemId.getOrDefault(item.getOrderItemId(), List.of()));
+                            modifiersByOrderItemId.getOrDefault(item.getOrderItemId(), List.of()),
+                            menuItem != null ? menuItem.getPrepStationId() : null,
+                            item.getSentAt());
                 })
                 .toList();
 
