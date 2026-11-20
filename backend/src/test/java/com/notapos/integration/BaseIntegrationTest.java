@@ -63,7 +63,9 @@ public abstract class BaseIntegrationTest {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
+        // No ddl-auto override: the tables are created by the Flyway migrations, the same way
+        // as in the real app, and Hibernate only validates them. Every test run therefore
+        // also proves that the migrations and the entity classes agree.
     }
 
     @Autowired
