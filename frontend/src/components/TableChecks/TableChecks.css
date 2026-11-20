@@ -1,0 +1,32 @@
+/* A line on a closed check: the item row, then its modifiers and kitchen note underneath */
+.check-line {
+  margin-bottom: 8px;
+}
+
+.check-line .modal-item {
+  margin-bottom: 0;
+}
+
+.check-line-modifiers {
+  list-style: none;
+  margin: 4px 0 0 0;
+  padding: 0 12px 0 24px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.check-line-modifiers li {
+  padding: 2px 0;
+}
+
+.check-line-modifiers small {
+  margin-left: 8px;
+  color: #39ff14;
+}
+
+.check-line-note {
+  margin: 4px 0 0 0;
+  padding: 0 12px 0 24px;
+  color: #ffd60a;
+  font-size: 12px;
+}

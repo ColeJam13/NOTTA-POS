@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -21,6 +22,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByStatus(String status);            // Find all orders with specific status
 
     List<Order> findByTableIdAndStatus(Long tableId, String status);                        // Find orders by status and table
+
+    List<Order> findByTableIdInAndStatus(Collection<Long> tableIds, String status);         // Find orders with a status for MANY tables in one query (avoids one query per table)
+
+    List<Order> findTop50ByTableIdInAndStatusOrderByClosedAtDesc(Collection<Long> tableIds, String status);    // The 50 most recently closed orders for those tables, newest first
 
 
     @Query("SELECT o FROM Order o WHERE o.createdAt BETWEEN :start AND :end")               // Find orders created within a time range

@@ -1,0 +1,37 @@
+package com.notapos.controller;
+
+import com.notapos.dto.TablesOverviewView;
+import com.notapos.service.TableOverviewService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * REST API Controller for the Tables and Quick Orders screens.
+ *
+ * One endpoint that answers either screen with everything it shows:
+ * the tables with an open check, and the most recent paid checks.
+ *
+ * @author CJ
+ */
+
+@RestController
+@RequestMapping("/api/tables/overview")
+public class TableOverviewController {
+
+    private final TableOverviewService tableOverviewService;
+
+    @Autowired
+    public TableOverviewController(TableOverviewService tableOverviewService) {
+        this.tableOverviewService = tableOverviewService;
+    }
+
+    @GetMapping                                                         // Get active tables + recent closed checks (quickOrders=true for the Quick Orders screen)
+    public ResponseEntity<TablesOverviewView> getOverview(
+            @RequestParam(defaultValue = "false") boolean quickOrders) {
+        return ResponseEntity.ok(tableOverviewService.getOverview(quickOrders));
+    }
+}
