@@ -30,4 +30,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT o FROM Order o WHERE o.createdAt BETWEEN :start AND :end")               // Find orders created within a time range
     List<Order> findOrdersBetween(LocalDateTime start, LocalDateTime end);
+
+    List<Order> findByStatusAndClosedAtBetween(String status, LocalDateTime start, LocalDateTime end);     // Find orders with a status that were closed within a time range (start and end included)
 }

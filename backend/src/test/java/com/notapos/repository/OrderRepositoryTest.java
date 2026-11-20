@@ -328,4 +328,42 @@ class OrderRepositoryTest extends BaseRepositoryTest {
         // The newest was closed 54 minutes after the first (compared to the second, to stay clear of rounding)
         assertEquals(start.plusMinutes(54).withNano(0), recent.get(0).getClosedAt().withNano(0));
     }
+
+    @Test
+    void testFindByStatusAndClosedAtBetween_ShouldReturnOnlyOrdersClosedInThePeriod() {
+        // WHAT: Test finding the orders closed within a time range
+        // WHY: The Financials report covers the checks PAID in a period, whenever they were opened
+
+        // Given - One order closed at noon, one closed the day before, one still open
+        orderRepository.deleteAll();
+        java.time.LocalDateTime noon = java.time.LocalDateTime.of(2026, 11, 18, 12, 0);
+
+        Order closedAtNoon = new Order();
+        closedAtNoon.setTableId(table1.getTableId());
+        closedAtNoon.setStatus("closed");
+        closedAtNoon.setClosedAt(noon);
+        orderRepository.save(closedAtNoon);
+
+        Order closedYesterday = new Order();
+        closedYesterday.setTableId(table1.getTableId());
+        closedYesterday.setStatus("closed");
+        closedYesterday.setClosedAt(noon.minusDays(1));
+        orderRepository.save(closedYesterday);
+
+        Order stillOpen = new Order();
+        stillOpen.setTableId(table2.getTableId());
+        stillOpen.setStatus("open");
+        orderRepository.save(stillOpen);
+
+        // When - Ask for everything closed on the 18th
+        List<Order> closedToday = orderRepository.findByStatusAndClosedAtBetween(
+                "closed", noon.toLocalDate().atStartOfDay(), noon.toLocalDate().atTime(23, 59, 59));
+
+        // Then - Only the one closed at noon
+        assertEquals(1, closedToday.size());
+        assertEquals(noon, closedToday.get(0).getClosedAt());
+
+        // And the ends of the range are included: asking for exactly noon to noon finds it
+        assertEquals(1, orderRepository.findByStatusAndClosedAtBetween("closed", noon, noon).size());
+    }
 }

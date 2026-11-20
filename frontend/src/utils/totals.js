@@ -73,22 +73,3 @@ export const calculateOrderTotals = (items) => {
 
   return { subtotal, tax, total };
 };
-
-/**
- * Subtotal, tax, and total for an order that has been paid.
- *
- * The backend records these on the order when the payment goes through, so
- * that is the number to show. Orders closed before the backend started
- * recording them hold zeros; for those the amounts are worked out from the
- * items instead.
- *
- * @param {Object} order - A closed order (subtotal, tax, total may be 0 on older orders)
- * @param {Array} items - That order's items
- * @returns {{subtotal: number, tax: number, total: number}} - Amounts in dollars
- */
-export const closedOrderTotals = (order, items) => {
-  if (order && order.total > 0) {
-    return { subtotal: order.subtotal, tax: order.tax, total: order.total };
-  }
-  return calculateOrderTotals(items);
-};
