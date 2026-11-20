@@ -1,5 +1,7 @@
 package com.notapos.controller;
 
+import com.notapos.enums.StaffRole;
+import com.notapos.security.StaffSessionInterceptor;
 import com.notapos.dto.OrderCheckView;
 import com.notapos.entity.Order;
 import com.notapos.exception.OrderStateException;
@@ -37,6 +39,10 @@ class OrderControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    // The real sign-in check runs in controller tests; this makes sessions for them
+    @Autowired
+    private StaffSessionInterceptor sessions;
 
     @MockBean
     private OrderService orderService;
@@ -276,5 +282,37 @@ class OrderControllerTest {
 
         mockMvc.perform(get("/api/orders/99/check"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void testCreateOrder_WhenSomeoneIsSignedIn_ShouldPutTheirNameOnTheOrder() throws Exception {
+        // WHAT: Test POST /api/orders with a signed-in server
+        // WHY: An order belongs to whoever rang it in. The name the screen sends is ignored
+        //      in favor of the person the backend knows is signed in.
+
+        String token = sessions.createSession(7L, "Sarah", StaffRole.SERVER);
+        when(orderService.createOrder(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        mockMvc.perform(post("/api/orders").header("X-Staff-Token", token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"tableId\":1,\"orderType\":\"dine_in\",\"serverName\":\"Somebody Else\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.serverName").value("Sarah"))
+                .andExpect(jsonPath("$.staffId").value(7));
+    }
+
+    @Test
+    void testCreateOrder_WhenNobodyIsSignedIn_ShouldKeepTheNameThatWasSent() throws Exception {
+        // WHAT: Test POST /api/orders with no sign-in
+        // WHY: Opening an order is not restricted, so older screens keep working
+
+        when(orderService.createOrder(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        mockMvc.perform(post("/api/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"tableId\":1,\"orderType\":\"dine_in\",\"serverName\":\"CJ\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.serverName").value("CJ"))
+                .andExpect(jsonPath("$.staffId").value(org.hamcrest.Matchers.nullValue()));
     }
 }

@@ -40,6 +40,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), null);
     }
 
+    @ExceptionHandler(NotSignedInException.class)                               // Nobody is signed in -> 401
+    public ResponseEntity<ApiError> handleNotSignedIn(NotSignedInException ex) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(NotAllowedException.class)                                // Signed in, but this role may not do it -> 403
+    public ResponseEntity<ApiError> handleNotAllowed(NotAllowedException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(TooManyAttemptsException.class)                           // Too many wrong PINs in a row -> 429
+    public ResponseEntity<ApiError> handleTooManyAttempts(TooManyAttemptsException ex) {
+        return buildResponse(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(StaffRuleException.class)                                 // Change breaks a rule about staff (PIN in use, last manager) -> 409
+    public ResponseEntity<ApiError> handleStaffRule(StaffRuleException ex) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), null);
+    }
+
     @ExceptionHandler(ItemLockedException.class)                                // Item already sent to kitchen -> 409
     public ResponseEntity<ApiError> handleItemLocked(ItemLockedException ex) {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), null);

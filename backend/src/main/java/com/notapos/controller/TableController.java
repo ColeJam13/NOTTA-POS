@@ -3,6 +3,8 @@ package com.notapos.controller;
 import jakarta.validation.Valid;
 import com.notapos.dto.TableLayoutRequest;
 import com.notapos.entity.RestaurantTable;
+import com.notapos.enums.StaffRole;
+import com.notapos.security.RequiresRole;
 import com.notapos.service.TableService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

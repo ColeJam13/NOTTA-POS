@@ -1,5 +1,7 @@
 import './NavBar.css';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, LogOut } from 'lucide-react';
+import { useStaff } from '../../context/StaffContext';
+import { canOpenScreen, initialsOf, ROLE_LABELS } from '../../utils/roles';
 
 /**
  * The bar at the top of every screen.
@@ -8,7 +10,21 @@ import { AlertCircle } from 'lucide-react';
  * screen) passes a function that returns false to keep the user where they
  * are. It is asked before every navigation from this bar.
  */
+// The buttons in the bar, left to right
+const NAV_BUTTONS = [
+  { view: 'floorMap', label: 'FLOOR MAP' },
+  { view: 'activeTables', label: 'TABLES' },
+  { view: 'quickOrders', label: 'QUICK ORDERS' },
+  { view: 'activeOrders', label: 'ACTIVE ORDERS' },
+  { view: 'createOrder', label: 'CREATE ORDER' },
+  { view: 'eightySix', label: '86 BOARD' },
+  { view: 'financials', label: 'FINANCIALS' },
+  { view: 'challenges', label: 'CHALLENGES' },
+  { view: 'staff', label: 'STAFF' }
+];
+
 function NavBar({ currentView, setCurrentView, setSelectedTable, confirmLeave }) {  // Add setSelectedTable prop
+  const { staff, signOut } = useStaff();          // Who is signed in (null when this bar is drawn on its own in a test)
 
   // Every button in the bar goes through here, so the "unsaved work" question is
   // asked in one place - and asked BEFORE anything about the current screen changes.
@@ -34,13 +50,19 @@ function NavBar({ currentView, setCurrentView, setSelectedTable, confirmLeave })
           <button className="notifications-btn">
             <AlertCircle size={20} /> <span className="notification-badge">2</span>
           </button>
-          <div className="user-info">
-            <div className="user-avatar">CJ</div>
-            <div className="user-details">
-              <span className="user-name">Cole J</span>
-              <span className="user-role">Manager</span>
+          {/* Who is signed in, and the way to sign out (so the next person can type their own PIN) */}
+          {staff && (
+            <div className="user-info">
+              <div className="user-avatar">{initialsOf(staff.name)}</div>
+              <div className="user-details">
+                <span className="user-name">{staff.name}</span>
+                <span className="user-role">{ROLE_LABELS[staff.role] || staff.role}</span>
+              </div>
+              <button className="sign-out-btn" onClick={() => { if (!confirmLeave || confirmLeave()) signOut(); }}>
+                <LogOut size={16} /> SIGN OUT
+              </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
       

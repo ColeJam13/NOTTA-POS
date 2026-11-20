@@ -51,3 +51,37 @@
   box-shadow: 0 0 30px rgba(176, 38, 255, 0.6);
   transform: translateY(-3px);
 }
+
+/* Who is signed in, top right of the Home screen */
+.home-signed-in {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.home-signed-in strong {
+  color: #39ff14;
+}
+
+.home-sign-out {
+  background: transparent;
+  border: 2px solid #b026ff;
+  color: #e0e0e0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.home-sign-out:hover {
+  background: #b026ff;
+  color: #1a1a2e;
+}

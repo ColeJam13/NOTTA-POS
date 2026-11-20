@@ -2,6 +2,36 @@ import { useState, useEffect, useMemo, useRef, memo } from 'react';
 import NavBar from '../../components/NavBar';
 import './FloorMap.css';
 import { apiFetch } from '../../services/api';
+import { useStaff } from '../../context/StaffContext';
+import { canDo } from '../../utils/roles';
+
+// In edit mode a dragged table snaps to this many pixels, so tables line up in rows
+const GRID_SIZE = 10;
+
+// How far one press of ROTATE turns the selected table, in degrees
+const ROTATE_STEP = 45;
+
+// Round a pixel position to the nearest grid line
+const snapToGrid = (value) => Math.round(value / GRID_SIZE) * GRID_SIZE;
+
+// Where a mouse or touch event happened on the screen. A touch event keeps its
+// position in a list of touches; a mouse event has it directly.
+const pointerPosition = (event) => {
+    const point = event.touches && event.touches.length > 0 ? event.touches[0] : event;
+    return { x: point.clientX, y: point.clientY };
+};
+
+// The same position measured from the top-left corner of the floor itself.
+// Tables are placed inside the floor's border, so the border's thickness
+// (clientLeft / clientTop) is taken off as well.
+const positionOnFloor = (event, floorElement) => {
+    const floor = floorElement.getBoundingClientRect();
+    const pointer = pointerPosition(event);
+    return {
+        x: pointer.x - floor.left - floorElement.clientLeft,
+        y: pointer.y - floor.top - floorElement.clientTop
+    };
+};
 
 // In edit mode a dragged table snaps to this many pixels, so tables line up in rows
 const GRID_SIZE = 10;

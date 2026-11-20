@@ -1,5 +1,7 @@
 package com.notapos.controller;
 
+import com.notapos.enums.StaffRole;
+import com.notapos.security.StaffSessionInterceptor;
 import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.entity.MenuItem;
 import com.notapos.service.MenuItemService;
@@ -15,6 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -34,6 +37,20 @@ class MenuItemControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    // The real sign-in check runs in controller tests. These tokens are sessions for a
+    // manager and for a server, made fresh before each test.
+    @Autowired
+    private StaffSessionInterceptor sessions;
+
+    private String managerToken;
+    private String serverToken;
+
+    @BeforeEach
+    void signInTestStaff() {
+        managerToken = sessions.createSession(900L, "Test Manager", StaffRole.MANAGER);
+        serverToken = sessions.createSession(901L, "Test Server", StaffRole.SERVER);
+    }
 
     @MockBean
     private MenuItemService menuItemService;

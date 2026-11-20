@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import com.notapos.dto.OrderCheckView;
 import com.notapos.entity.Order;
 import com.notapos.enums.OrderStatus;
+import com.notapos.security.StaffSessionInterceptor;
+import com.notapos.security.StaffSessionInterceptor.StaffSession;
 import com.notapos.service.OrderCheckService;
 import com.notapos.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,7 +77,16 @@ public ResponseEntity<List<Order>> getAllOrders(
     }
 
     @PostMapping                                                                // Create new order
-    public ResponseEntity<Order> createOrder(@Valid @RequestBody Order order) {
+    public ResponseEntity<Order> createOrder(
+            @Valid @RequestBody Order order,
+            @RequestAttribute(name = StaffSessionInterceptor.CURRENT_STAFF, required = false) StaffSession currentStaff) {
+        // The order belongs to whoever is signed in at the screen that opened it.
+        // (The name a screen sends is only used when nobody is signed in.)
+        if (currentStaff != null) {
+            order.setServerName(currentStaff.name());
+            order.setStaffId(currentStaff.staffId());
+        }
+
         Order created = orderService.createOrder(order);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }

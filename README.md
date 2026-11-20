@@ -23,6 +23,7 @@ pain points not addressed in other systems.
 
 ## What works today
 
+- **Sign-in:** each person signs in with a 4-digit PIN. Their role (server, bartender, host, kitchen, manager) decides which screens they see. Managers add staff and set PINs on the Staff screen.
 - **Floor Map:** tap a table to open or reopen its order.
 - **Create Order:** ring in items, choose modifiers, add kitchen notes, save a draft, or send.
 - **The edit window:** after Send, items wait 15 seconds before they lock and reach the kitchen. Adding, changing, or removing an item restarts the window; SEND NOW ends it.
