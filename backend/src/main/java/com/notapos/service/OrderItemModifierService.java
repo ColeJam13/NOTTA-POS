@@ -163,7 +163,19 @@ public class OrderItemModifierService {
     // ------------------------------------------------------------------------
 
     /**
-     * Create a draft order item together with its modifiers and kitchen note.
+     * Ring in one item: the ONLY way an item gets onto an order.
+     *
+     * Every rule about what may be rung in lives here, so no request can skip one:
+     *   1. the order must exist and still be open
+     *   2. the menu item must exist, be on the menu, and not be 86'd
+     *   3. the chosen modifiers must follow the menu's rules (required groups, limits)
+     *   4. the price is the menu price plus the modifiers' upcharges - worked out here,
+     *      never taken from the request
+     *
+     * (There used to be a second, "plain" path for items without modifiers. It saved the
+     * price the browser sent and checked none of the above.)
+     *
+     * Creates a draft order item together with its modifiers and kitchen note.
      *
      * Everything is saved in ONE transaction: if any part fails, nothing is
      * saved. The price is worked out here (menu price + upcharges), not taken
@@ -173,9 +185,19 @@ public class OrderItemModifierService {
      * @return The saved order item (status draft, price including upcharges)
      */
     @Transactional
-    public OrderItem createOrderItemWithModifiers(OrderItemRequest request) {
+    public OrderItem ringInItem(OrderItemRequest request) {
+        // 1. Only onto an open order (see OrderItemService.requireOpenOrder for the floor scenario)
+        orderItemService.requireOpenOrder(request.orderId());
+
+        // 2. The menu item must be something that can be ordered right now
         MenuItem menuItem = menuItemRepository.findById(request.menuItemId())
                 .orElseThrow(() -> new ResourceNotFoundException("Menu item not found with id: " + request.menuItemId()));
+
+        // An item taken off the menu cannot be rung in. A screen that loaded the menu before
+        // it was removed could still send it.
+        if (!Boolean.TRUE.equals(menuItem.getIsActive())) {
+            throw new ItemUnavailableException(menuItem.getName() + " is no longer on the menu.");
+        }
 
         // An 86'd item cannot be rung in. The order screen greys it out, but a screen that
         // has not refreshed yet could still send it.
@@ -192,7 +214,7 @@ public class OrderItemModifierService {
         orderItem.setQuantity(request.quantity() != null ? request.quantity() : 1);
         orderItem.setPrice(priceWithUpcharges(menuItem, chosen));
         orderItem.setSpecialInstructions(cleanNote(request.specialInstructions()));
-        orderItem.setStatus(OrderItemStatus.DRAFT.getValue());                  // Same starting point as OrderItemService.createOrderItem: draft, no timer
+        orderItem.setStatus(OrderItemStatus.DRAFT.getValue());                  // Every item starts as a draft with no timer; Send starts the edit window
         orderItem.setIsLocked(false);
 
         OrderItem saved = orderItemRepository.save(orderItem);
@@ -214,6 +236,9 @@ public class OrderItemModifierService {
     public OrderItem replaceModifiersForOrderItem(Long orderItemId, OrderItemModifiersRequest request) {
         OrderItem existing = orderItemRepository.findById(orderItemId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order item not found with id: " + orderItemId));
+
+        // Changing modifiers changes the price, and a paid check must not change
+        orderItemService.requireOpenOrder(existing.getOrderId());
 
         if (existing.getIsLocked()) {
             throw new ItemLockedException("Cannot change modifiers on locked item. Item has been sent to kitchen.");

@@ -15,7 +15,8 @@ import java.util.Map;
  *   "status": 404,
  *   "error": "Not Found",
  *   "message": "Order item not found with id: 42",
- *   "fieldErrors": null
+ *   "fieldErrors": null,
+ *   "code": null
  * }
  *
  * @param timestamp   When the error happened
@@ -23,6 +24,9 @@ import java.util.Map;
  * @param error       Short name of the status ("Not Found")
  * @param message     Human-readable explanation
  * @param fieldErrors For validation failures only: field name -> what is wrong with it
+ * @param code        For the few errors a screen must react to in a specific way: a fixed word it can
+ *                    check for (for example "ORDER_NOT_OPEN"). Null for everything else. Screens should
+ *                    never decide what to do by reading "message", which is wording for people.
  *
  * @author CJ
  */
@@ -31,5 +35,6 @@ public record ApiError(
         int status,
         String error,
         String message,
-        Map<String, String> fieldErrors) {
+        Map<String, String> fieldErrors,
+        String code) {
 }

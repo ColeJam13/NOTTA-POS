@@ -285,7 +285,7 @@ class OrderItemModifierServiceTest {
     }
 
     @Test
-    void testCreateOrderItemWithModifiers_ShouldSaveItemAsDraftWithUpchargesInPrice() {
+    void testRingInItem_ShouldSaveItemAsDraftWithUpchargesInPrice() {
         // WHAT: Test ringing in an item with modifiers and a kitchen note
         // WHY: The price charged must be menu price + upcharges, worked out by the backend
 
@@ -295,7 +295,7 @@ class OrderItemModifierServiceTest {
         stubSaveToAssignId(100L);
 
         // When
-        OrderItem created = orderItemModifierService.createOrderItemWithModifiers(
+        OrderItem created = orderItemModifierService.ringInItem(
                 new OrderItemRequest(77L, COMBO_PLATE_ID, 1, "  no butter  ", Arrays.asList(24L, 14L)));
 
         // Then - saved as an unlocked draft; 15.00 + 2.00 + 4.00 = 21.00
@@ -319,7 +319,7 @@ class OrderItemModifierServiceTest {
     }
 
     @Test
-    void testCreateOrderItemWithModifiers_WithNoteOnly_ShouldKeepMenuPrice() {
+    void testRingInItem_WithNoteOnly_ShouldKeepMenuPrice() {
         // WHAT: Test ringing in a plain item (no modifier groups) with just a kitchen note
         // WHY: Every item can carry a note, not only items with modifiers
 
@@ -333,7 +333,7 @@ class OrderItemModifierServiceTest {
         stubSaveToAssignId(101L);
 
         // When - quantity left out, no modifier list at all
-        OrderItem created = orderItemModifierService.createOrderItemWithModifiers(
+        OrderItem created = orderItemModifierService.ringInItem(
                 new OrderItemRequest(77L, 40L, null, "no ice", null));
 
         // Then
@@ -344,7 +344,7 @@ class OrderItemModifierServiceTest {
     }
 
     @Test
-    void testCreateOrderItemWithModifiers_WithBlankNote_ShouldStoreNoNote() {
+    void testRingInItem_WithBlankNote_ShouldStoreNoNote() {
         // WHAT: Test that a note of only spaces is stored as "no note"
         // WHY: The kitchen ticket should not print an empty note line
 
@@ -354,7 +354,7 @@ class OrderItemModifierServiceTest {
         stubSaveToAssignId(100L);
 
         // When
-        OrderItem created = orderItemModifierService.createOrderItemWithModifiers(
+        OrderItem created = orderItemModifierService.ringInItem(
                 new OrderItemRequest(77L, COMBO_PLATE_ID, 1, "   ", List.of(8L)));
 
         // Then
@@ -362,7 +362,7 @@ class OrderItemModifierServiceTest {
     }
 
     @Test
-    void testCreateOrderItemWithModifiers_WhenRequiredGroupNotAnswered_ShouldThrowAndSaveNothing() {
+    void testRingInItem_WhenRequiredGroupNotAnswered_ShouldThrowAndSaveNothing() {
         // WHAT: Test leaving out a required group
         // WHY: The kitchen cannot make a Combo Plate without knowing the bread
 
@@ -372,7 +372,7 @@ class OrderItemModifierServiceTest {
 
         // When & Then
         InvalidModifierSelectionException exception = assertThrows(InvalidModifierSelectionException.class, () ->
-                orderItemModifierService.createOrderItemWithModifiers(
+                orderItemModifierService.ringInItem(
                         new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(22L))));
 
         assertTrue(exception.getMessage().contains("Bread Choice"));
@@ -381,7 +381,7 @@ class OrderItemModifierServiceTest {
     }
 
     @Test
-    void testCreateOrderItemWithModifiers_WhenTooManyChosenFromGroup_ShouldThrow() {
+    void testRingInItem_WhenTooManyChosenFromGroup_ShouldThrow() {
         // WHAT: Test picking more than a group's maxSelections
         // WHY: "Bread Choice" allows one bread, "Add-Ons" allows two
 
@@ -391,13 +391,13 @@ class OrderItemModifierServiceTest {
 
         // When & Then - two breads
         InvalidModifierSelectionException twoBreads = assertThrows(InvalidModifierSelectionException.class, () ->
-                orderItemModifierService.createOrderItemWithModifiers(
+                orderItemModifierService.ringInItem(
                         new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L, 14L))));
         assertTrue(twoBreads.getMessage().contains("Bread Choice"));
 
         // ...and three add-ons where two are allowed
         InvalidModifierSelectionException threeAddOns = assertThrows(InvalidModifierSelectionException.class, () ->
-                orderItemModifierService.createOrderItemWithModifiers(
+                orderItemModifierService.ringInItem(
                         new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L, 22L, 23L, 24L))));
         assertTrue(threeAddOns.getMessage().contains("Add-Ons"));
 
@@ -405,7 +405,7 @@ class OrderItemModifierServiceTest {
     }
 
     @Test
-    void testCreateOrderItemWithModifiers_WhenModifierNotOfferedForItem_ShouldThrow() {
+    void testRingInItem_WhenModifierNotOfferedForItem_ShouldThrow() {
         // WHAT: Test sending a modifier that does not belong to this menu item
         // WHY: "Fries Size: Full" (ID 30) makes no sense on a Combo Plate
 
@@ -415,7 +415,7 @@ class OrderItemModifierServiceTest {
 
         // When & Then
         InvalidModifierSelectionException exception = assertThrows(InvalidModifierSelectionException.class, () ->
-                orderItemModifierService.createOrderItemWithModifiers(
+                orderItemModifierService.ringInItem(
                         new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L, 30L))));
 
         assertTrue(exception.getMessage().contains("30"));
@@ -423,7 +423,7 @@ class OrderItemModifierServiceTest {
     }
 
     @Test
-    void testCreateOrderItemWithModifiers_WhenSameModifierSentTwice_ShouldCountItOnce() {
+    void testRingInItem_WhenSameModifierSentTwice_ShouldCountItOnce() {
         // WHAT: Test a modifier ID that appears twice in the request
         // WHY: A double tap must not charge an upcharge twice
 
@@ -433,7 +433,7 @@ class OrderItemModifierServiceTest {
         stubSaveToAssignId(100L);
 
         // When - French Toast (+$2) sent twice
-        OrderItem created = orderItemModifierService.createOrderItemWithModifiers(
+        OrderItem created = orderItemModifierService.ringInItem(
                 new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, Arrays.asList(14L, 14L)));
 
         // Then - 15.00 + 2.00 once
@@ -442,13 +442,13 @@ class OrderItemModifierServiceTest {
     }
 
     @Test
-    void testCreateOrderItemWithModifiers_WhenMenuItemMissing_ShouldThrowNotFound() {
+    void testRingInItem_WhenMenuItemMissing_ShouldThrowNotFound() {
         // Given
         when(menuItemRepository.findById(999L)).thenReturn(Optional.empty());
 
         // When & Then
         assertThrows(ResourceNotFoundException.class, () ->
-                orderItemModifierService.createOrderItemWithModifiers(
+                orderItemModifierService.ringInItem(
                         new OrderItemRequest(77L, 999L, 1, null, List.of())));
 
         verify(orderItemRepository, never()).save(any());
@@ -668,7 +668,7 @@ class OrderItemModifierServiceTest {
     }
 
     @Test
-    void testCreateOrderItemWithModifiers_WhenMenuItemIs86d_ShouldThrowAndSaveNothing() {
+    void testRingInItem_WhenMenuItemIs86d_ShouldThrowAndSaveNothing() {
         // WHAT: Test ringing in an 86'd item that has modifiers
         // WHY: Same rule as a plain item - the kitchen is out of it
 
@@ -680,9 +680,88 @@ class OrderItemModifierServiceTest {
         // When & Then
         com.notapos.exception.ItemUnavailableException exception = assertThrows(
                 com.notapos.exception.ItemUnavailableException.class,
-                () -> orderItemModifierService.createOrderItemWithModifiers(
+                () -> orderItemModifierService.ringInItem(
                         new com.notapos.dto.OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L))));
         assertTrue(exception.getMessage().contains("Combo Plate"));
         verify(orderItemRepository, never()).save(any());
+    }
+
+    @Test
+    void testRingInItem_ShouldCheckTheOrderIsOpenBeforeAnythingElse() {
+        // WHAT: Test that ring-in asks "is this order still open?" first
+        // WHY: If the check was closed on another terminal, nothing may be looked up or saved
+
+        // Given - the open-order check refuses
+        when(orderItemService.requireOpenOrder(77L)).thenThrow(
+                new com.notapos.exception.OrderNotOpenException("This check was already closed."));
+
+        // When & Then
+        assertThrows(com.notapos.exception.OrderNotOpenException.class, () -> orderItemModifierService.ringInItem(
+                new com.notapos.dto.OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L))));
+        verify(menuItemRepository, never()).findById(any());
+        verify(orderItemRepository, never()).save(any());
+    }
+
+    @Test
+    void testRingInItem_WhenTheMenuItemIsOffTheMenu_ShouldThrowAndSaveNothing() {
+        // WHAT: Test ringing in an item that was deactivated
+        // WHY: A screen that loaded the menu before the item was removed could still send it
+
+        // Given - the Combo Plate has been taken off the menu
+        MenuItem menuItem = comboPlate();
+        menuItem.setIsActive(false);
+        when(menuItemRepository.findById(COMBO_PLATE_ID)).thenReturn(Optional.of(menuItem));
+
+        // When & Then
+        com.notapos.exception.ItemUnavailableException exception = assertThrows(
+                com.notapos.exception.ItemUnavailableException.class,
+                () -> orderItemModifierService.ringInItem(
+                        new com.notapos.dto.OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L))));
+        assertTrue(exception.getMessage().contains("no longer on the menu"));
+        verify(orderItemRepository, never()).save(any());
+    }
+
+    @Test
+    void testRingInItem_ForAnItemWithNoModifierGroups_ShouldSaveItAtTheMenuPrice() {
+        // WHAT: Test ringing in a plain item (no modifiers to choose, none chosen)
+        // WHY: Plain items used to go through a separate path that saved the browser's
+        //      price. They now come through here and get the menu price like everything else.
+
+        // Given - a $6.00 item with no modifier groups
+        MenuItem fries = new MenuItem();
+        fries.setMenuItemId(2L);
+        fries.setName("Fries");
+        fries.setPrice(new BigDecimal("6.00"));
+        when(menuItemRepository.findById(2L)).thenReturn(Optional.of(fries));
+        when(menuModifierService.getModifierGroupsForMenuItem(2L)).thenReturn(List.of());
+        when(orderItemRepository.save(any(OrderItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When - with no modifier list at all, as a plain item sends
+        OrderItem saved = orderItemModifierService.ringInItem(
+                new com.notapos.dto.OrderItemRequest(77L, 2L, 1, null, null));
+
+        // Then
+        assertEquals(new BigDecimal("6.00"), saved.getPrice());
+        assertEquals("draft", saved.getStatus());
+        assertFalse(saved.getIsLocked());
+    }
+
+    @Test
+    void testReplaceModifiersForOrderItem_OnAClosedOrder_ShouldThrowAndChangeNothing() {
+        // WHAT: Test changing modifiers on an item whose check was already paid
+        // WHY: Changing modifiers changes the price, and a paid check must not change
+
+        // Given - the item's order (77) is closed
+        OrderItem existing = savedItem(100L, "draft", false);
+        when(orderItemRepository.findById(100L)).thenReturn(Optional.of(existing));
+        when(orderItemService.requireOpenOrder(77L)).thenThrow(
+                new com.notapos.exception.OrderNotOpenException("This check was already closed."));
+
+        // When & Then
+        assertThrows(com.notapos.exception.OrderNotOpenException.class,
+                () -> orderItemModifierService.replaceModifiersForOrderItem(100L, new OrderItemModifiersRequest(null, List.of(14L))));
+        verify(orderItemModifierRepository, never()).deleteByOrderItemId(any());
+        verify(orderItemRepository, never()).save(any());
+        assertEquals(new BigDecimal("15.00"), existing.getPrice());
     }
 }

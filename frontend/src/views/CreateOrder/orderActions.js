@@ -111,50 +111,62 @@ export const loadModifierGroupsByMenuItem = async () => {
   return groupsByMenuItemId;
 };
 
+// The code the backend puts on its answer when an order is no longer open
+// (the check was closed, usually on another terminal). Screens check for this
+// code, never for the wording of the message.
+export const ORDER_NOT_OPEN = 'ORDER_NOT_OPEN';
+
+/**
+ * Turn a refused response into an Error that says why.
+ *
+ * Every error from the backend has the same body: a "message" written for the
+ * person at the screen, and for a few situations a "code" the screen can act on.
+ *
+ * @param {Response} response - A response whose status is not 2xx
+ * @param {string} fallbackMessage - What to say if the body cannot be read
+ * @returns {Promise<Error>} - With .message (the backend's wording), .status, and .code (or null)
+ */
+const refusalFrom = async (response, fallbackMessage) => {
+  const body = await response.json().catch(() => null);
+  const error = new Error(body?.message || fallbackMessage);
+  error.status = response.status;
+  error.code = body?.code || null;
+  return error;
+};
+
 /**
  * Save one item to an order as a draft (not sent to the kitchen yet).
  *
- * A plain item is saved exactly as before. An item with modifiers or a
- * kitchen note goes to a second endpoint that saves the item, its modifiers,
- * and its note together (all or nothing) and works out the price itself.
+ * Every item goes through the same request, with or without modifiers. The
+ * request carries no price: the backend works it out from the menu and the
+ * chosen modifiers, and checks the order is still open and the item can be
+ * ordered. (Plain items used to go to a second endpoint that saved the price
+ * sent from here.)
  *
  * @param {number} orderId - Order to add the item to
- * @param {Object} item - Item with menuItemId, quantity, and price; optionally
+ * @param {Object} item - Item with menuItemId and quantity; optionally
  *                        modifiers (array) and specialInstructions (kitchen note)
- * @returns {Promise<Object>} - The saved order item, including its new orderItemId
- * @throws {Error} - If the backend refuses the item (so a failed save is never mistaken for a saved one)
+ * @returns {Promise<Object>} - The saved order item, including its new orderItemId and its price
+ * @throws {Error} - If the backend refuses the item (so a failed save is never mistaken
+ *                   for a saved one). The error carries the backend's message and code.
  */
 export const createDraftItem = async (orderId, item) => {
   const modifiers = item.modifiers || [];
-  const note = item.specialInstructions || '';
-  const isCustomized = modifiers.length > 0 || note !== '';
 
-  const response = isCustomized
-    ? await apiFetch('/api/order-items/with-modifiers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: orderId,
-          menuItemId: item.menuItemId,
-          quantity: item.quantity,
-          specialInstructions: note,
-          modifierIds: modifiers.map(modifier => modifier.modifierId)   // No price: the backend adds up menu price + upcharges
-        })
-      })
-    : await apiFetch('/api/order-items', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: orderId,
-          menuItemId: item.menuItemId,
-          quantity: item.quantity,
-          price: item.price,
-          status: 'draft'
-        })
-      });
+  const response = await apiFetch('/api/order-items', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      orderId: orderId,
+      menuItemId: item.menuItemId,
+      quantity: item.quantity,
+      specialInstructions: item.specialInstructions || '',
+      modifierIds: modifiers.map(modifier => modifier.modifierId)   // No price: the backend adds up menu price + upcharges
+    })
+  });
 
   if (!response.ok) {
-    throw new Error(`Saving item ${item.menuItemId} failed with status ${response.status}`);
+    throw await refusalFrom(response, `Saving item ${item.menuItemId} failed with status ${response.status}`);
   }
   return response.json();
 };
@@ -164,9 +176,10 @@ export const createDraftItem = async (orderId, item) => {
  *
  * @param {number} orderItemId - The saved item to change
  * @param {Object} selection - { modifiers: Array, specialInstructions: string }
- * @returns {Promise<{locked: boolean, item: Object|null}>} - locked is true when the
- *          item already went to the prep station and can no longer be changed;
- *          otherwise item is the updated order item (with its new price)
+ * @returns {Promise<{locked: boolean, closed: boolean, item: Object|null}>}
+ *          locked: the item already went to the prep station and can no longer be changed.
+ *          closed: the whole check was closed (on another terminal) - nothing on it can change.
+ *          Otherwise item is the updated order item (with its new price).
  */
 export const updateItemModifiers = async (orderItemId, selection) => {
   const response = await apiFetch(`/api/order-items/${orderItemId}/modifiers`, {
@@ -178,13 +191,17 @@ export const updateItemModifiers = async (orderItemId, selection) => {
     })
   });
 
-  // 409 Conflict = the edit window closed before this change arrived
-  if (response.status === 409) return { locked: true, item: null };
+  // 409 Conflict = this change can no longer be made. The code says which of the two reasons.
+  if (response.status === 409) {
+    const refusal = await refusalFrom(response, 'This item can no longer be changed.');
+    if (refusal.code === ORDER_NOT_OPEN) return { locked: false, closed: true, item: null };
+    return { locked: true, closed: false, item: null };     // The edit window closed before this change arrived
+  }
 
   if (!response.ok) {
     throw new Error(`Updating item ${orderItemId} failed with status ${response.status}`);
   }
-  return { locked: false, item: await response.json() };
+  return { locked: false, closed: false, item: await response.json() };
 };
 
 /**
@@ -195,16 +212,20 @@ export const updateItemModifiers = async (orderItemId, selection) => {
  *
  * @param {number} orderId - Order the items belong to
  * @param {Array} items - The full on-screen item list
- * @returns {Promise<Array>} - One entry per item, in the same order: the new
- *                             orderItemId for items that were just saved, or
- *                             null for items that did not need saving.
- *                             (Matching by position, not by menu item, keeps
- *                             two of the same dish from sharing one ID.)
- *                             An item whose save FAILED also gets null, so the
- *                             caller can spot it: it needed saving but has no ID.
+ * @returns {Promise<{newIds: Array, failure: Error|null}>}
+ *          newIds: one entry per item, in the same order: the new orderItemId
+ *                  for items that were just saved, or null for items that did
+ *                  not need saving. (Matching by position, not by menu item,
+ *                  keeps two of the same dish from sharing one ID.) An item
+ *                  whose save FAILED also gets null, so the caller can spot
+ *                  it: it needed saving but has no ID.
+ *          failure: why the first refused item was refused (the backend's
+ *                   message and code), or null if every save worked.
  */
-export const saveNewDraftItems = (orderId, items) => {
-  return Promise.all(
+export const saveNewDraftItems = async (orderId, items) => {
+  let failure = null;
+
+  const newIds = await Promise.all(
     items.map(async (item) => {
       const needsSaving = item.status === 'draft' && !item.orderItemId;
       if (!needsSaving) return null;
@@ -215,25 +236,37 @@ export const saveNewDraftItems = (orderId, items) => {
       } catch (error) {
         // Do not let one failed item hide the IDs of the items that did save
         console.error('Error saving draft item:', error);
+        if (!failure) failure = error;
         return null;
       }
     })
   );
+
+  return { newIds, failure };
 };
 
-// Send ALL draft items for this order (backend starts the edit timer and answers with the sent items)
+// Send ALL draft items for this order (backend starts the edit timer and answers with the sent items).
+// Throws if the backend refuses - for example because the check was closed on another terminal.
 export const sendDraftItems = async (orderId) => {
   const sendResponse = await apiFetch(`/api/order-items/order/${orderId}/send`, {
     method: 'POST'
   });
+  if (!sendResponse.ok) {
+    throw await refusalFrom(sendResponse, `Sending order ${orderId} failed with status ${sendResponse.status}`);
+  }
   return sendResponse.json();
 };
 
-// Send everything on the order to the prep stations right now (bypass the timer)
-export const sendOrderNow = (orderId) => {
-  return apiFetch(`/api/order-items/order/${orderId}/send-now`, {
+// Send everything on the order to the prep stations right now (bypass the timer).
+// Throws if the backend refuses, the same as sendDraftItems.
+export const sendOrderNow = async (orderId) => {
+  const response = await apiFetch(`/api/order-items/order/${orderId}/send-now`, {
     method: 'POST'
   });
+  if (!response.ok) {
+    throw await refusalFrom(response, `Sending order ${orderId} failed with status ${response.status}`);
+  }
+  return response;
 };
 
 /**

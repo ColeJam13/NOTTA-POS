@@ -2,15 +2,16 @@ package com.notapos.service;
 
 import org.springframework.transaction.annotation.Transactional;
 import com.notapos.enums.OrderItemStatus;
+import com.notapos.enums.OrderStatus;
 import java.util.ArrayList;
 import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.exception.ItemLockedException;
-import com.notapos.exception.ItemUnavailableException;
-import com.notapos.entity.MenuItem;
+import com.notapos.exception.OrderNotOpenException;
+import com.notapos.entity.Order;
 import com.notapos.entity.OrderItem;
-import com.notapos.repository.MenuItemRepository;
 import com.notapos.repository.OrderItemModifierRepository;
 import com.notapos.repository.OrderItemRepository;
+import com.notapos.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
@@ -31,15 +32,39 @@ public class OrderItemService {
     
     private final OrderItemRepository orderItemRepository;
     private final OrderItemModifierRepository orderItemModifierRepository;     // Needed so deleting an item also deletes its modifiers
-    private final MenuItemRepository menuItemRepository;                       // Needed to check an item is not 86'd before it is rung in
+    private final OrderRepository orderRepository;                             // Needed to check an order is still open before anything is sent on it
 
     @Autowired
     public OrderItemService(OrderItemRepository orderItemRepository,
                             OrderItemModifierRepository orderItemModifierRepository,
-                            MenuItemRepository menuItemRepository) {
+                            OrderRepository orderRepository) {
         this.orderItemRepository = orderItemRepository;
         this.orderItemModifierRepository = orderItemModifierRepository;
-        this.menuItemRepository = menuItemRepository;
+        this.orderRepository = orderRepository;
+    }
+
+    /**
+     * Make sure an order exists and is still open, and hand it back.
+     *
+     * WHY: Two terminals can have the same table up. If one closes the check, the other
+     *      still shows it as open until it reloads. Without this check, items rung in or
+     *      sent from the stale screen attached to the closed order: they were never billed,
+     *      and the kitchen never saw them, because Active Orders lists open orders only.
+     *
+     * Everything that adds to, sends, or changes an order's items calls this first
+     * (ringing in and changing modifiers do so from OrderItemModifierService).
+     *
+     * @throws ResourceNotFoundException if there is no such order (404)
+     * @throws OrderNotOpenException     if the order is closed (409, code ORDER_NOT_OPEN)
+     */
+    public Order requireOpenOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+
+        if (!OrderStatus.OPEN.matches(order.getStatus())) {
+            throw new OrderNotOpenException("This check was already closed, most likely on another terminal. Nothing was added or sent.");
+        }
+        return order;
     }
 
     public List<OrderItem> getAllOrderItems() {                 // Get all order items
@@ -71,42 +96,9 @@ public class OrderItemService {
     }
 
     @Transactional
-    public OrderItem createOrderItem(OrderItem orderItem) {             // Create a new order item (add item to order, starts as draft, no timer)
-        // An 86'd item cannot be rung in (the order screen greys it out, but a screen that
-        // has not refreshed yet could still send it)
-        Optional<MenuItem> menuItem = menuItemRepository.findById(orderItem.getMenuItemId());
-        if (menuItem.isPresent() && Boolean.TRUE.equals(menuItem.get().getIs86d())) {
-            throw new ItemUnavailableException(menuItem.get().getName() + " is 86'd and cannot be ordered right now.");
-        }
-
-        orderItem.setStatus(OrderItemStatus.DRAFT.getValue());
-        orderItem.setIsLocked(false);
-
-        return orderItemRepository.save(orderItem);
-    }
-
-    @Transactional
-    public OrderItem updateOrderItem(Long id, OrderItem updatedItem) {          // Update order item (only if not locked)
-        OrderItem existing = orderItemRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order item not found with id: " + id));
-
-        if (existing.getIsLocked()) {
-            throw new ItemLockedException("Cannot update locked item. Item has been sent to kitchen.");
-        }
-
-        existing.setQuantity(updatedItem.getQuantity());
-        existing.setPrice(updatedItem.getPrice());
-        existing.setSpecialInstructions(updatedItem.getSpecialInstructions());
-
-        if (OrderItemStatus.PENDING.matches(existing.getStatus())) {
-            existing.setDelayExpiresAt(LocalDateTime.now().plusSeconds(existing.getDelaySeconds()));
-        }
-
-        return orderItemRepository.save(existing);
-    }
-
-    @Transactional
     public List<OrderItem> sendItemsForOrder(Long orderId) {                                            // Send items to kitchen/bar (STARTS THE TIMER WHEN SERVER HITS SEND)
+        requireOpenOrder(orderId);                                 // Nothing more goes to the kitchen on a closed check
+
         List<OrderItem> draftItems = orderItemRepository.findByOrderIdAndStatus(orderId, OrderItemStatus.DRAFT.getValue());
 
         if (draftItems.isEmpty()) {
@@ -184,6 +176,8 @@ public class OrderItemService {
 
     @Transactional
     public List<OrderItem> sendOrderNow(Long orderId) {                 // Send every draft + limbo item on an order now (bypass timer) - all or nothing
+        requireOpenOrder(orderId);                                 // Nothing more goes to the kitchen on a closed check
+
         List<OrderItem> itemsToSend = new ArrayList<>();
         itemsToSend.addAll(orderItemRepository.findByOrderIdAndStatus(orderId, OrderItemStatus.DRAFT.getValue()));
         itemsToSend.addAll(orderItemRepository.findByOrderIdAndStatus(orderId, OrderItemStatus.LIMBO.getValue()));
@@ -208,6 +202,8 @@ public class OrderItemService {
     public OrderItem sendItemNow(Long id) {                             // Send order now (Bypass timer)
         OrderItem item = orderItemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order item not found with id: " + id));
+
+        requireOpenOrder(item.getOrderId());                       // Nothing more goes to the kitchen on a closed check
 
         item.setIsLocked(true);
         item.setStatus(OrderItemStatus.PENDING.getValue());
