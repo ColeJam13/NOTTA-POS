@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import NavBar from '../../components/NavBar';
 import { apiFetch } from '../../services/api';
 import { ROLE_LABELS } from '../../utils/roles';
+import { useStaff } from '../../context/StaffContext';
 import './Staff.css';
 
 // An empty "add staff" form
@@ -52,6 +53,8 @@ const sendStaffRequest = async (method, path, body) => {
  * be removed) and this screen shows its explanation when it refuses.
  */
 function Staff({ setCurrentView, setSelectedTable }) {
+  const { staff: signedInStaff, signOut } = useStaff();   // The manager using this screen
+
   const [staffList, setStaffList] = useState([]);
   const [loadError, setLoadError] = useState('');
 
@@ -120,9 +123,28 @@ function Staff({ setCurrentView, setSelectedTable }) {
       return;
     }
 
+    // A manager who changes their OWN PIN or role (or switches themselves off) is signed out
+    // by the backend, the same as anyone else whose sign-in changes. Say so and go to the PIN
+    // pad now, instead of letting the next request fail without explanation.
+    const original = staffList.find(person => person.staffId === editing.staffId);
+    const ownSignInChanged = signedInStaff && editing.staffId === signedInStaff.staffId &&
+      (editing.pin !== '' || editing.role !== original?.role || editing.isActive !== original?.isActive);
+    if (ownSignInChanged) {
+      alert('Your own sign-in was changed. Sign in again to continue.');
+      signOut();
+      return;
+    }
+
     setEditing(null);
     setEditMessage('');
     loadStaff();
+  };
+
+  // Change one field of the "add staff" form. Editing the form also clears the last
+  // error, so an old message never sits under new input.
+  const changeNewStaff = (field, value) => {
+    setNewStaff({ ...newStaff, [field]: value });
+    setAddMessage('');
   };
 
   return (
@@ -141,12 +163,12 @@ function Staff({ setCurrentView, setSelectedTable }) {
                 type="text"
                 value={newStaff.name}
                 maxLength={50}
-                onChange={(event) => setNewStaff({ ...newStaff, name: event.target.value })}
+                onChange={(event) => changeNewStaff('name', event.target.value)}
               />
             </label>
             <label>
               Role
-              <select value={newStaff.role} onChange={(event) => setNewStaff({ ...newStaff, role: event.target.value })}>
+              <select value={newStaff.role} onChange={(event) => changeNewStaff('role', event.target.value)}>
                 {Object.entries(ROLE_LABELS).map(([role, label]) => (
                   <option key={role} value={role}>{label}</option>
                 ))}
@@ -159,7 +181,7 @@ function Staff({ setCurrentView, setSelectedTable }) {
                 inputMode="numeric"                       // Brings up the number keys on a tablet
                 autoComplete="off"
                 value={newStaff.pin}
-                onChange={(event) => setNewStaff({ ...newStaff, pin: pinDigits(event.target.value) })}
+                onChange={(event) => changeNewStaff('pin', pinDigits(event.target.value))}
               />
             </label>
             <button type="submit" className="staff-btn staff-btn-primary" disabled={newStaff.name.trim() === '' || newStaff.pin.length !== 4}>

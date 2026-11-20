@@ -59,7 +59,10 @@ When pair-programming interactively instead of automating: ask before writing co
 - **Status values:** use the enums' `getValue()` and `matches()`. Do not type status strings by hand. Entity status fields are still `String` columns, so the database and JSON hold lowercase text (`draft`, `limbo`, `pending`, `fired`, `completed`).
 - **Avoid N+1 queries:** when a screen needs several entities together, add one endpoint that returns a DTO built from batched `WHERE ... IN` queries (see `ActiveOrderService`, `TableOverviewService`, and `FinancialsReportService`). `JOIN FETCH` does not apply because entities are not linked by JPA relationships.
 - **Prefer a data-model change over a React workaround.** Example: Quick Orders were kept off the floor map with an `is_quick_order` column, not a frontend filter.
-- **Frontend requests** go through `apiFetch` / `getJson` / `sendJson` in `services/api.js`. Never hardcode the backend address.
+- **Frontend requests** go through `apiFetch` / `getJson` / `sendJson` in `services/api.js`. Never hardcode the backend address. `apiFetch` also adds the signed-in person's token, so a request made with plain `fetch` would arrive as nobody.
+- **Permissions are decided twice.** `utils/roles.js` decides what a role is offered on screen; `@RequiresRole` on the controller method decides what the backend allows. Hiding a button is for a tidy screen, not for security: anything that must be restricted needs the annotation. A controller test for a restricted endpoint must sign in first (see `StaffControllerTest` for the pattern: autowire `StaffSessionInterceptor`, call `createSession`, send the token header).
+- **Never return the `Staff` entity from a controller.** It holds the PIN hash. Use `StaffView`.
+- **Reading who is signed in:** on the frontend `const { staff } = useStaff();` (null in a test that draws one screen on its own, which `utils/roles.js` treats as unrestricted). On the backend `@RequestAttribute(name = StaffSessionInterceptor.CURRENT_STAFF, required = false) StaffSession currentStaff`.
 - **Money math** goes through `utils/totals.js`.
 - **Reports are added up on the backend.** `GET /api/reports/financials?from=...&to=...` returns the Financials screen's numbers for the checks closed in a period, using `BigDecimal`. The screen only picks the period and draws the answer. `from` and `to` are local date-times with no zone (`2026-11-18T00:00:00`), the same clock orders are stamped with.
 - **The backend works out the check.** `OrderCheckService` adds up an order's sent items, tax, and total; `GET /api/orders/{id}/check` returns it and the Payment modal shows it. `PaymentService.createPayment` charges that number and refuses (409) anything that does not match it. `utils/totals.js` is only for the running total on the order screen and for orders closed before totals were recorded. Draft items are not on the check.
@@ -109,7 +112,11 @@ Known gaps left open on purpose:
 - The Tables and Quick Orders screens show the 50 most recently closed checks, not all of them. There is no way to page back further or search for an older check.
 - The order screen does not refresh while it is open. Item statuses changed elsewhere (kitchen starts an item, another server adds one) show up only when the table is reopened. The Payment modal is not affected: it reads the check from the backend.
 - Parallel draft saves give items IDs that do not follow ring-in order, and Active Orders sorts by ID, so a ticket can list items in a different order than the server entered them.
-- The nav bar shows a hardcoded user and a hardcoded notification count; the search box does nothing.
+- The nav bar shows a hardcoded notification count; the search box does nothing.
+- Sessions are kept in the backend's memory. Restarting the backend signs everyone out, and the app could not run as several backend copies without moving sessions to the database.
+- Only the endpoints marked `@RequiresRole` check who is asking. Ordering, sending, paying, and reading are open to any request that can reach the backend.
+- A session does not end by itself while the screen is in use, and there is no sign-out after a period of no activity. On a shared terminal the next person acts as the last one until someone presses SIGN OUT.
+- The first manager's starting PIN (1234) is the same for every new database. It should be changed on first sign-in; nothing forces that yet.
 
 ## Feature plan
 
@@ -140,13 +147,17 @@ Build in this order, one pull request each.
 - Dragging uses mouse and touch events, not pointer events, because the test browser (jsdom) does not support pointer events.
 - Not built: adding or removing tables, changing a table's shape or seat count, and sections.
 
-### 4. Staff profiles and roles
+### 4. Staff profiles and roles (built)
 
-- Nothing exists. `serverName` is free text on orders and tables.
-- Roles: server, bartender, manager, host, kitchen.
-- **Two decisions are still open - ask the owner before building:**
-  1. Sign-in: a 4-digit PIN per person, or tap your name from a list?
-  2. Permissions: do managers see everything while other roles are limited to their own screens?
+- The owner's decisions: sign-in is a 4-digit PIN, like Toast. Managers see everything; other roles are limited to their own screens.
+- `Staff` (name, role, BCrypt PIN hash, active) and `StaffService`. A PIN belongs to one active person. After five wrong PINs in a minute sign-in pauses for 30 seconds. The last active manager cannot be deactivated or demoted. Bringing back a deactivated person needs a new PIN.
+- `POST /api/staff/sign-in` returns the person and a token. The frontend sends the token in the `X-Staff-Token` header (`services/api.js`). `StaffSessionInterceptor` holds the sessions in memory and enforces `@RequiresRole` on controller methods: 401 with no sign-in, 403 with the wrong role.
+- Restricted on the backend: staff management, the Financials report, and the floor layout (manager); 86 and un-86 (manager, kitchen, bartender). Everything else is open to any request.
+- `utils/roles.js` is the one list of which role may open which screen. `App.js` shows the PIN pad (`views/SignIn`) until someone signs in, and provides who that is through `context/StaffContext.js` (`useStaff()`).
+- `views/Staff` (managers) adds people, changes names and roles, sets new PINs, and deactivates.
+- A new order is stamped with the signed-in person: `serverName` and `staffId` (`OrderController.createOrder`).
+- When the staff table is empty, start-up creates a manager with PIN 1234 (`FirstManagerSetup`) and logs a warning.
+- Not built: sign-out after a period of no activity, a record of who did what besides opening an order, per-person sales, and locking the rest of the API to signed-in staff.
 
 ### Kitchen display (built, not in the original plan)
 

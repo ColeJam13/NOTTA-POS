@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Staff from './Staff';
+import { StaffContext } from '../../context/StaffContext';
 
 /**
  * Behavior tests for the Staff screen (managers only).
@@ -122,6 +123,10 @@ test('when the backend refuses a new person, the screen shows why and keeps what
   expect(await within(form).findByRole('alert')).toHaveTextContent('That PIN is already in use. Pick a different one.');
   expect(within(form).getByLabelText('Name')).toHaveValue('Alex');
   expect(screen.queryByTestId('staff-10')).not.toBeInTheDocument();
+
+  // Correcting the form clears the old message
+  await userEvent.clear(within(form).getByLabelText('PIN (4 digits)'));
+  expect(within(form).queryByRole('alert')).not.toBeInTheDocument();
 });
 
 test('changing a role sends no PIN, so the person keeps the one they have', async () => {
@@ -190,4 +195,60 @@ test('CANCEL closes the editor and sends nothing', async () => {
   expect(screen.queryByRole('form', { name: 'Edit Sarah' })).not.toBeInTheDocument();
   expect(within(row(1)).getByText('Server')).toBeInTheDocument();
   expect(changes()).toEqual([]);
+});
+
+// ============================================================================
+// A manager changing their own sign-in
+// ============================================================================
+
+// Draw the screen as it looks to Morgan (staff ID 2), the signed-in manager
+const renderScreenAsMorgan = async (signOut) => {
+  render(
+    <StaffContext.Provider value={{ staff: { staffId: 2, name: 'Morgan', role: 'manager' }, signOut }}>
+      <Staff setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />
+    </StaffContext.Provider>
+  );
+  await screen.findByText('Sarah');
+};
+
+test('a manager who changes their own PIN is told to sign in again and sent to the PIN pad', async () => {
+  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  const signOut = jest.fn();
+  await renderScreenAsMorgan(signOut);
+
+  await userEvent.click(screen.getByRole('button', { name: 'Edit Morgan' }));
+  const editor = screen.getByRole('form', { name: 'Edit Morgan' });
+  await userEvent.type(within(editor).getByLabelText(/New PIN/), '2468');
+  await userEvent.click(within(editor).getByRole('button', { name: 'SAVE' }));
+
+  await waitFor(() => expect(signOut).toHaveBeenCalled());
+  expect(alertSpy).toHaveBeenCalledWith('Your own sign-in was changed. Sign in again to continue.');
+  expect(changes()[0].body.pin).toBe('2468');                       // The change itself was saved first
+});
+
+test('a manager who only fixes their own name stays signed in', async () => {
+  const signOut = jest.fn();
+  await renderScreenAsMorgan(signOut);
+
+  await userEvent.click(screen.getByRole('button', { name: 'Edit Morgan' }));
+  const editor = screen.getByRole('form', { name: 'Edit Morgan' });
+  await userEvent.clear(within(editor).getByLabelText('Name'));
+  await userEvent.type(within(editor).getByLabelText('Name'), 'Morgan Lee');
+  await userEvent.click(within(editor).getByRole('button', { name: 'SAVE' }));
+
+  expect(await screen.findByText('Morgan Lee')).toBeInTheDocument();
+  expect(signOut).not.toHaveBeenCalled();
+});
+
+test('changing someone else\'s PIN does not sign the manager out', async () => {
+  const signOut = jest.fn();
+  await renderScreenAsMorgan(signOut);
+
+  await userEvent.click(screen.getByRole('button', { name: 'Edit Sarah' }));
+  const editor = screen.getByRole('form', { name: 'Edit Sarah' });
+  await userEvent.type(within(editor).getByLabelText(/New PIN/), '4444');
+  await userEvent.click(within(editor).getByRole('button', { name: 'SAVE' }));
+
+  await waitFor(() => expect(screen.queryByRole('form', { name: 'Edit Sarah' })).not.toBeInTheDocument());
+  expect(signOut).not.toHaveBeenCalled();
 });
