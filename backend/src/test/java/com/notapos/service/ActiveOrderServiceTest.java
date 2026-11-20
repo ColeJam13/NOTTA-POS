@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -223,5 +224,39 @@ class ActiveOrderServiceTest {
 
         // ONE modifiers lookup for every item on every order
         verify(orderItemModifierService, times(1)).getModifierViewsForOrderItems(anyCollection());
+    }
+
+    @Test
+    void testGetActiveOrders_ShouldCarryEachItemsPrepStationAndSendTime() {
+        // WHAT: Test that each item says which station makes it and when it was sent
+        // WHY: The kitchen view shows the bar only drinks and the kitchen only food, and
+        //      shows how long each ticket has been waiting
+
+        // Given - A latte made at the bar (station 2), sent at 12:05; and a draft with no send time
+        LocalDateTime sentAt = LocalDateTime.of(2026, 1, 1, 12, 5);
+        OrderItem latte = item(100L, 1L, 3L, "pending");
+        latte.setSentAt(sentAt);
+        OrderItem draft = item(101L, 1L, 9L, "draft");               // Menu item 9 is not in the menu lookup below
+
+        MenuItem latteMenuItem = menuItem(3L, "Latte");
+        latteMenuItem.setPrepStationId(2L);
+
+        when(orderRepository.findByStatus("open")).thenReturn(List.of(order(1L, 10L)));
+        when(orderItemRepository.findByOrderIdIn(List.of(1L))).thenReturn(List.of(latte, draft));
+        when(menuItemRepository.findAllById(any())).thenReturn(List.of(latteMenuItem));
+        when(tableRepository.findAllById(any())).thenReturn(List.of());
+
+        // When
+        List<ActiveOrderView> result = activeOrderService.getActiveOrders();
+
+        // Then
+        ActiveOrderItemView latteView = result.get(0).items().get(0);
+        assertEquals(2L, latteView.prepStationId());
+        assertEquals(sentAt, latteView.sentAt());
+
+        // An item whose menu item is gone has no station, and a draft has no send time
+        ActiveOrderItemView draftView = result.get(0).items().get(1);
+        assertNull(draftView.prepStationId());
+        assertNull(draftView.sentAt());
     }
 }

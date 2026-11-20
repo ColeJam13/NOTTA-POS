@@ -42,7 +42,8 @@ class ActiveOrderControllerTest {
         // Given - one open order at table W3 with one pending item (with a modifier and a kitchen note)
         ActiveOrderItemView item = new ActiveOrderItemView(
                 5L, 2L, "Chicken Cutty", 1, new BigDecimal("17.00"), "pending", "no onions",
-                List.of(new OrderItemModifierView(5L, 16L, "Hashbrowns", new BigDecimal("0.00"))));
+                List.of(new OrderItemModifierView(5L, 16L, "Hashbrowns", new BigDecimal("0.00"))),
+                1L, LocalDateTime.of(2026, 1, 1, 12, 5));          // Made at station 1 (the kitchen), sent at 12:05
         ActiveOrderView order = new ActiveOrderView(
                 1L, 3L, "W3", false, "Sarah", LocalDateTime.of(2026, 1, 1, 12, 0), List.of(item));
         when(activeOrderService.getActiveOrders()).thenReturn(List.of(order));
@@ -60,6 +61,8 @@ class ActiveOrderControllerTest {
                 .andExpect(jsonPath("$[0].items[0].name").value("Chicken Cutty"))
                 .andExpect(jsonPath("$[0].items[0].status").value("pending"))
                 .andExpect(jsonPath("$[0].items[0].specialInstructions").value("no onions"))
+                .andExpect(jsonPath("$[0].items[0].prepStationId").value(1))
+                .andExpect(jsonPath("$[0].items[0].sentAt").value("2026-01-01T12:05:00"))
                 .andExpect(jsonPath("$[0].items[0].modifiers.length()").value(1))
                 .andExpect(jsonPath("$[0].items[0].modifiers[0].modifierId").value(16))
                 .andExpect(jsonPath("$[0].items[0].modifiers[0].name").value("Hashbrowns"));
