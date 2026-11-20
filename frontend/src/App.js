@@ -8,11 +8,6 @@ import QuickOrders from './views/QuickOrders';
 import Financials from './views/Financials';
 import Challenges from './views/Challenges';
 import EightySixBoard from './views/EightySixBoard';
-import SignIn from './views/SignIn';
-import Staff from './views/Staff';
-import { StaffContext } from './context/StaffContext';
-import { apiFetch, setSessionToken, setOnSessionEnded } from './services/api';
-import { canOpenScreen } from './utils/roles';
 import './App.css';
 
 // Where the signed-in person's token is kept so a page reload does not sign them out.

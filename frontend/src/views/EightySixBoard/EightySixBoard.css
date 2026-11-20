@@ -143,25 +143,3 @@
 .eighty-six-item.is-86d .eighty-six-item-status {
   color: #ff3366;
 }
-
-
-/* Shown to people who can read the board but not change it */
-.eighty-six-read-only {
-  color: #9ca3af;
-  font-size: 12px;
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.eighty-six-item:disabled,
-.eighty-six-chip:disabled {
-  cursor: default;
-}
-
-.eighty-six-item:disabled:hover {
-  background: #16213e;
-}
-
-.eighty-six-item.is-86d:disabled:hover {
-  background: #3a1020;
-}

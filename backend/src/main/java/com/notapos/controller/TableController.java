@@ -58,7 +58,6 @@ public class TableController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    @RequiresRole(StaffRole.MANAGER)                                                    // Only a manager may rearrange the floor
     @PutMapping("/layout")                                                              // Save the Floor Map layout: position + rotation for many tables at once
     public ResponseEntity<List<RestaurantTable>> updateLayout(@Valid @RequestBody TableLayoutRequest layout) {
         return ResponseEntity.ok(tableService.updateLayout(layout.tables()));

@@ -260,7 +260,7 @@ class TableControllerTest {
 
         when(tableService.updateLayout(any())).thenReturn(java.util.List.of(testTable));
 
-        mockMvc.perform(put("/api/tables/layout").header("X-Staff-Token", managerToken)
+        mockMvc.perform(put("/api/tables/layout")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tables\":[{\"tableId\":1,\"x\":320,\"y\":140,\"rotation\":90}]}"))
                 .andExpect(status().isOk())
@@ -274,7 +274,7 @@ class TableControllerTest {
         // WHAT: Test PUT /api/tables/layout with a negative position and an impossible rotation
         // WHY: A table saved off the edge of the map could not be dragged back
 
-        mockMvc.perform(put("/api/tables/layout").header("X-Staff-Token", managerToken)
+        mockMvc.perform(put("/api/tables/layout")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tables\":[{\"tableId\":1,\"x\":-5,\"y\":140,\"rotation\":400}]}"))
                 .andExpect(status().isBadRequest())
@@ -288,7 +288,7 @@ class TableControllerTest {
         // WHAT: Test PUT /api/tables/layout with an empty list
         // WHY: Nothing to save is a mistake on the screen's side, not a success
 
-        mockMvc.perform(put("/api/tables/layout").header("X-Staff-Token", managerToken)
+        mockMvc.perform(put("/api/tables/layout")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tables\":[]}"))
                 .andExpect(status().isBadRequest());
@@ -304,36 +304,9 @@ class TableControllerTest {
         when(tableService.updateLayout(any()))
                 .thenThrow(new com.notapos.exception.ResourceNotFoundException("Table not found with id: 99"));
 
-        mockMvc.perform(put("/api/tables/layout").header("X-Staff-Token", managerToken)
+        mockMvc.perform(put("/api/tables/layout")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tables\":[{\"tableId\":99,\"x\":10,\"y\":10,\"rotation\":0}]}"))
                 .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void testUpdateLayout_WhenNobodyIsSignedIn_ShouldReturn401() throws Exception {
-        // WHAT: Test PUT /api/tables/layout with no sign-in
-        // WHY: Rearranging the floor is a manager's job
-
-        mockMvc.perform(put("/api/tables/layout")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"tables\":[{\"tableId\":1,\"x\":320,\"y\":140,\"rotation\":0}]}"))
-                .andExpect(status().isUnauthorized());
-
-        verify(tableService, never()).updateLayout(any());
-    }
-
-    @Test
-    void testUpdateLayout_WhenSignedInAsAServer_ShouldReturn403() throws Exception {
-        // WHAT: Test PUT /api/tables/layout signed in with a role that is not allowed
-        // WHY: 403 means "we know who you are, and no" - the screen shows the message
-
-        mockMvc.perform(put("/api/tables/layout").header("X-Staff-Token", serverToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"tables\":[{\"tableId\":1,\"x\":320,\"y\":140,\"rotation\":0}]}"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message").value("Your role (server) is not allowed to do that."));
-
-        verify(tableService, never()).updateLayout(any());
     }
 }
