@@ -28,6 +28,8 @@ Documentation/            spec sheet, data model, UX mockups
 
 ## Running it
 
+- Everything at once: `./start.sh` from the project folder. It starts PostgreSQL if needed, then the backend and frontend, opens the browser, and stops both on Ctrl+C. Output goes to `logs/`.
+- The database password is not in git. It lives in `backend/application-local.properties` (ignored by git; copy `application-local.properties.example`), which `application.properties` reads through `spring.config.import`. On a server, set `NOTTA_DB_PASSWORD` instead. Never put a real password back into `application.properties`.
 - Backend: `cd backend && mvn spring-boot:run` (port 8080). Needs a local PostgreSQL database; connection settings are in `backend/src/main/resources/application.properties`. Hibernate creates the tables (`ddl-auto=update`); the seed SQL file is loaded by hand.
 - Two settings in `application.properties` are specific to this app: `notta.cors.allowed-origins` (the addresses the frontend may be opened from, comma-separated; add the tablet-facing address here) and `notta.tax-rate`.
 - Frontend: `cd frontend && npm install && npm start` (port 3000). To point at a different backend, set `REACT_APP_API_URL` in `frontend/.env.local`.

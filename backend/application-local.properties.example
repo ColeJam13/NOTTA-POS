@@ -1,0 +1,13 @@
+# ============================================================================
+# Settings for THIS computer only
+# ============================================================================
+# Copy this file to "application-local.properties" (same folder) and fill it in.
+# Git ignores application-local.properties, so what you put there never leaves
+# your computer.
+#
+# Anything set here wins over the same setting in
+# src/main/resources/application.properties.
+# ============================================================================
+
+# The password of the PostgreSQL user the app connects as (nottauser)
+spring.datasource.password=put-your-database-password-here
