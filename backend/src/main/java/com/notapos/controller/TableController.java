@@ -1,6 +1,7 @@
 package com.notapos.controller;
 
 import jakarta.validation.Valid;
+import com.notapos.dto.TableLayoutRequest;
 import com.notapos.entity.RestaurantTable;
 import com.notapos.service.TableService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +54,11 @@ public class TableController {
     public ResponseEntity<RestaurantTable> createTable(@Valid @RequestBody RestaurantTable table) {
         RestaurantTable created = tableService.createTable(table);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PutMapping("/layout")                                                              // Save the Floor Map layout: position + rotation for many tables at once
+    public ResponseEntity<List<RestaurantTable>> updateLayout(@Valid @RequestBody TableLayoutRequest layout) {
+        return ResponseEntity.ok(tableService.updateLayout(layout.tables()));
     }
 
     @PutMapping("/{id}/status")                                                         // Update table status

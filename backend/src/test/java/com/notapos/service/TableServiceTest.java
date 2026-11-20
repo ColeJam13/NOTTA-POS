@@ -305,4 +305,44 @@ class TableServiceTest {
         assertEquals(originalStatus, result.getStatus());
         verify(tableRepository, times(1)).save(testTable);
     }
+
+    @Test
+    void testUpdateLayout_ShouldSavePositionAndRotationAndNothingElse() {
+        // WHAT: Test saving a new Floor Map layout
+        // WHY: Edit mode moves and turns tables. It must never change a table's status:
+        //      dragging an occupied table must not mark it free.
+
+        // Given - Table 1 is occupied, and is being moved
+        testTable.setStatus("occupied");
+        when(tableRepository.findAllById(List.of(1L))).thenReturn(List.of(testTable));
+        when(tableRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        List<RestaurantTable> result = tableService.updateLayout(
+                List.of(new com.notapos.dto.TablePositionRequest(1L, 320, 140, 90)));
+
+        // Then - Moved and turned, still occupied
+        assertEquals(1, result.size());
+        assertEquals(320, testTable.getXPosition());
+        assertEquals(140, testTable.getYPosition());
+        assertEquals(90, testTable.getRotation());
+        assertEquals("occupied", testTable.getStatus());
+        verify(tableRepository, times(1)).saveAll(List.of(testTable));     // One batched save
+        verify(tableRepository, never()).save(any());
+    }
+
+    @Test
+    void testUpdateLayout_WhenATableDoesNotExist_ShouldThrowAndSaveNothing() {
+        // WHAT: Test a layout that names a table that is not in the database
+        // WHY: All or nothing - a half-saved layout would leave the floor in a mix of old and new
+
+        // Given - Table 1 exists, table 99 does not
+        when(tableRepository.findAllById(List.of(1L, 99L))).thenReturn(List.of(testTable));
+
+        // When & Then
+        assertThrows(com.notapos.exception.ResourceNotFoundException.class, () -> tableService.updateLayout(List.of(
+                new com.notapos.dto.TablePositionRequest(1L, 320, 140, 0),
+                new com.notapos.dto.TablePositionRequest(99L, 10, 10, 0))));
+        verify(tableRepository, never()).saveAll(any());
+    }
 }
