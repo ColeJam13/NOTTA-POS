@@ -278,4 +278,54 @@ class MenuItemRepositoryTest extends BaseRepositoryTest {
         MenuItem deactivated = menuItemRepository.findById(itemId).orElseThrow();
         assertFalse(deactivated.getIsActive());
     }
+
+    @Test
+    void testFindByIs86dAndIsActive_ShouldReturnOnlyItemsOnTheMenuThatAre86d() {
+        // WHAT: Test finding what is 86'd right now
+        // WHY: The 86 board lists these. An item taken off the menu entirely is not "86'd".
+
+        // Given - Chicken Cutty (active) is 86'd; nothing else is
+        chickenCutty.setIs86d(true);
+        menuItemRepository.save(chickenCutty);
+
+        // When
+        List<MenuItem> eightySixed = menuItemRepository.findByIs86dAndIsActiveOrderByMenuItemIdAsc(true, true);
+
+        // Then
+        assertEquals(1, eightySixed.size());
+        assertEquals("Chicken Cutty", eightySixed.get(0).getName());
+    }
+
+    @Test
+    void testSave_ShouldStartItemsAsNot86d() {
+        // WHAT: Test the stored starting value of the 86 flag
+        // WHY: Everything is available until someone 86's it
+
+        // Given/When - Pancakes was saved in setUp without touching the flag
+        MenuItem reloaded = menuItemRepository.findById(pancakes.getMenuItemId()).orElseThrow();
+
+        // Then
+        assertFalse(reloaded.getIs86d());
+    }
+
+    @Test
+    void testFindByIsActiveOrderByMenuItemIdAsc_ShouldKeepItemsInPlaceAfterAnUpdate() {
+        // WHAT: Test that the menu comes back in the same order after an item is changed
+        // WHY: Servers find items by where they sit on the screen. Without a fixed order,
+        //      PostgreSQL moved a just-updated row (an item that was 86'd) to the end.
+
+        // Given - The order of the active items before anything changes
+        List<Long> before = menuItemRepository.findByIsActiveOrderByMenuItemIdAsc(true).stream()
+                .map(MenuItem::getMenuItemId).toList();
+
+        // When - The first item is 86'd (an UPDATE to its row)
+        chickenCutty.setIs86d(true);
+        menuItemRepository.saveAndFlush(chickenCutty);
+
+        // Then - Same items, same order, Chicken Cutty still first
+        List<Long> after = menuItemRepository.findByIsActiveOrderByMenuItemIdAsc(true).stream()
+                .map(MenuItem::getMenuItemId).toList();
+        assertEquals(before, after);
+        assertEquals(chickenCutty.getMenuItemId(), after.get(0));
+    }
 }

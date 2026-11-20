@@ -50,6 +50,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), null);
     }
 
+    @ExceptionHandler(ItemUnavailableException.class)                           // Menu item is 86'd -> 409
+    public ResponseEntity<ApiError> handleItemUnavailable(ItemUnavailableException ex) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), null);
+    }
+
     @ExceptionHandler(InvalidModifierSelectionException.class)                  // Chosen modifiers break the menu's rules -> 400
     public ResponseEntity<ApiError> handleInvalidModifierSelection(InvalidModifierSelectionException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);

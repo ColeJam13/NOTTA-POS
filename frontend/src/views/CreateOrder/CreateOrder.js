@@ -23,6 +23,9 @@ import {
   clearEmptyOrder
 } from './orderActions';
 
+// How often the order screen re-checks which items are 86'd, in milliseconds
+const MENU_REFRESH_MS = 5000;
+
 /**
  * Create Order screen.
  *
@@ -72,6 +75,21 @@ function CreateOrder({ setCurrentView, selectedTable, setSelectedTable }) {
   // screen (no orderItemId): leaving the screen would lose them.
   const hasDrafts = orderItems.some(item => item.status === 'draft');
   const hasUnsavedItems = orderItems.some(item => !item.orderItemId);
+
+  // If an item was 86'd after it was added to the order but before it was sent, say which
+  // one and stop. Returns true when Send / Save Draft should not go ahead.
+  // (The backend refuses 86'd items too; this gives the server the reason up front.)
+  const blockedBy86 = () => {
+    const outNames = orderItems
+      .filter(item => item.status === 'draft' && !item.orderItemId)
+      .filter(item => menuItems.find(m => m.menuItemId === item.menuItemId)?.is86d)
+      .map(item => item.name);
+
+    if (outNames.length === 0) return false;
+
+    alert(`${[...new Set(outNames)].join(', ')} was just 86'd. Remove it from the order first.`);
+    return true;
+  };
 
 // Set initial table state - if selectedTable exists, use it. Otherwise null (Quick Order will be created on Save/Send)
 useEffect(() => {
@@ -147,6 +165,19 @@ useEffect(() => {
     .catch(error => console.error('Error fetching menu items:', error));
   }, []);
 
+  // Keep the menu in step with the 86 board: every few seconds, ask again which
+  // items are out. Only the menu is reloaded (not the modifier groups), and a failed
+  // refresh is ignored - the next one will catch up.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      getJson('/api/menu-items')
+        .then(data => setMenuItems(data))
+        .catch(() => {});
+    }, MENU_REFRESH_MS);
+
+    return () => clearInterval(interval);
+  }, []);
+
     useEffect(() => {
     if (orderItemsRef.current) {
       orderItemsRef.current.scrollTop = orderItemsRef.current.scrollHeight;
@@ -202,6 +233,7 @@ useEffect(() => {
     // Nothing to send. Without this check an empty Send still created a Quick Order
     // table and an empty order every time it was pressed.
     if (!hasDrafts) return;
+    if (blockedBy86()) return;
 
     try {
       setShowDraftSaved(false);  // Clear the draft notification when sending
@@ -237,6 +269,7 @@ useEffect(() => {
 
   const saveDraft = async () => {
     if (!hasDrafts) return;       // Nothing to save (same reason as in sendOrder)
+    if (blockedBy86()) return;
 
     try {
       const orderId = await ensureTableAndOrder();

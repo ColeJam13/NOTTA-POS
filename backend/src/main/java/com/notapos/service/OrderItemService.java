@@ -5,7 +5,10 @@ import com.notapos.enums.OrderItemStatus;
 import java.util.ArrayList;
 import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.exception.ItemLockedException;
+import com.notapos.exception.ItemUnavailableException;
+import com.notapos.entity.MenuItem;
 import com.notapos.entity.OrderItem;
+import com.notapos.repository.MenuItemRepository;
 import com.notapos.repository.OrderItemModifierRepository;
 import com.notapos.repository.OrderItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,12 +31,15 @@ public class OrderItemService {
     
     private final OrderItemRepository orderItemRepository;
     private final OrderItemModifierRepository orderItemModifierRepository;     // Needed so deleting an item also deletes its modifiers
+    private final MenuItemRepository menuItemRepository;                       // Needed to check an item is not 86'd before it is rung in
 
     @Autowired
     public OrderItemService(OrderItemRepository orderItemRepository,
-                            OrderItemModifierRepository orderItemModifierRepository) {
+                            OrderItemModifierRepository orderItemModifierRepository,
+                            MenuItemRepository menuItemRepository) {
         this.orderItemRepository = orderItemRepository;
         this.orderItemModifierRepository = orderItemModifierRepository;
+        this.menuItemRepository = menuItemRepository;
     }
 
     public List<OrderItem> getAllOrderItems() {                 // Get all order items
@@ -66,6 +72,13 @@ public class OrderItemService {
 
     @Transactional
     public OrderItem createOrderItem(OrderItem orderItem) {             // Create a new order item (add item to order, starts as draft, no timer)
+        // An 86'd item cannot be rung in (the order screen greys it out, but a screen that
+        // has not refreshed yet could still send it)
+        Optional<MenuItem> menuItem = menuItemRepository.findById(orderItem.getMenuItemId());
+        if (menuItem.isPresent() && Boolean.TRUE.equals(menuItem.get().getIs86d())) {
+            throw new ItemUnavailableException(menuItem.get().getName() + " is 86'd and cannot be ordered right now.");
+        }
+
         orderItem.setStatus(OrderItemStatus.DRAFT.getValue());
         orderItem.setIsLocked(false);
 

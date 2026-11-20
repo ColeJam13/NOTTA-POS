@@ -45,6 +45,14 @@ public class MenuItem {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
+    // 86'd = the kitchen or bar has run out of this for now. Different from isActive:
+    // an inactive item is off the menu and hidden; an 86'd item stays on the menu, greyed
+    // out, so servers can see it is out instead of wondering where it went.
+    // "default false" fills the column in for rows that already exist and for rows
+    // inserted by the seed file, which does not mention it.
+    @Column(name = "is_86d", nullable = false, columnDefinition = "boolean default false")
+    private Boolean is86d = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -104,6 +112,14 @@ public class MenuItem {
 
     public void setIsActive(Boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public Boolean getIs86d() {
+        return is86d;
+    }
+
+    public void setIs86d(Boolean is86d) {
+        this.is86d = is86d;
     }
 
     public LocalDateTime getCreatedAt() {

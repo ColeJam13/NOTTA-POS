@@ -38,6 +38,9 @@ class OrderItemServiceTest {
     @Mock
     private OrderItemModifierRepository orderItemModifierRepository;
 
+    @Mock
+    private com.notapos.repository.MenuItemRepository menuItemRepository;
+
     @InjectMocks
     private OrderItemService orderItemService;
 
@@ -593,5 +596,46 @@ class OrderItemServiceTest {
         // Then
         verify(orderItemRepository, never()).findByOrderIdAndStatus(any(), any());
         verify(orderItemRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void testCreateOrderItem_WhenMenuItemIs86d_ShouldThrowAndSaveNothing() {
+        // WHAT: Test ringing in an item the kitchen has 86'd
+        // WHY: The order screen greys 86'd items out, but a screen that has not refreshed
+        //      yet could still send one. The backend has the final say.
+
+        // Given - menu item 1 is 86'd
+        com.notapos.entity.MenuItem menuItem = new com.notapos.entity.MenuItem();
+        menuItem.setMenuItemId(1L);
+        menuItem.setName("Chicken Cutty");
+        menuItem.setIs86d(true);
+        when(menuItemRepository.findById(1L)).thenReturn(Optional.of(menuItem));
+
+        // When & Then
+        com.notapos.exception.ItemUnavailableException exception = assertThrows(
+                com.notapos.exception.ItemUnavailableException.class,
+                () -> orderItemService.createOrderItem(testItem));
+        assertTrue(exception.getMessage().contains("Chicken Cutty"));
+        verify(orderItemRepository, never()).save(any());
+    }
+
+    @Test
+    void testCreateOrderItem_WhenMenuItemIsAvailable_ShouldSave() {
+        // WHAT: Test ringing in an item that is not 86'd
+        // WHY: The 86 check must not get in the way of a normal order
+
+        // Given - menu item 1 is available
+        com.notapos.entity.MenuItem menuItem = new com.notapos.entity.MenuItem();
+        menuItem.setMenuItemId(1L);
+        menuItem.setName("Chicken Cutty");
+        when(menuItemRepository.findById(1L)).thenReturn(Optional.of(menuItem));
+        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(testItem);
+
+        // When
+        OrderItem created = orderItemService.createOrderItem(testItem);
+
+        // Then
+        assertEquals("draft", created.getStatus());
+        verify(orderItemRepository, times(1)).save(testItem);
     }
 }

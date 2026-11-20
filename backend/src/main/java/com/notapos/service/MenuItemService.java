@@ -31,11 +31,11 @@ public class MenuItemService {
     }
 
     public List<MenuItem> getAllMenuItems() {       // Get all menu items (including inactive)
-        return menuItemRepository.findAll();
+        return menuItemRepository.findAllByOrderByMenuItemIdAsc();      // Fixed order, so cards never move around on screen
     }
 
     public List<MenuItem> getActiveMenuItems() {            // Get all ACTIVE menu items
-        return menuItemRepository.findByIsActive(true);
+        return menuItemRepository.findByIsActiveOrderByMenuItemIdAsc(true);     // Fixed order, so cards never move around on screen
     }
 
     public Optional<MenuItem> getMenuItemById(Long id) {        // Get menu item by ID
@@ -93,6 +93,19 @@ public class MenuItemService {
                 .orElseThrow(() -> new ResourceNotFoundException("Menu item not found with id: " + id));
 
         menuItem.setIsActive(true);
+        return menuItemRepository.save(menuItem);
+    }
+
+    public List<MenuItem> get86dMenuItems() {                           // Get everything on the menu that is 86'd right now
+        return menuItemRepository.findByIs86dAndIsActiveOrderByMenuItemIdAsc(true, true);
+    }
+
+    @Transactional
+    public MenuItem set86d(Long id, boolean is86d) {                    // 86 an item (true) or put it back on (false)
+        MenuItem menuItem = menuItemRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Menu item not found with id: " + id));
+
+        menuItem.setIs86d(is86d);
         return menuItemRepository.save(menuItem);
     }
 

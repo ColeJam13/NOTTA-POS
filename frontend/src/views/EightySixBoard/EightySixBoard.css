@@ -1,0 +1,145 @@
+.eighty-six-page {
+  flex: 1;
+  background: #1a1a2e;
+  padding: 40px;
+  color: #e0e0e0;
+  overflow-y: auto;
+}
+
+.eighty-six-page h2 {
+  text-align: center;
+  text-transform: uppercase;
+  color: #39ff14;
+  background: #16213e;
+  padding: 15px;
+  border: 2px solid #b026ff;
+  border-radius: 8px;
+  font-size: 18px;
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+}
+
+.eighty-six-page h3 {
+  color: #b026ff;
+  font-size: 14px;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+
+.eighty-six-error {
+  background: #3a1020;
+  border: 2px solid #ff3366;
+  border-radius: 8px;
+  color: #ff3366;
+  padding: 12px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* --- What is 86'd right now --- */
+.eighty-six-now {
+  background: #16213e;
+  border: 2px solid #ff3366;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.eighty-six-now h3 {
+  color: #ff3366;
+}
+
+.eighty-six-none {
+  color: #888;
+}
+
+.eighty-six-now-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.eighty-six-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  background: #3a1020;
+  color: #ff3366;
+  border: 2px solid #ff3366;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.eighty-six-chip small {
+  color: #e0e0e0;
+  font-size: 9px;
+  letter-spacing: 1px;
+  opacity: 0.7;
+}
+
+.eighty-six-chip:hover {
+  background: #4d1529;
+  box-shadow: 0 0 15px rgba(255, 51, 102, 0.4);
+}
+
+/* --- The whole menu, by category --- */
+.eighty-six-category {
+  margin-bottom: 30px;
+}
+
+.eighty-six-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.eighty-six-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-height: 80px;                     /* Big enough to hit with a thumb on a kitchen tablet */
+  justify-content: center;
+  background: #16213e;
+  color: #39ff14;
+  border: 2px solid #b026ff;
+  border-radius: 8px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.eighty-six-item:hover {
+  background: #1f2d50;
+}
+
+.eighty-six-item-name {
+  font-size: 15px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.eighty-six-item-status {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #888;
+}
+
+.eighty-six-item.is-86d {
+  background: #3a1020;
+  border-color: #ff3366;
+  color: #ff3366;
+}
+
+.eighty-six-item.is-86d .eighty-six-item-name {
+  text-decoration: line-through;
+}
+
+.eighty-six-item.is-86d .eighty-six-item-status {
+  color: #ff3366;
+}

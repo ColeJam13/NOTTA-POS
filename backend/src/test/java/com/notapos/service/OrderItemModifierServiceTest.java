@@ -666,4 +666,23 @@ class OrderItemModifierServiceTest {
         assertEquals(101L, result.get(1).orderItemId());
         assertEquals("White Toast", result.get(1).name());
     }
+
+    @Test
+    void testCreateOrderItemWithModifiers_WhenMenuItemIs86d_ShouldThrowAndSaveNothing() {
+        // WHAT: Test ringing in an 86'd item that has modifiers
+        // WHY: Same rule as a plain item - the kitchen is out of it
+
+        // Given - the Combo Plate is 86'd
+        MenuItem menuItem = comboPlate();
+        menuItem.setIs86d(true);
+        when(menuItemRepository.findById(COMBO_PLATE_ID)).thenReturn(Optional.of(menuItem));
+
+        // When & Then
+        com.notapos.exception.ItemUnavailableException exception = assertThrows(
+                com.notapos.exception.ItemUnavailableException.class,
+                () -> orderItemModifierService.createOrderItemWithModifiers(
+                        new com.notapos.dto.OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L))));
+        assertTrue(exception.getMessage().contains("Combo Plate"));
+        verify(orderItemRepository, never()).save(any());
+    }
 }

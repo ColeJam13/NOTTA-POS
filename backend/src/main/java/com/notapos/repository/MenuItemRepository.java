@@ -29,4 +29,14 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     List<MenuItem> findByCategoryAndIsActive(String category, Boolean isActive);    // Find active items by category
 
     List<MenuItem> findByPrepStationId(Long prepStationId);     // Find items for specific prep stations
+
+    List<MenuItem> findByIs86dAndIsActiveOrderByMenuItemIdAsc(Boolean is86d, Boolean isActive);     // Find items on the menu that are (or are not) 86'd
+
+    // The same lists as findAll() and findByIsActive(), in a fixed order (by ID).
+    // Without ORDER BY, PostgreSQL returns rows in whatever order they sit on disk, and
+    // a row that was just updated moves to the end. 86'ing an item made its card jump to
+    // the bottom of its category on the order screen.
+    List<MenuItem> findAllByOrderByMenuItemIdAsc();
+
+    List<MenuItem> findByIsActiveOrderByMenuItemIdAsc(Boolean isActive);
 }
