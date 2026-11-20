@@ -59,6 +59,7 @@ let existingItemModifiers;  // what GET /api/order-item-modifiers/order/{id} ret
 let editWindowMs;     // how far in the future the fake backend says the edit window closes
 let savedMenuItemIds; // orderItemId -> menuItemId for items the fake backend has "saved"
 let refuseItemSaves;  // true = the fake backend answers 400 to saving an item with modifiers
+let checkClosedElsewhere;   // true = the order was closed on another terminal: the fake backend answers 409 with code ORDER_NOT_OPEN
 let itemsAreLocked;   // true = the fake backend answers 409 (already sent to kitchen) to modifier changes and removals
 let menuNow;          // what GET /api/menu-items returns right now (a test can 86 an item by replacing this)
 let orderCheck;       // what GET /api/orders/77/check returns (the check as the backend works it out)
@@ -90,6 +91,7 @@ beforeEach(() => {
   editWindowMs = 16000;
   savedMenuItemIds = {};
   refuseItemSaves = false;
+  checkClosedElsewhere = false;
   itemsAreLocked = false;
   menuNow = MENU;
   orderCheck = { orderId: 77, status: 'open', itemCount: 1, unsentItemCount: 0, subtotal: 17.0, tax: 0.51, total: 17.51, taxRate: 0.03 };
@@ -115,11 +117,23 @@ beforeEach(() => {
     if (method === 'GET' && path.startsWith('/api/order-item-modifiers/order/')) {
       return jsonResponse(existingItemModifiers);
     }
-    if (method === 'POST' && path === '/api/order-items') {
-      return jsonResponse({ orderItemId: nextOrderItemId++, ...body }, 201);
+    // Like the real backend, a closed check refuses everything that would add to it, send it, or change it
+    const addsToOrChangesTheOrder =
+      (method === 'POST' && path === '/api/order-items') ||
+      (method === 'POST' && /^\/api\/order-items\/order\/77\/send(-now)?$/.test(path)) ||
+      (method === 'PUT' && /^\/api\/order-items\/\d+\/modifiers$/.test(path));
+    if (checkClosedElsewhere && addsToOrChangesTheOrder) {
+      return jsonResponse({
+        message: 'This check was already closed, most likely on another terminal. Nothing was added or sent.',
+        code: 'ORDER_NOT_OPEN'
+      }, 409);
     }
-    if (method === 'POST' && path === '/api/order-items/with-modifiers') {
-      if (refuseItemSaves) return jsonResponse({ message: 'Invalid modifier selection' }, 400);
+
+    // Every item, with or without modifiers, is rung in through this one endpoint
+    if (method === 'POST' && path === '/api/order-items') {
+      if (refuseItemSaves && body.modifierIds.length > 0) {
+        return jsonResponse({ message: '"Bread Choice" allows at most 1 selection(s), but 2 were chosen' }, 400);
+      }
       // Like the real backend: the request has no price, the answer does
       const orderItemId = nextOrderItemId++;
       savedMenuItemIds[orderItemId] = body.menuItemId;
@@ -479,7 +493,7 @@ test('SEND ORDER saves an item together with its modifiers and kitchen note', as
   expect(await screen.findByText('15 seconds to edit')).toBeInTheDocument();
 
   // One request carried the item, its modifiers (in picker order, not tap order), and its note - and no price
-  const saves = requests.filter(r => r.method === 'POST' && r.path === '/api/order-items/with-modifiers');
+  const saves = requests.filter(r => r.method === 'POST' && r.path === '/api/order-items');
   expect(saves).toHaveLength(1);
   expect(saves[0].body).toEqual({
     orderId: 77,
@@ -488,8 +502,7 @@ test('SEND ORDER saves an item together with its modifiers and kitchen note', as
     specialInstructions: 'no butter',
     modifierIds: [14, 24]
   });
-  // ...and it was NOT also saved through the plain endpoint
-  expect(calls).not.toContain('POST /api/order-items');
+  expect(saves[0].body).not.toHaveProperty('price');
   expect(calls).toContain('POST /api/order-items/order/77/send');
 });
 
@@ -511,7 +524,7 @@ test('the pencil adds a kitchen note to an item that has no modifiers', async ()
   // Saving the draft sends the note along
   await userEvent.click(screen.getByRole('button', { name: 'SAVE DRAFT' }));
   await screen.findByText('Draft saved! Items remain editable');
-  const save = requests.find(r => r.path === '/api/order-items/with-modifiers');
+  const save = requests.find(r => r.method === 'POST' && r.path === '/api/order-items');
   expect(save.body).toEqual({
     orderId: 77,
     menuItemId: 2,
@@ -596,7 +609,8 @@ test('when the backend refuses an item, nothing is sent and the server is told',
   await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
 
   // No edit window, no send request - the kitchen got nothing, and the screen does not pretend otherwise
-  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Failed to send order'));
+  // The server is shown the backend's own reason, not just "failed"
+  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('"Bread Choice" allows at most 1 selection(s), but 2 were chosen'));
   expect(calls.filter(c => c.endsWith('/send'))).toEqual([]);
   expect(screen.queryByText('15 seconds to edit')).not.toBeInTheDocument();
 
@@ -917,3 +931,114 @@ test('an item 86\'d after it was added is caught at Send, and the server is told
   expect(calls).not.toContain('POST /api/orders');                   // Nothing was created or sent
   expect(within(orderList(container)).getByText('Fries')).toBeInTheDocument();
 }, 12000);
+
+// ============================================================================
+// One ring-in path, and a check closed on another terminal
+// ============================================================================
+
+test('a plain item is rung in through the same request as every other item, with no price in it', async () => {
+  await renderScreen();
+  await userEvent.click(menuCard('Chicken Cutty'));
+
+  await userEvent.click(screen.getByRole('button', { name: 'SAVE DRAFT' }));
+  await screen.findByText('Draft saved! Items remain editable');
+
+  // The backend works out the price from the menu. A price sent from here used to be saved as-is.
+  const save = requests.find(r => r.method === 'POST' && r.path === '/api/order-items');
+  expect(save.body).toEqual({ orderId: 77, menuItemId: 1, quantity: 1, specialInstructions: '', modifierIds: [] });
+  expect(save.body).not.toHaveProperty('price');
+  expect(save.body).not.toHaveProperty('status');
+});
+
+test('the price shown after saving is the one the backend worked out', async () => {
+  const { container } = await renderScreen();
+  await userEvent.click(menuCard('Combo Plate'));
+  await userEvent.click(choice(pickerFor('Combo Plate'), 'French Toast'));
+  await userEvent.click(within(pickerFor('Combo Plate')).getByRole('button', { name: 'ADD TO ORDER' }));
+
+  await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
+  await screen.findByText('15 seconds to edit');
+
+  // 15.00 + 2.00 for French Toast
+  const totals = container.querySelector('.order-totals');
+  expect(within(totals).getByText('$17.00')).toBeInTheDocument();
+});
+
+test('Send on a check that was closed on another terminal says so and keeps the unsent items for a new check', async () => {
+  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  jest.spyOn(console, 'error').mockImplementation(() => {});    // The refusal is logged on purpose - keep the test output clean
+  // Table W3 has an open check with one item the kitchen already has
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
+  const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
+  await within(orderList(container)).findByText('Chicken Cutty');
+
+  // Another server takes payment for W3 on a different terminal. This screen does not know yet.
+  checkClosedElsewhere = true;
+  existingOrders = [];                                              // The table has no open check any more
+  await userEvent.click(menuCard('Fries'));
+  await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
+
+  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(
+    'This check was already closed on another terminal. Nothing was added or sent. Your unsent items are still here: press SEND ORDER to start a new check for them.'
+  ));
+  // Nothing went to the kitchen, and the screen does not pretend otherwise
+  expect(calls.filter(c => c.endsWith('/send'))).toEqual([]);
+  expect(screen.queryByText('15 seconds to edit')).not.toBeInTheDocument();
+
+  // The paid item is gone from the screen; the round that was not sent is still there
+  const list = orderList(container);
+  await waitFor(() => expect(within(list).queryByText('Chicken Cutty')).not.toBeInTheDocument());
+  expect(within(list).getByText('Fries')).toBeInTheDocument();
+
+  // Pressing Send again starts a NEW check on the table instead of adding to the closed one
+  checkClosedElsewhere = false;
+  const callsBefore = calls.length;
+  await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
+  await screen.findByText('15 seconds to edit');
+  expect(calls.slice(callsBefore)).toEqual([
+    'POST /api/orders',
+    'POST /api/order-items',
+    'POST /api/order-items/order/77/send'
+  ]);
+});
+
+test('SEND NOW? on a check that was closed on another terminal says so and stops the countdown', async () => {
+  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+  const { container } = await renderScreen();
+  await userEvent.click(menuCard('Chicken Cutty'));
+  await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
+  await screen.findByText('15 seconds to edit');
+
+  checkClosedElsewhere = true;
+  await userEvent.click(screen.getByRole('button', { name: 'SEND NOW?' }));
+
+  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(
+    'This check was already closed on another terminal. Nothing was added or sent.'
+  ));
+  // The items on the closed check are off the screen and no countdown is left running
+  expect(within(orderList(container)).queryByText('Chicken Cutty')).not.toBeInTheDocument();
+  expect(screen.queryByText(/seconds to edit/)).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'SEND ORDER' })).toBeInTheDocument();
+});
+
+test('changing modifiers on a check that was closed on another terminal says the check was closed, not that the item was sent', async () => {
+  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  const { container } = await renderScreen();
+  await userEvent.click(menuCard('Combo Plate'));
+  await userEvent.click(choice(pickerFor('Combo Plate'), 'White Toast'));
+  await userEvent.click(within(pickerFor('Combo Plate')).getByRole('button', { name: 'ADD TO ORDER' }));
+  await userEvent.click(screen.getByRole('button', { name: 'SAVE DRAFT' }));
+  await screen.findByText('Draft saved! Items remain editable');
+
+  checkClosedElsewhere = true;
+  await userEvent.click(within(orderList(container)).getByRole('button', { name: 'Edit Combo Plate' }));
+  await userEvent.click(choice(pickerFor('Combo Plate'), 'French Toast'));
+  await userEvent.click(within(pickerFor('Combo Plate')).getByRole('button', { name: 'SAVE CHANGES' }));
+
+  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(
+    'This check was already closed on another terminal. Nothing was added or sent.'
+  ));
+  expect(alertSpy).not.toHaveBeenCalledWith('Too late to change this item - it was already sent to the prep station');
+});

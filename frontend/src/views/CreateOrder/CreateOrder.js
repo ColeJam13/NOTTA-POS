@@ -20,7 +20,8 @@ import {
   loadOpenOrderForTable,
   loadModifierGroupsByMenuItem,
   updateItemModifiers,
-  clearEmptyOrder
+  clearEmptyOrder,
+  ORDER_NOT_OPEN
 } from './orderActions';
 
 // How often the order screen re-checks which items are 86'd, in milliseconds
@@ -208,7 +209,7 @@ useEffect(() => {
   // Save any drafts that are not in the database yet and record their new IDs on screen.
   // newIds lines up with orderItems by position: an ID for each item just saved, null otherwise.
   const saveDrafts = async (orderId) => {
-    const newIds = await saveNewDraftItems(orderId, orderItems);
+    const { newIds, failure } = await saveNewDraftItems(orderId, orderItems);
 
     setOrderItems(prevItems => prevItems.map((item, index) => {
       const newId = newIds[index];
@@ -225,8 +226,51 @@ useEffect(() => {
       item.status === 'draft' && !item.orderItemId && !newIds[index]
     );
     if (someFailed) {
-      throw new Error('One or more items could not be saved');
+      throw failure || new Error('One or more items could not be saved');      // "failure" carries the backend's reason
     }
+  };
+
+  // The backend said this order is no longer open: the check was paid or cleared on
+  // another terminal while it was still up on this screen. Say so plainly and bring
+  // the screen back in step with the table.
+  //
+  // Items this screen had not saved yet are kept. They were never part of the closed
+  // check, so the server can press Send again to start a new one with them.
+  const handleCheckClosedElsewhere = async () => {
+    const unsentItems = orderItems.filter(item => !item.orderItemId);
+
+    timer.reset();
+    setShowPaymentModal(false);
+    setPicker(null);
+    setCurrentOrderId(null);
+    setOrderItems(unsentItems);
+
+    alert(unsentItems.length > 0
+      ? 'This check was already closed on another terminal. Nothing was added or sent. Your unsent items are still here: press SEND ORDER to start a new check for them.'
+      : 'This check was already closed on another terminal. Nothing was added or sent.');
+
+    // The table may have been seated again since. If it has an open order now, load it.
+    if (currentTable) {
+      try {
+        const openOrder = await loadOpenOrderForTable(currentTable.tableId);
+        if (openOrder) {
+          setCurrentOrderId(openOrder.orderId);
+          setOrderItems([...openOrder.items, ...unsentItems]);
+        }
+      } catch (error) {
+        console.error('Error reloading table:', error);
+      }
+    }
+  };
+
+  // What to tell the server when the backend refuses something on this screen.
+  // Returns true if the refusal was "check closed elsewhere" and has been dealt with.
+  const handledAsClosedCheck = async (error) => {
+    if (error && error.code === ORDER_NOT_OPEN) {
+      await handleCheckClosedElsewhere();
+      return true;
+    }
+    return false;
   };
 
   const sendOrder = async () => {
@@ -263,7 +307,10 @@ useEffect(() => {
 
     } catch (error) {
       console.error('Error sending order:', error);
-      alert('Failed to send order');
+      if (await handledAsClosedCheck(error)) return;
+      // A refusal from the backend comes with its reason (an 86'd item, a required
+      // modifier not chosen); anything else gets the general message
+      alert(error.status ? error.message : 'Failed to send order');
     }
   };
 
@@ -287,15 +334,23 @@ useEffect(() => {
 
     } catch (error) {
       console.error('Error saving draft:', error);
-      alert('Failed to save draft');
+      if (await handledAsClosedCheck(error)) return;
+      alert(error.status ? error.message : 'Failed to save draft');
     }
   };
 
   // The Send button does two jobs: start the edit window, or cut it short ("SEND NOW?")
   const handleSendClick = async () => {
     if (timer.isRunning && currentOrderId) {
-      // Call backend to send now
-      await sendOrderNow(currentOrderId);
+      try {
+        // Call backend to send now
+        await sendOrderNow(currentOrderId);
+      } catch (error) {
+        console.error('Error sending now:', error);
+        if (await handledAsClosedCheck(error)) return;
+        alert(error.status ? error.message : 'Failed to send order');
+        return;                                                     // Nothing was sent: leave the countdown as it is
+      }
 
       // Stop the timer
       timer.finishNow();
@@ -394,7 +449,8 @@ useEffect(() => {
 
       } catch (error) {
         console.error('Error adding item during timer:', error);
-        alert('Failed to add item');
+        if (await handledAsClosedCheck(error)) return;
+        alert(error.status ? error.message : 'Failed to add item');
       }
     } else {
       // No timer - normal behavior (add as draft)
@@ -469,6 +525,11 @@ useEffect(() => {
     // its modifiers and note and answers with the new price
     try {
       const result = await updateItemModifiers(item.orderItemId, selection);
+
+      if (result.closed) {
+        await handleCheckClosedElsewhere();
+        return;
+      }
 
       if (result.locked) {
         // The edit window closed while the picker was open - show the item as locked and say so
