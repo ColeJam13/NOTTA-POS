@@ -197,4 +197,20 @@ class OrderCheckServiceTest {
         // When & Then
         assertThrows(ResourceNotFoundException.class, () -> orderCheckService.getCheck(99L));
     }
+
+    @Test
+    void testBuildCheck_WithItemsAlreadyLoaded_ShouldRunNoQueries() {
+        // WHAT: Test adding up a check from items the caller already has
+        // WHY: A screen listing many checks loads all their items with one query and must
+        //      not trigger another query per check (the N+1 problem)
+
+        // When
+        OrderCheckView check = orderCheckService.buildCheck(testOrder, List.of(
+                item("completed", "16.00", 1),
+                item("completed", "17.00", 1)));
+
+        // Then
+        assertEquals(new BigDecimal("33.99"), check.total());
+        verifyNoInteractions(orderItemRepository);
+    }
 }

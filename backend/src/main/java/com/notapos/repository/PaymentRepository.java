@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -18,6 +19,8 @@ import java.util.List;
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     List<Payment> findByOrderId(Long orderId);                                      // Find order by ID
+
+    List<Payment> findByOrderIdIn(Collection<Long> orderIds);                       // Find payments for MANY orders in one query (avoids one query per order)
 
     List<Payment> findByPaymentMethod(String paymentMethod);                        // Find order by payment method
 
