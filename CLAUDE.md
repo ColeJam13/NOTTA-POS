@@ -67,6 +67,7 @@ When pair-programming interactively instead of automating: ask before writing co
 - **Validation:** `@Valid` on create endpoints, with constraint annotations on the entity fields.
 - **Transactions:** services are `@Transactional(readOnly = true)` at class level; methods that write add `@Transactional`.
 - **Status values:** use the enums' `getValue()` and `matches()`. Do not type status strings by hand. Entity status fields are still `String` columns, so the database and JSON hold lowercase text (`draft`, `limbo`, `pending`, `fired`, `completed`).
+- **Rules that cross layers get an integration test.** `BaseIntegrationTest` starts the whole backend against a real PostgreSQL container and sends real requests (see `RingInIntegrationTest`). Use it for what a request must not be able to do, whatever it contains. Keep ordinary logic in the faster service and controller tests.
 - **Avoid N+1 queries:** when a screen needs several entities together, add one endpoint that returns a DTO built from batched `WHERE ... IN` queries (see `ActiveOrderService`, `TableOverviewService`, and `FinancialsReportService`). `JOIN FETCH` does not apply because entities are not linked by JPA relationships.
 - **Prefer a data-model change over a React workaround.** Example: Quick Orders were kept off the floor map with an `is_quick_order` column, not a frontend filter.
 - **Frontend requests** go through `apiFetch` / `getJson` / `sendJson` in `services/api.js`. Never hardcode the backend address. `apiFetch` also adds the signed-in person's token, so a request made with plain `fetch` would arrive as nobody.
@@ -80,8 +81,11 @@ When pair-programming interactively instead of automating: ask before writing co
 - **A table has one open order.** `OrderService.createOrder` marks the table occupied in the same transaction and returns the existing open order if the table already has one. The frontend does not set table status.
 - **One edit window per order.** Sending, removing, or changing an item during the window restarts it for every item on that order still counting down (`OrderItemService.restartEditWindow`), because the screen shows a single countdown. Paying ends it.
 - **The order screen is rebuilt on every visit.** `App.js` gives `CreateOrder` a new `key` each time the view is opened, so no state carries over from the previous table. Do not add state to `CreateOrder` that is meant to survive leaving the screen.
-- **Item price includes upcharges.** `OrderItem.price` is the price of one item with its modifier upcharges already added, so every screen that sums `price` is correct without knowing about modifiers. For items with modifiers or a note the backend works the price out itself (`OrderItemModifierService`); the request carries no price.
-- **Modifiers are saved with the item, not after it.** `POST /api/order-items/with-modifiers` saves the item, its modifiers, and its note in one transaction and checks the choices against the menu's rules (`MenuModifierService` supplies the rules to both the picker and the check). Do not go back to one request per modifier: a half-saved item would reach the kitchen without its modifiers.
+- **Item price includes upcharges.** `OrderItem.price` is the price of one item with its modifier upcharges already added, so every screen that sums `price` is correct without knowing about modifiers. The backend works the price out for every item (`OrderItemModifierService.ringInItem`); the request carries no price, and one sent anyway is ignored.
+- **There is one way to ring in an item.** `POST /api/order-items` takes an `OrderItemRequest` and calls `OrderItemModifierService.ringInItem`, which holds every rule: the order must exist and be open, the menu item must exist, be on the menu, and not be 86'd, the modifiers must follow the menu's rules, and the price comes from the menu. Do not add a second way to create an order item: a new path would have to repeat every one of those checks, and the last time there were two paths one of them had none.
+- **Modifiers are saved with the item, not after it.** `ringInItem` saves the item, its modifiers, and its note in one transaction (`MenuModifierService` supplies the rules to both the picker and the check). Do not go back to one request per modifier: a half-saved item would reach the kitchen without its modifiers.
+- **Anything that adds to, sends, or changes an order's items calls `OrderItemService.requireOpenOrder` first.** Two terminals can have one table up; if one closes the check, the other must not be able to add to it. The refusal is `OrderNotOpenException`: a 409 whose body has `code: "ORDER_NOT_OPEN"`. The order screen checks that code (`ORDER_NOT_OPEN` in `orderActions.js`), tells the server the check was closed elsewhere, and reloads the table.
+- **Screens react to `code`, never to `message`.** `ApiError.code` is a fixed word for the few errors a screen must handle in a specific way. `message` is wording for people and may change.
 - **Frontend structure:** `views/` for screens, `components/` for shared pieces, one CSS file per component or view. Pieces private to one screen live in that screen's folder (see `views/CreateOrder/`).
 - **Tables and Quick Orders are one component.** `components/TableChecks` draws both screens from `GET /api/tables/overview`; `views/Tables/Tables.js` and `views/QuickOrders/QuickOrders.js` only pass it which tables to ask for and what the screen is called. A change to one screen belongs in `TableChecks`, so the other gets it too.
 - **Separation of concerns:** payment actions stay separate from order actions.
@@ -105,24 +109,22 @@ Everything through pull request #274 is merged, and `main` passes CI (547 backen
 
 **The work order from here is `Documentation/phase-2-plan.md`.** It was written after an independent review of #263 to #274. Read it before starting anything. In short:
 
-- Part A fixes defects and open doors in what is built, in order: A1 one server-side ring-in path, A2 two terminals on one check (Flyway migrations come first), A3 lock the API, A4 sign-in hardening, A5 one tax rate, ticket order, and the clock.
+- Part A fixes defects and open doors in what is built, in order: A1 one server-side ring-in path (done), A2 two terminals on one check (Flyway migrations come first), A3 lock the API, A4 sign-in hardening, A5 one tax rate, ticket order, and the clock.
 - Part B is features: notifications, host view with waitlist, challenges on real data, themes, check handling.
 - It lists decisions that are the owner's (D2 to D7). Ask each one when it is needed. Do not guess and build.
 
-Some items in the list below are scheduled in that plan (the plain ring-in endpoint, the two tax rates, ticket order, the clock, the open API, sign-out, the starting PIN). They stay listed here until the pull request that fixes each one removes it.
+Some items in the list below are scheduled in that plan (the two tax rates, ticket order, the clock, the open API, sign-out, the starting PIN). They stay listed here until the pull request that fixes each one removes it.
 
 Known gaps left open on purpose:
 
 - The Financials report loads once per period and does not refresh on its own; pick the period again to see checks closed since.
 - Entity status fields are `String`, not enum-typed.
-- `OrderItemService.updateOrderItem` resets the edit timer only when status is `pending`, but pending items are locked and rejected earlier in the method, so the reset never runs. It probably should check `limbo`. A test asserts the current behavior.
 - `GET /api/menu-items` returns active items whether or not `?active=true` is passed.
 - `subtotal`, `tax`, and `total` on orders are written when the order is paid. Orders closed before that hold zeros; the backend works their amounts out from their items wherever it reports on closed checks (`TableOverviewService`, `FinancialsReportService`). Nothing calls `PUT /api/orders/{id}/totals` or `PUT /api/orders/{id}/close`.
 - The tax rate lives in two places: `notta.tax-rate` (backend, the one that is charged) and `TAX_RATE` in `utils/totals.js` (the order screen's running total). They must be changed together.
 - Timestamps are `LocalDateTime` with no time zone, and the countdown and "5m ago" labels compare them with the device's own clock. A tablet whose clock is off, or a backend in another time zone, would show wrong times and a wrong countdown.
 - One payment closes the whole order. There are no split checks, partial payments, refunds, or voids of sent items.
 - Every Quick Order creates a row in `tables` that is never removed.
-- The plain `POST /api/order-items` endpoint does not check modifier rules, so an item with required groups could be saved bare through it. The order screen never does this (anything with modifiers or a note goes through `/with-modifiers`).
 - The Tables and Quick Orders screens show the 50 most recently closed checks, not all of them. There is no way to page back further or search for an older check.
 - The order screen does not refresh while it is open. Item statuses changed elsewhere (kitchen starts an item, another server adds one) show up only when the table is reopened. The Payment modal is not affected: it reads the check from the backend.
 - Parallel draft saves give items IDs that do not follow ring-in order, and Active Orders sorts by ID, so a ticket can list items in a different order than the server entered them.
@@ -141,7 +143,7 @@ The original four features, all built. What comes next is in `Documentation/phas
 - Tapping an item with modifier groups opens `views/CreateOrder/ModifierPicker.js`: required groups must be answered, `maxSelections` is respected, optional groups can be skipped. Items without groups are still added with one tap.
 - Every item can carry a free-text kitchen note. The pencil on an order line reopens the picker to change modifiers or the note while the item is a draft or in the edit window.
 - `GET /api/menu-items/modifier-groups` returns every item's groups with their choices in one response; the order screen loads it together with the menu.
-- `POST /api/order-items/with-modifiers` and `PUT /api/order-items/{id}/modifiers` save and replace an item's modifiers and note. `GET /api/order-item-modifiers/order/{orderId}` returns an order's modifiers with names.
+- `POST /api/order-items` rings in an item with its modifiers and note (this was `/with-modifiers` until every item was moved onto the one path). `PUT /api/order-items/{id}/modifiers` replaces them. `GET /api/order-item-modifiers/order/{orderId}` returns an order's modifiers with names.
 - `ActiveOrderItemView` carries `modifiers`, and the Active Orders screen prints modifiers and notes under each item in both views.
 
 ### 2. 86 board (built)

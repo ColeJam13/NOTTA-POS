@@ -22,7 +22,7 @@ These come out of the #273 merge, where conflicts resolved in GitHub's web edito
 
 1. **One pull request open at a time, each branched from an up-to-date `main`.** Wait for the owner to merge before starting the next. No branch is built on top of another unmerged branch.
 2. **Conflicts are never resolved in the web editor.** If GitHub shows conflicts, the owner says so and Claude resolves them locally and re-runs the tests.
-3. **Delete a branch once its pull request is merged.** Sixteen merged branches are still on the remote; the first housekeeping step is to remove them. One of them is `dev`, which Claude did not create: ask the owner before deleting it.
+3. **Delete a branch once its pull request is merged.** Sixteen merged branches are still on the remote; the first housekeeping step is to remove them. One of them is `dev`, which Claude did not create: ask the owner before deleting it. **Answered 2026-11-20: `dev` is the owner's safety branch. Leave it alone.**
 4. **Bugs get a failing test first.** For each defect below, write the test that reproduces it, watch it fail, then fix it.
 5. **Keep `CLAUDE.md` current** in the same pull request as the change, as has been done so far.
 
@@ -36,6 +36,8 @@ Owner actions (settings Claude cannot change):
 Do these in order, one pull request each. They are defects or open doors in what is already built, and the features in Part B depend on them.
 
 ### A1. One way to ring in an item, and only onto an open order
+
+**Done 2026-11-20.** `POST /api/order-items` is the single ring-in endpoint (`OrderItemModifierService.ringInItem`); `/with-modifiers` and `PUT /api/order-items/{id}` are removed. The text below is kept as the record of what was found.
 
 Found in `OrderItemService.createOrderItem`, `OrderItemService.updateOrderItem`, and `OrderItemModifierService.createOrderItemWithModifiers`.
 
@@ -180,7 +182,7 @@ Open questions for the owner when this is picked up: installable web app or nati
 | | Decision | Needed before |
 |---|---|---|
 | D1 | Adopt Flyway migrations and stop Hibernate from changing the schema at start-up? **Decided 2026-11-20: yes.** | A2 |
-| D2 | Confirm or correct the role matrix | A3 |
+| D2 | Confirm or correct the role matrix. **Decided 2026-11-20: confirmed as written**, including hosts opening orders, ringing in, sending, and taking payment. | A3 |
 | D3 | How shared terminals sign people out | A4 |
 | D4 | Feature order for Part B, and whether B5 is in | Part B |
 | D5 | Notifications: who sends to whom, acknowledged or not | B1 |
@@ -192,5 +194,5 @@ Ask these at the point they are needed. Do not guess and build.
 ## How to start
 
 1. Housekeeping pull request: delete the merged remote branches, and add the process rules above to `CLAUDE.md`.
-2. Ask the owner D2 while A1 is in progress, since A3 follows closely. D1 is already decided.
+2. Ask the owner D2 while A1 is in progress, since A3 follows closely. D1 is already decided. (D2 was answered on 2026-11-20.)
 3. Start A1.
