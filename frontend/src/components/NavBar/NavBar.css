@@ -144,3 +144,24 @@
   letter-spacing: 6px;
   margin: 0;
 }
+/* SIGN OUT, beside the signed-in person's name */
+.sign-out-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 2px solid #b026ff;
+  color: #e0e0e0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.sign-out-btn:hover {
+  background: #b026ff;
+  color: #1a1a2e;
+}

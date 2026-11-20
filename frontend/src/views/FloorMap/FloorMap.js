@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useRef, memo } from 'react';
 import NavBar from '../../components/NavBar';
 import './FloorMap.css';
 import { apiFetch } from '../../services/api';
+import { useStaff } from '../../context/StaffContext';
+import { canDo } from '../../utils/roles';
 
 // In edit mode a dragged table snaps to this many pixels, so tables line up in rows
 const GRID_SIZE = 10;
@@ -70,6 +72,9 @@ const TableVisual = memo(({ table, onTableClick, editing, selected, onDragStart 
  */
 function FloorMap({ setCurrentView, setSelectedTable }) {
     const [tables, setTables] = useState([]);
+
+    const { staff } = useStaff();
+    const canEditLayout = canDo(staff?.role, 'edit-layout');
 
     // --- Edit mode ---
     const [editing, setEditing] = useState(false);
@@ -283,7 +288,8 @@ function FloorMap({ setCurrentView, setSelectedTable }) {
                             </button>
                         </>
                     ) : (
-                        <button className="floor-btn" onClick={startEditing}>EDIT LAYOUT</button>
+                        // Only a manager may rearrange the floor (the backend refuses anyone else too)
+                        canEditLayout && <button className="floor-btn" onClick={startEditing}>EDIT LAYOUT</button>
                     )}
                 </div>
 
