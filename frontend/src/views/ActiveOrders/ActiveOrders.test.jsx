@@ -12,7 +12,7 @@ import { StaffContext } from '../../context/StaffContext';
  * WHY:  "Combo Plate" alone is not enough to cook it. If a modifier or an
  *       allergy note is missing from the ticket, the wrong food goes out.
  *
- * The fake backend works the same way as in CreateOrder.test.js: global.fetch
+ * The fake backend works the same way as in CreateOrder.test.jsx: global.fetch
  * is replaced with a function that returns canned JSON.
  */
 
@@ -82,7 +82,7 @@ beforeEach(() => {
   activeOrders = ACTIVE_ORDERS;
   backendClockAheadMs = 0;
 
-  global.fetch = jest.fn(async (url) => {
+  global.fetch = vi.fn(async (url) => {
     const path = url.replace('http://localhost:8080', '');
     if (path === '/api/orders/active') return answer(activeOrders);
     if (path === '/api/prep-stations') return answer(STATIONS);
@@ -91,12 +91,12 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 // Render the screen and wait for the order card to load
 const renderScreen = async () => {
-  const view = render(<ActiveOrders setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  const view = render(<ActiveOrders setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await screen.findByText('Table W3 - Order #77');
   return view;
 };
@@ -173,7 +173,7 @@ const KITCHEN_ORDERS = [
 
 const renderKitchen = async () => {
   activeOrders = KITCHEN_ORDERS;
-  render(<ActiveOrders setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<ActiveOrders setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await screen.findByText(/Table W1 - Order #1/);
   await userEvent.click(screen.getByRole('button', { name: 'BOH VIEW' }));
   await screen.findByRole('button', { name: 'KITCHEN' });          // Station buttons have loaded
@@ -210,7 +210,7 @@ test('the kitchen\'s waiting time is measured on the backend\'s clock, not this 
       { ...ticketItem(32, 'Shrimp & Grits', 'pending', 1, 0), sentAt: sentMinutesAgoOnTheBackend(20) }
     ] }
   ];
-  render(<ActiveOrders setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<ActiveOrders setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await screen.findByText(/Table W2 - Order #2/);
   await userEvent.click(screen.getByRole('button', { name: 'BOH VIEW' }));
   await screen.findByRole('button', { name: 'KITCHEN' });
@@ -230,7 +230,7 @@ test('a ticket lists its items in the order they were rung in, which is not alwa
       { ...ticketItem(42, 'Pie', 'pending', 1, 2), ringInPosition: 2 }
     ] }
   ];
-  render(<ActiveOrders setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<ActiveOrders setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await screen.findByText(/Table W5 - Order #5/);
 
   const namesOnTheTicket = () =>
@@ -245,7 +245,7 @@ test('a ticket lists its items in the order they were rung in, which is not alwa
 
 test('FOH view shows no waiting times and no station buttons', async () => {
   activeOrders = KITCHEN_ORDERS;
-  render(<ActiveOrders setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<ActiveOrders setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await screen.findByText(/Table W1 - Order #1/);
 
   expect(screen.queryByText(/ MIN$/)).not.toBeInTheDocument();
@@ -278,7 +278,7 @@ test('an item with no station is shown to every station', async () => {
   activeOrders = [{ orderId: 1, tableId: 1, tableNumber: 'W1', isQuickOrder: false, serverName: 'Sarah', items: [
     ticketItem(11, 'Daily Special', 'pending', null, 3)
   ] }];
-  render(<ActiveOrders setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<ActiveOrders setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await screen.findByText(/Table W1 - Order #1/);
   await userEvent.click(screen.getByRole('button', { name: 'BOH VIEW' }));
 
@@ -294,7 +294,7 @@ test('a ticket drops off the kitchen view once everything on it is completed, an
     { orderId: 1, tableId: 1, tableNumber: 'W1', isQuickOrder: false, serverName: 'Sarah', items: [ticketItem(11, 'Chicken Cutty', 'completed', 1, 9)] },
     { orderId: 2, tableId: 2, tableNumber: 'W2', isQuickOrder: false, serverName: 'Sarah', items: [ticketItem(21, 'Garden Toast', 'pending', 1, 2)] }
   ];
-  render(<ActiveOrders setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<ActiveOrders setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await screen.findByText(/Table W1 - Order #1/);                   // Front of house still sees the finished table
   await userEvent.click(screen.getByRole('button', { name: 'BOH VIEW' }));
 
@@ -314,13 +314,13 @@ test('completing the last item on a ticket clears it from the kitchen view', asy
     { orderId: 2, tableId: 2, tableNumber: 'W2', isQuickOrder: false, serverName: 'Sarah', items: [ticketItem(21, 'Garden Toast', 'fired', 1, 6)] }
   ];
   const realFetch = global.fetch;
-  global.fetch = jest.fn(async (url, options = {}) => {
+  global.fetch = vi.fn(async (url, options = {}) => {
     if (options.method === 'PUT' && url.endsWith('/api/order-items/21/complete')) {
       return { ok: true, status: 200, json: async () => ({}) };
     }
     return realFetch(url, options);
   });
-  render(<ActiveOrders setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<ActiveOrders setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await screen.findByText(/Table W2 - Order #2/);
   await userEvent.click(screen.getByRole('button', { name: 'BOH VIEW' }));
 
@@ -332,7 +332,7 @@ test('completing the last item on a ticket clears it from the kitchen view', asy
 
 test('with no open orders at all, the kitchen view says so', async () => {
   activeOrders = [];
-  render(<ActiveOrders setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<ActiveOrders setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await screen.findByText('NO ACTIVE ORDERS');
 
   await userEvent.click(screen.getByRole('button', { name: 'BOH VIEW' }));
@@ -344,7 +344,7 @@ test('with no open orders at all, the kitchen view says so', async () => {
 // Who is offered START and COMPLETE
 // ----------------------------------------------------------------------------
 // The tests above draw the screen with nobody signed in, which is unrestricted.
-// These draw it for a particular role, the way App.js provides it.
+// These draw it for a particular role, the way App.jsx provides it.
 
 const renderKitchenViewAs = async (role) => {
   activeOrders = [
@@ -354,8 +354,8 @@ const renderKitchenViewAs = async (role) => {
     ] }
   ];
   const view = render(
-    <StaffContext.Provider value={{ staff: { staffId: 1, name: 'Test', role }, signOut: jest.fn() }}>
-      <ActiveOrders setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />
+    <StaffContext.Provider value={{ staff: { staffId: 1, name: 'Test', role }, signOut: vi.fn() }}>
+      <ActiveOrders setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />
     </StaffContext.Provider>
   );
   await screen.findByText(/Table W1 - Order #1/);

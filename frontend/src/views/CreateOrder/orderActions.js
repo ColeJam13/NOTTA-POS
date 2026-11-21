@@ -5,7 +5,7 @@ import { apiFetch, getJson, ORDER_NOT_OPEN } from '../../services/api';
  *
  * WHAT: Plain async functions - no React state in here.
  * WHY:  These requests used to live inside the button click handlers of
- *       CreateOrder.js (the "open an order" block existed twice, once for
+ *       CreateOrder.jsx (the "open an order" block existed twice, once for
  *       Send and once for Save Draft). Pulling them out leaves the component
  *       responsible for what the screen shows, and this file responsible for
  *       talking to the server.

@@ -9,11 +9,11 @@ import { createContext, useContext } from 'react';
  *       need to know who is signed in. Passing it through every screen as a
  *       prop would touch a dozen files for one value.
  *
- * App.js provides the real value. The default below is what a component gets
+ * App.jsx provides the real value. The default below is what a component gets
  * when it is drawn on its own (in a test): nobody signed in, nothing restricted.
  *
  *   staff:   { staffId, name, role, mustChangePin } or null
- *            (mustChangePin is always false by the time a screen reads it: App.js
+ *            (mustChangePin is always false by the time a screen reads it: App.jsx
  *            shows only the choose-a-new-PIN screen until it is)
  *   signOut: call it to sign the current person out
  */

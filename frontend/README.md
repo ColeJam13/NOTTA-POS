@@ -1,70 +1,35 @@
-# Getting Started with Create React App
+# NOTTA-POS frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+The screens of NOTTA-POS: a React 19 app, served and built by [Vite](https://vite.dev), tested with [Vitest](https://vitest.dev). (It was built with Create React App until November 2026. Create React App is retired.)
 
-## Available Scripts
+Everything below is run from this folder. To start the whole app at once, use `./start.sh` from the project folder instead.
 
-In the project directory, you can run:
+You need Node.js 22 or 24 (20.19 is the oldest that works).
 
-### `npm start`
+## Commands
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+| Command | What it does |
+|---|---|
+| `npm install` | Installs the packages. Run it once, and again after a pull that changes `package-lock.json`. |
+| `npm start` | Serves the app at http://localhost:3000 and updates the browser when a file is saved. Stops with an error if port 3000 is taken. |
+| `npm test` | Runs every test once. |
+| `npm run test:watch` | Runs the tests, then runs them again whenever a file changes. |
+| `npm run lint` | Checks the code against the rules in `eslint.config.js`. Any warning fails it. |
+| `npm run build` | Builds the files for a server into `build/`. |
+| `npm run preview` | Serves what `npm run build` made, to check a build before it is put anywhere. |
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+CI runs `lint`, `build`, and `test` on every pull request.
 
-### `npm test`
+## Settings
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- **Where the backend is.** With no setting, `http://localhost:8080`. To point somewhere else, create `.env.local` in this folder containing `VITE_API_URL=http://192.168.1.50:8080` and restart `npm start`. Only settings whose names start with `VITE_` reach the app, and the app reads them from `import.meta.env` (`src/services/api.js`).
+- **Another port.** `PORT=3001 npm start`. The backend must allow that address (`notta.cors.allowed-origins`).
 
-### `npm run build`
+## Things that differ from Create React App
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- **A file that contains JSX is named `.jsx`.** Vite reads a `.js` file as plain JavaScript. Screens, components, and the tests that draw them are `.jsx`; plain logic stays `.js`. An import does not name the ending (`import NavBar from './NavBar'`), so either works.
+- **`index.html` is in this folder**, not in `public/`. It names the file the app starts from (`src/index.jsx`).
+- **Tests use `vi` where Jest used `jest`**: `vi.fn()`, `vi.spyOn()`. `test`, `expect`, and `vi` need no import.
+- **The build does not lint.** `npm run lint` does.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+The settings for all of this are in `vite.config.js`, with comments.

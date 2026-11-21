@@ -12,7 +12,7 @@ import { StaffContext } from '../../context/StaffContext';
  *       was moved, save nothing on Cancel, and never open a table's order
  *       while tables are being rearranged.
  *
- * The fake backend works the same way as in CreateOrder.test.js: global.fetch
+ * The fake backend works the same way as in CreateOrder.test.jsx: global.fetch
  * is replaced with a function that returns canned JSON.
  *
  * Dragging is simulated with mouse events: press on a table, move over the
@@ -32,7 +32,7 @@ beforeEach(() => {
   requests = [];
   refuseLayout = false;
 
-  global.fetch = jest.fn(async (url, options = {}) => {
+  global.fetch = vi.fn(async (url, options = {}) => {
     const method = options.method || 'GET';
     const path = url.replace('http://localhost:8080', '');
     const body = options.body ? JSON.parse(options.body) : null;
@@ -49,11 +49,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 const renderMap = async (props = {}) => {
-  render(<FloorMap setCurrentView={jest.fn()} setSelectedTable={jest.fn()} {...props} />);
+  render(<FloorMap setCurrentView={vi.fn()} setSelectedTable={vi.fn()} {...props} />);
   await screen.findByText('W1');
 };
 
@@ -71,8 +71,8 @@ const drag = (number, from, to) => {
 const layoutRequests = () => requests.filter(r => r.method === 'PUT' && r.path === '/api/tables/layout');
 
 test('outside edit mode, tapping a table opens its order', async () => {
-  const setCurrentView = jest.fn();
-  const setSelectedTable = jest.fn();
+  const setCurrentView = vi.fn();
+  const setSelectedTable = vi.fn();
   await renderMap({ setCurrentView, setSelectedTable });
 
   await userEvent.click(table('B4'));
@@ -90,7 +90,7 @@ test('tables are drawn where the backend says, turned by their rotation', async 
 });
 
 test('in edit mode, tapping a table selects it instead of opening its order', async () => {
-  const setCurrentView = jest.fn();
+  const setCurrentView = vi.fn();
   await renderMap({ setCurrentView });
 
   await userEvent.click(screen.getByRole('button', { name: 'EDIT LAYOUT' }));
@@ -193,8 +193,8 @@ test('when the layout cannot be saved, the screen says so and keeps the changes'
 // Draw the map as it looks to a signed-in person with the given role
 const renderMapAs = async (role) => {
   render(
-    <StaffContext.Provider value={{ staff: { staffId: 1, name: 'Test', role }, signOut: jest.fn() }}>
-      <FloorMap setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />
+    <StaffContext.Provider value={{ staff: { staffId: 1, name: 'Test', role }, signOut: vi.fn() }}>
+      <FloorMap setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />
     </StaffContext.Provider>
   );
   await screen.findByText('W1');

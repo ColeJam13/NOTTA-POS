@@ -11,7 +11,7 @@ import { StaffContext } from '../../context/StaffContext';
  * WHY:  The board is how the kitchen tells the floor an item is out. If a tap
  *       here does not reach the backend, servers keep selling food that is gone.
  *
- * The fake backend works the same way as in CreateOrder.test.js: global.fetch
+ * The fake backend works the same way as in CreateOrder.test.jsx: global.fetch
  * is replaced with a function that returns canned JSON.
  */
 
@@ -28,7 +28,7 @@ beforeEach(() => {
   calls = [];
   refuseChanges = false;
 
-  global.fetch = jest.fn(async (url, options = {}) => {
+  global.fetch = vi.fn(async (url, options = {}) => {
     const method = options.method || 'GET';
     const path = url.replace('http://localhost:8080', '');
     calls.push(`${method} ${path}`);
@@ -49,11 +49,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 const renderBoard = async () => {
-  render(<EightySixBoard setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<EightySixBoard setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await screen.findByRole('button', { name: /Chicken Cutty/ });
 };
 
@@ -126,8 +126,8 @@ test('when the backend refuses a change, the board says so and the item stays as
 // Draw the board as it looks to a signed-in person with the given role
 const renderBoardAs = async (role) => {
   render(
-    <StaffContext.Provider value={{ staff: { staffId: 1, name: 'Test', role }, signOut: jest.fn() }}>
-      <EightySixBoard setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />
+    <StaffContext.Provider value={{ staff: { staffId: 1, name: 'Test', role }, signOut: vi.fn() }}>
+      <EightySixBoard setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />
     </StaffContext.Provider>
   );
   await screen.findByRole('button', { name: /Chicken Cutty/ });

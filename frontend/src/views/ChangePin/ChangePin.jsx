@@ -16,7 +16,7 @@ const STEPS = {
  *
  * WHEN IT IS SHOWN: when the signed-in person must change their PIN before
  * doing anything else (staff.mustChangePin). Today that is the first manager
- * of a new database, who signs in with the starter PIN 1234. App.js shows this
+ * of a new database, who signs in with the starter PIN 1234. App.jsx shows this
  * screen in place of the whole app, and the backend refuses every other
  * request from that person until a new PIN is set, so this is not just a
  * screen in the way.

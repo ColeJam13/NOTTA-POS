@@ -13,7 +13,7 @@ const RENDER_COMPENSATION_SECONDS = 1;
  * WHAT: A custom hook - a function that bundles React state and effects so a
  *       component can use them with one line.
  * WHY:  The countdown state, the once-a-second interval, and the three places
- *       that reset it were all woven through CreateOrder.js. Here they have
+ *       that reset it were all woven through CreateOrder.jsx. Here they have
  *       one home and clear names.
  *
  * @param {Function} onExpire - Called once when the countdown reaches zero

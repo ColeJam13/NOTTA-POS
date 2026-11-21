@@ -15,7 +15,7 @@ import QuickOrders from '../QuickOrders/QuickOrders';
  * The two screens share one component (TableChecks); one screen lists tables,
  * the other Quick Orders. Every test runs against both.
  *
- * The fake backend works the same way as in CreateOrder.test.js: global.fetch
+ * The fake backend works the same way as in CreateOrder.test.jsx: global.fetch
  * is replaced with a function that returns canned JSON. Both screens read one
  * endpoint, GET /api/tables/overview, which returns the open checks and the
  * recent paid checks already matched up.
@@ -63,7 +63,7 @@ beforeEach(() => {
     true: { activeTables: [], closedChecks: [closedCheck(20, 2, 'QO1', true)] }
   };
 
-  global.fetch = jest.fn(async (url) => {
+  global.fetch = vi.fn(async (url) => {
     const path = url.replace('http://localhost:8080', '');
     calls.push(path);
     const json = (data) => ({ ok: true, status: 200, json: async () => data });
@@ -75,7 +75,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 // Both screens are checked the same way
@@ -85,7 +85,7 @@ const SCREENS = [
 ];
 
 test.each(SCREENS)('%s: a closed check shows what the guest paid, tax and tip included', async (_name, Screen, tableNumber) => {
-  render(<Screen setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<Screen setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await userEvent.click(screen.getByRole('button', { name: 'CLOSED' }));
 
   // 33.00 + 0.99 tax + 6.80 tip = 40.79 (this used to show 39.80)
@@ -103,7 +103,7 @@ test.each(SCREENS)('%s: a closed check shows what the guest paid, tax and tip in
 });
 
 test.each(SCREENS)('%s: a closed check lists each item with its modifiers and kitchen note', async (_name, Screen, tableNumber) => {
-  render(<Screen setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<Screen setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await userEvent.click(screen.getByRole('button', { name: 'CLOSED' }));
   await userEvent.click((await screen.findByRole('heading', { name: tableNumber })).closest('.table-card'));
 
@@ -126,7 +126,7 @@ test.each(SCREENS)('%s: a check with no payment on record shows an unknown metho
   const key = name === 'Quick Orders';
   overviews[key].closedChecks = [{ ...overviews[key].closedChecks[0], paymentMethod: null, tipAmount: 0 }];
 
-  render(<Screen setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<Screen setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await userEvent.click(screen.getByRole('button', { name: 'CLOSED' }));
 
   const card = (await screen.findByRole('heading', { name: tableNumber })).closest('.table-card');
@@ -146,7 +146,7 @@ const seatWithOpenOrder = () => {
 
 test.each(SCREENS)('%s: an open check shows its amount, item counts, server, and age', async (_name, Screen, tableNumber) => {
   seatWithOpenOrder();
-  render(<Screen setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<Screen setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
 
   const card = (await screen.findByRole('heading', { name: tableNumber })).closest('.table-card');
   expect(within(card).getByText('$50.00')).toBeInTheDocument();                   // 16 + 17 + 17
@@ -159,8 +159,8 @@ test.each(SCREENS)('%s: an open check shows its amount, item counts, server, and
 
 test.each(SCREENS)('%s: tapping an open check opens that table on the order screen', async (_name, Screen, tableNumber) => {
   seatWithOpenOrder();
-  const setCurrentView = jest.fn();
-  const setSelectedTable = jest.fn();
+  const setCurrentView = vi.fn();
+  const setSelectedTable = vi.fn();
   render(<Screen setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />);
 
   await userEvent.click((await screen.findByRole('heading', { name: tableNumber })).closest('.table-card'));
@@ -170,7 +170,7 @@ test.each(SCREENS)('%s: tapping an open check opens that table on the order scre
 });
 
 test.each(SCREENS)('%s: says so when nothing is open', async (name, Screen) => {
-  render(<Screen setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<Screen setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
 
   expect(await screen.findByText(name === 'Tables' ? 'No active tables' : 'No active Quick Orders')).toBeInTheDocument();
 });
@@ -181,7 +181,7 @@ test.each(SCREENS)('%s: the card border follows the state of the kitchen', async
   // Everything on the check has been finished by the kitchen
   overviews[key].activeTables = [{ ...overviews[key].activeTables[0], limboCount: 0, pendingCount: 0, firedCount: 0, completedCount: 3 }];
 
-  render(<Screen setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<Screen setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
 
   const card = (await screen.findByRole('heading', { name: tableNumber })).closest('.table-card');
   expect(card).toHaveClass('border-green');
@@ -190,7 +190,7 @@ test.each(SCREENS)('%s: the card border follows the state of the kitchen', async
 
 test.each(SCREENS)('%s: the screen loads everything with one request', async (name, Screen, tableNumber) => {
   seatWithOpenOrder();
-  render(<Screen setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<Screen setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await screen.findByRole('heading', { name: tableNumber });
 
   // One request, for this screen's kind of table only.

@@ -12,7 +12,7 @@ import { apiFetch } from '../../services/api';
  *         amounts listed right below it.
  *       - The CUSTOM period found nothing when today was picked as both dates.
  *
- * The fake backend works the same way as in CreateOrder.test.js: global.fetch
+ * The fake backend works the same way as in CreateOrder.test.jsx: global.fetch
  * is replaced with a function that returns canned JSON. Like the real backend,
  * it answers GET /api/reports/financials?from=...&to=... with a report covering
  * only the checks closed between those two moments, so these tests also prove
@@ -95,7 +95,7 @@ beforeEach(async () => {
     { orderId: 11, subtotal: 10.0, tax: 0.3, total: 10.3, tip: 0, paymentMethod: 'cash', closedAt: new Date(now.getFullYear() - 1, 5, 15, 12, 0, 0) }
   ];
 
-  global.fetch = jest.fn(async (url) => {
+  global.fetch = vi.fn(async (url) => {
     const path = url.replace('http://localhost:8080', '');
     requests.push(path);
 
@@ -113,14 +113,14 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 // The stat card with the given label, e.g. statCard('Total Revenue')
 const statCard = (label) => screen.getByText(label).closest('.stat-card');
 
 test('today: revenue is sales before tax, and the total with tips includes the tax', async () => {
-  render(<Financials setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<Financials setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
 
   // Wait for the data: one order was closed today
   expect(await within(statCard('Orders Closed')).findByText('1')).toBeInTheDocument();
@@ -141,7 +141,7 @@ test('today: revenue is sales before tax, and the total with tips includes the t
 });
 
 test('today asks the backend for midnight to the last second of today, in local time', async () => {
-  render(<Financials setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<Financials setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await within(statCard('Orders Closed')).findByText('1');
 
   const today = dateBoxValue(new Date());
@@ -155,7 +155,7 @@ test('today is the backend\'s today, even on a device whose own date is wrong', 
   backendClockAheadMs = 2 * 24 * 60 * 60 * 1000;
   await someoneSignedInEarlier();
 
-  render(<Financials setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<Financials setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
 
   const backendToday = dateBoxValue(new Date(backendNow()));
   await waitFor(() =>
@@ -164,7 +164,7 @@ test('today is the backend\'s today, even on a device whose own date is wrong', 
 });
 
 test('custom period: picking today as both dates includes checks closed today', async () => {
-  render(<Financials setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<Financials setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await within(statCard('Orders Closed')).findByText('1');
 
   await userEvent.click(screen.getByRole('button', { name: 'CUSTOM' }));
@@ -187,7 +187,7 @@ test('custom period: picking today as both dates includes checks closed today', 
 
 test('a period with nothing closed shows zeros and says there is no data', async () => {
   closedChecks = [];
-  render(<Financials setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<Financials setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await waitFor(() => expect(requests).toHaveLength(1));
 
   expect(within(statCard('Orders Closed')).getByText('0')).toBeInTheDocument();
@@ -198,7 +198,7 @@ test('a period with nothing closed shows zeros and says there is no data', async
 });
 
 test('this month asks for the first day of the month through its last day', async () => {
-  render(<Financials setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<Financials setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await within(statCard('Orders Closed')).findByText('1');
 
   await userEvent.click(screen.getByRole('button', { name: 'THIS MONTH' }));

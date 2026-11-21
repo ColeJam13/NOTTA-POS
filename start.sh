@@ -5,7 +5,7 @@
 # WHAT: Starts everything the app needs with one command:
 #         1. the PostgreSQL database (if it is not already running)
 #         2. the backend  (Spring Boot, port 8080)
-#         3. the frontend (React, port 3000)
+#         3. the frontend (React, served by Vite, port 3000)
 #       then opens the app in your browser. Press Ctrl+C to stop it all.
 #
 # WHY:  Starting the app used to take three terminals and three commands.
@@ -53,6 +53,14 @@ port_in_use() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
 for tool in java mvn node npm curl; do
     command -v "$tool" >/dev/null 2>&1 || fail "'$tool' is not installed (see \"Running it\" in README.md)."
 done
+
+# Vite, which serves the frontend, needs Node.js 20.19 or newer (or 22.12 or newer).
+# An older Node fails with an error that does not say so, so it is checked here.
+# "node -p" prints the result of a line of JavaScript: 1 if this Node is new enough.
+NODE_OK="$(node -p 'const [major, minor] = process.versions.node.split(".").map(Number); (major === 20 && minor >= 19) || (major === 22 && minor >= 12) || major >= 23 ? 1 : 0')"
+if [ "$NODE_OK" != "1" ]; then
+    fail "Node.js $(node --version) is too old for the frontend. Install Node.js 22 or 24 (20.19 is the oldest that works)."
+fi
 
 # ----------------------------------------------------------------------------
 # 2. The database password
@@ -105,9 +113,19 @@ fi
 # ----------------------------------------------------------------------------
 # 5. Frontend packages (first run only)
 # ----------------------------------------------------------------------------
+# package-lock.json is the list of packages the frontend needs. npm keeps a copy of the
+# list it last installed in node_modules/.package-lock.json. If the list in the project
+# is newer than that copy (a pull brought in a change to the packages), install again.
+# Without this, the first start after such a pull fails with "command not found".
+# ("-nt" means "is newer than".)
 if [ ! -d "${ROOT}/frontend/node_modules" ]; then
     say "Frontend: installing packages (first run only, takes a minute or two)..."
     (cd "${ROOT}/frontend" && npm install) || fail "npm install failed."
+    touch "${ROOT}/frontend/node_modules/.package-lock.json"
+elif [ "${ROOT}/frontend/package-lock.json" -nt "${ROOT}/frontend/node_modules/.package-lock.json" ]; then
+    say "Frontend: the list of packages changed, installing..."
+    (cd "${ROOT}/frontend" && npm install) || fail "npm install failed."
+    touch "${ROOT}/frontend/node_modules/.package-lock.json"      # So the next start sees them as up to date
 fi
 
 # ----------------------------------------------------------------------------
@@ -134,12 +152,13 @@ say "Backend: starting on port ${BACKEND_PORT}..."
 BACKEND_PID=$!
 
 say "Frontend: starting on port ${FRONTEND_PORT}..."
-# BROWSER=none stops Create React App from opening its own browser tab; this script opens one below.
-# REACT_APP_API_URL is only set when the backend is not on its usual port.
+# PORT is read by frontend/vite.config.js. Vite does not open a browser tab by itself
+# (open: false there); this script opens one below.
+# VITE_API_URL is only set when the backend is not on its usual port.
 if [ "$BACKEND_PORT" = "8080" ]; then
-    (cd "${ROOT}/frontend" && BROWSER=none PORT="$FRONTEND_PORT" npm start) > "${LOG_DIR}/frontend.log" 2>&1 &
+    (cd "${ROOT}/frontend" && PORT="$FRONTEND_PORT" npm start) > "${LOG_DIR}/frontend.log" 2>&1 &
 else
-    (cd "${ROOT}/frontend" && BROWSER=none PORT="$FRONTEND_PORT" REACT_APP_API_URL="$BACKEND_URL" npm start) > "${LOG_DIR}/frontend.log" 2>&1 &
+    (cd "${ROOT}/frontend" && PORT="$FRONTEND_PORT" VITE_API_URL="$BACKEND_URL" npm start) > "${LOG_DIR}/frontend.log" 2>&1 &
 fi
 FRONTEND_PID=$!
 

@@ -9,10 +9,12 @@
  *
  * HOW TO CHANGE THE BACKEND ADDRESS:
  *   Create a file named ".env.local" in the frontend folder containing:
- *       REACT_APP_API_URL=http://192.168.1.50:8080
+ *       VITE_API_URL=http://192.168.1.50:8080
  *   then restart "npm start". With no setting, localhost:8080 is used.
- *   (Create React App only exposes environment variables whose names start
- *   with REACT_APP_.)
+ *   (Vite, the build tool, only shows the app environment variables whose
+ *   names start with VITE_, and the app reads them from import.meta.env.
+ *   The name was REACT_APP_API_URL, read from process.env, while the app
+ *   was built with Create React App.)
  */
 
 import { noteServerTime } from './serverClock';
@@ -28,12 +30,12 @@ const SESSION_TOKEN_HEADER = 'X-Staff-Token';
 let sessionToken = null;        // The signed-in person's token, or null when nobody is signed in
 let onSessionEnded = null;      // Called when the backend says the token is no longer good
 
-// Called by App.js when someone signs in (with their token) or out (with null)
+// Called by App.jsx when someone signs in (with their token) or out (with null)
 export const setSessionToken = (token) => {
   sessionToken = token;
 };
 
-// Lets App.js say what should happen when a session ends on the backend's side
+// Lets App.jsx say what should happen when a session ends on the backend's side
 export const setOnSessionEnded = (handler) => {
   onSessionEnded = handler;
 };
@@ -45,7 +47,7 @@ export const setOnSessionEnded = (handler) => {
 export const ORDER_NOT_OPEN = 'ORDER_NOT_OPEN';
 
 // Base address of the Spring Boot backend - no trailing slash
-export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 /**
  * Drop-in replacement for fetch() that prefixes the backend address.

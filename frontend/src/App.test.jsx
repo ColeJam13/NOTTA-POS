@@ -7,7 +7,7 @@ import { setSessionToken } from './services/api';
  * Tests for the app as a whole: signing in with a PIN, which screens each
  * role is offered, and signing out.
  *
- * The fake backend works the same way as in CreateOrder.test.js: global.fetch
+ * The fake backend works the same way as in CreateOrder.test.jsx: global.fetch
  * is replaced with a function that returns canned JSON. Here it also plays
  * the part of sign-in: it knows five PINs, hands out a token for each, and
  * (like the real backend) answers 401 to a token it no longer knows. One of
@@ -35,7 +35,7 @@ beforeEach(() => {
   window.sessionStorage.clear();
   setSessionToken(null);
 
-  global.fetch = jest.fn(async (url, options = {}) => {
+  global.fetch = vi.fn(async (url, options = {}) => {
     const method = options.method || 'GET';
     const path = url.replace('http://localhost:8080', '');
     const token = options.headers ? options.headers['X-Staff-Token'] : undefined;
@@ -80,7 +80,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
   setSessionToken(null);
 });
 
