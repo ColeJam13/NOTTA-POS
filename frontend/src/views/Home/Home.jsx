@@ -1,3 +1,4 @@
+import { Settings as SettingsIcon } from 'lucide-react';
 import logo from '../../assets/NOTTA LOGO.png';
 import { useStaff } from '../../context/StaffContext';
 import { canOpenScreen, ROLE_LABELS } from '../../utils/roles';
@@ -25,6 +26,13 @@ function Home({ setCurrentView }) {
       {staff && (
         <div className="home-signed-in">
           <span>Signed in as <strong>{staff.name}</strong> ({ROLE_LABELS[staff.role] || staff.role})</span>
+          {/* The gear opens Settings, for those whose role may (managers). It is up here,
+              as in the nav bar, and not a tenth big button: nine fill the screen. */}
+          {canOpenScreen(staff.role, 'settings') && (
+            <button className="home-settings" aria-label="Settings" title="Settings" onClick={() => setCurrentView('settings')}>
+              <SettingsIcon size={16} />
+            </button>
+          )}
           <button className="home-sign-out" onClick={signOut}>SIGN OUT</button>
         </div>
       )}

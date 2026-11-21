@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { setSessionToken } from './services/api';
+import { TEMPLATES, forgetTemplates } from './templates';
 
 /**
  * Tests for the app as a whole: signing in with a PIN, which screens each
@@ -26,12 +27,18 @@ const STAFF_BY_PIN = {
 
 let requests;         // [{ method, path, token }] - token is the X-Staff-Token header that was sent
 let liveTokens;       // token -> staff, for sessions the fake backend still knows
+let templateOnBackend;    // what GET /api/settings says the restaurant's template is
 
 const json = (data, status = 200) => ({ ok: status < 300, status, json: async () => data });
 
 beforeEach(() => {
   requests = [];
   liveTokens = {};
+  templateOnBackend = '8-bit';
+  // The app has one real template so far; a made-up second one gives the tests something to switch to
+  TEMPLATES.push({ id: 'test-look', name: 'Test Look', description: 'Made up for the tests.' });
+  window.localStorage.clear();
+  forgetTemplates();
   window.sessionStorage.clear();
   setSessionToken(null);
 
@@ -52,6 +59,16 @@ beforeEach(() => {
     if (method === 'POST' && path === '/api/staff/sign-out') {
       delete liveTokens[token];
       return { ok: true, status: 204, json: async () => null };
+    }
+    // --- the restaurant's settings: every signed-in terminal asks which template is in use ---
+    if (method === 'GET' && path === '/api/settings') {
+      if (!liveTokens[token]) return json({ message: 'Sign in to do that.' }, 401);
+      if (liveTokens[token].mustChangePin) return json({ message: 'Choose a new PIN before doing anything else.', code: 'PIN_CHANGE_REQUIRED' }, 403);
+      return json({ taxRate: 0.03, template: templateOnBackend });
+    }
+    if (method === 'PUT' && path === '/api/settings/template') {
+      templateOnBackend = JSON.parse(options.body).template;
+      return json({ taxRate: 0.03, template: templateOnBackend });
     }
     if (path === '/api/staff/me') {
       return liveTokens[token] ? json(liveTokens[token]) : json({ message: 'Sign in to continue.' }, 401);
@@ -82,6 +99,8 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   setSessionToken(null);
+  TEMPLATES.pop();                  // The made-up template added in beforeEach
+  forgetTemplates();
 });
 
 // Tap a PIN on the pad, one digit at a time
@@ -334,4 +353,96 @@ test('tapping CREATE ORDER while a table is on screen starts a fresh order, not 
   expect(screen.getByText('Add items to order')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'CLOSE ORDER' })).toBeDisabled();
   await waitFor(() => expect(screen.getByRole('button', { name: 'SEND ORDER' })).toBeDisabled());
+});
+
+// ============================================================================
+// The restaurant's template (the look of every screen)
+// ============================================================================
+
+const templateOnThePage = () => document.documentElement.getAttribute('data-template');
+const settingsRequests = () => requests.filter(r => r.path.startsWith('/api/settings'));
+
+test('after sign-in the app asks which template the restaurant uses and puts it on the page', async () => {
+  templateOnBackend = 'test-look';
+
+  await signIn('1111');
+
+  await waitFor(() => expect(templateOnThePage()).toBe('test-look'));
+  expect(settingsRequests()[0]).toEqual({ method: 'GET', path: '/api/settings', token: 'token-for-Sarah Miller' });
+  // Remembered on this device, so the PIN pad is drawn in it next time, before anyone signs in
+  expect(window.localStorage.getItem('notta.template')).toBe('test-look');
+});
+
+test('a template name the app does not know leaves the screens in the default look', async () => {
+  templateOnBackend = 'a-template-from-the-future';
+
+  await signIn('1111');
+
+  await waitFor(() => expect(settingsRequests()).toHaveLength(1));
+  expect(templateOnThePage()).toBe('8-bit');
+});
+
+test('nothing is asked about the template while a new PIN is still owed', async () => {
+  // The backend refuses everything but choosing a PIN from this person, so asking would
+  // only fill the log with refusals
+  render(<App />);
+  await typePin('1234');
+  await screen.findByText(/CHOOSE A NEW PIN|ENTER YOUR CURRENT PIN/i);
+
+  expect(settingsRequests()).toEqual([]);
+});
+
+test('only a manager is offered the Settings gear, on Home and in the nav bar', async () => {
+  const view = await signIn('2222');
+  expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();           // On Home, beside SIGN OUT
+  await userEvent.click(screen.getByRole('button', { name: 'STAFF' }));
+  await screen.findByRole('heading', { name: 'STAFF' });
+  expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();           // In the nav bar
+  view.unmount();
+
+  setSessionToken(null);
+  window.sessionStorage.clear();
+  await signIn('1111');
+  expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'TABLES' }));
+  await screen.findByRole('heading', { name: 'TABLES' });
+  expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument();
+});
+
+test('a manager previews a template, takes it to another screen, and chooses it for the whole restaurant', async () => {
+  await signIn('2222');
+  await waitFor(() => expect(templateOnThePage()).toBe('8-bit'));
+
+  // The gear, then PREVIEW on the other template
+  await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Preview Test Look' }));
+  expect(templateOnThePage()).toBe('test-look');
+  expect(screen.getByRole('status', { name: 'Template preview' })).toBeInTheDocument();
+  expect(templateOnBackend).toBe('8-bit');                          // Nothing has changed for anyone else
+
+  // The preview and its bar go along to another screen
+  await userEvent.click(screen.getByRole('button', { name: 'STAFF' }));
+  await screen.findByRole('heading', { name: 'STAFF' });
+  expect(templateOnThePage()).toBe('test-look');
+  expect(screen.getByRole('status', { name: 'Template preview' })).toBeInTheDocument();
+
+  // Choose it
+  await userEvent.click(screen.getByRole('button', { name: 'USE TEST LOOK EVERYWHERE' }));
+
+  await waitFor(() => expect(screen.queryByRole('status', { name: 'Template preview' })).not.toBeInTheDocument());
+  expect(templateOnBackend).toBe('test-look');
+  expect(templateOnThePage()).toBe('test-look');
+  expect(requests.find(r => r.method === 'PUT' && r.path === '/api/settings/template').token).toBe('token-for-Morgan');
+});
+
+test('signing out during a preview ends it, so the next person sees the restaurant\'s own template', async () => {
+  await signIn('2222');
+  await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Preview Test Look' }));
+  expect(templateOnThePage()).toBe('test-look');
+
+  await userEvent.click(screen.getByRole('button', { name: /SIGN OUT/ }));
+
+  await screen.findByText('ENTER YOUR PIN');
+  expect(templateOnThePage()).toBe('8-bit');
 });

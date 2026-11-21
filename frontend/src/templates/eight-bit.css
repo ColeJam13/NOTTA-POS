@@ -43,16 +43,26 @@
  *   A token may be defined from another one, e.g. --status-wait-late: var(--color-danger).
  *   That says "a late ticket is drawn in the danger color" once, in one place.
  *
- * ":root" is the page itself, so a name defined here can be used by every element on it.
+ * WHICH ELEMENTS GET THESE VALUES (the line just below this comment)
+ *   ":root" is the page itself, so these values reach every element on it. This is
+ *   the DEFAULT template: a page that names no template, or names one that does not
+ *   exist, is drawn in 8-Bit.
+ *   [data-template="8-bit"] is any element carrying that attribute. It lets one box
+ *   on a page be drawn in this template while the page around it is in another (the
+ *   samples on the Settings screen).
+ *   Every other template uses only the second form, with its own name, and is loaded
+ *   after this file, so on a page marked data-template="plain" its values win.
+ *   templates/index.js lists the templates and puts the attribute on the page.
  */
 
-:root {
+:root,
+[data-template="8-bit"] {
   /* ====================================================================== */
   /* FONTS                                                                  */
   /* ====================================================================== */
 
   /* The pixel font everything is set in, and the gothic one for the NOTTA-POS logo.
-     The fonts themselves are loaded in index.html and App.css. */
+     The font files are declared in fonts.css, beside this file. */
   --font-body: 'Press Start 2P', monospace;
   --font-logo: 'GothicByte', monospace;
   /* Set on the outermost box only; every element inside takes --font-body, so this one

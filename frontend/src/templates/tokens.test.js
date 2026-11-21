@@ -1,16 +1,20 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { cwd } from 'node:process';
+import { TEMPLATES } from './index';
 
 /**
  * Keeps the design tokens honest.
  *
- * WHAT: Reads every stylesheet in src/ as text and checks three things:
+ * WHAT: Reads every stylesheet in src/ as text and checks:
  *         1. No stylesheet outside src/templates holds a color, a font, a type size, a
  *            corner size, a border width, a shadow, or a gap of its own. They must come
  *            from a token: var(--color-surface), var(--space-10), and so on.
  *         2. Every token a stylesheet uses is defined in the template.
  *         3. Every token the template defines is used somewhere.
+ *         4. The list of templates (index.js) and the template stylesheets agree, and
+ *            every template defines every token.
+ *         5. Nothing is fetched from the internet: fonts ship with the app.
  * WHY:  The whole point of tokens (step B4a of the plan) is that a template can change
  *       the look of the app from one file. One "color: #b026ff" typed into a screen's
  *       stylesheet is a spot the next template cannot reach, and nobody would notice
@@ -27,7 +31,7 @@ import { cwd } from 'node:process';
 
 // The src/ folder. The tests are started from frontend/ (npm test), which is what cwd() answers.
 const SRC = join(cwd(), 'src');
-const TEMPLATES = `templates${sep}`;
+const TEMPLATES_FOLDER = `templates${sep}`;
 
 // Every .css file under src/, as paths relative to src/
 const stylesheetsUnder = (folder) => readdirSync(folder).flatMap(name => {
@@ -45,33 +49,47 @@ const declarationsIn = (css) => {
   const open = [];                                    // the selectors of the blocks we are inside
   let start = 0;
   const text = withoutComments(css);
+  // Whatever sits between the last ";" (or "{") and here is one declaration
+  const readDeclaration = (end) => {
+    const [property, ...rest] = text.slice(start, end).split(':');
+    const inside = open.join(' ');
+    if (rest.length > 0 && open.length > 0 && !inside.includes('@font-face') && !inside.includes('@keyframes')) {
+      found.push({ selector: inside, property: property.trim(), value: rest.join(':').trim() });
+    }
+  };
   for (let i = 0; i < text.length; i++) {
     const character = text[i];
     if (character === '{') { open.push(text.slice(start, i).trim()); start = i + 1; }
-    else if (character === '}') { open.pop(); start = i + 1; }
-    else if (character === ';') {
-      const [property, ...rest] = text.slice(start, i).split(':');
-      const inside = open.join(' ');
-      if (rest.length > 0 && open.length > 0 && !inside.includes('@font-face') && !inside.includes('@keyframes')) {
-        found.push({ selector: inside, property: property.trim(), value: rest.join(':').trim() });
-      }
-      start = i + 1;
+    else if (character === ';') { readDeclaration(i); start = i + 1; }
+    else if (character === '}') {
+      readDeclaration(i);             // The last line of a block may have no ";" after it. It still counts.
+      open.pop(); start = i + 1;
     }
   }
   return found;
 };
 
 const all = stylesheetsUnder(SRC);
-const templates = all.filter(file => file.startsWith(TEMPLATES));
-const screens = all.filter(file => !file.startsWith(TEMPLATES));
+const inTemplatesFolder = all.filter(file => file.startsWith(TEMPLATES_FOLDER));
+const screens = all.filter(file => !file.startsWith(TEMPLATES_FOLDER));
 const read = (file) => readFileSync(join(SRC, file), 'utf8');
 
-// The tokens the template defines: { '--color-surface': '#16213e', ... }
-const defined = Object.fromEntries(
-  templates.flatMap(file => declarationsIn(read(file)))
+// The tokens one stylesheet defines: { '--color-surface': '#16213e', ... }
+const tokensDefinedIn = (file) => Object.fromEntries(
+  declarationsIn(read(file))
     .filter(declaration => declaration.property.startsWith('--'))
     .map(declaration => [declaration.property, declaration.value])
 );
+
+// The template stylesheets: the files in src/templates that define tokens (fonts.css does not)
+const templateFiles = inTemplatesFolder.filter(file => Object.keys(tokensDefinedIn(file)).length > 0);
+const DEFAULT_TEMPLATE_FILE = `templates${sep}eight-bit.css`;
+
+// The tokens of the default template. Every other template must define the same names.
+const defined = tokensDefinedIn(DEFAULT_TEMPLATE_FILE);
+
+// The template names a stylesheet gives its values to: [data-template="8-bit"] -> '8-bit'
+const templateNamesIn = (file) => [...withoutComments(read(file)).matchAll(/\[data-template="([^"]+)"\]/g)].map(match => match[1]);
 const tokensUsedIn = (text) => [...text.matchAll(/var\((--[a-z0-9-]+)\)/g)].map(match => match[1]);
 
 // What a value may still contain once its tokens are taken out
@@ -94,7 +112,7 @@ const RULES = [
 
 test('the template defines tokens, and they were found', () => {
   // If this fails, the test is looking in the wrong place and the others prove nothing
-  expect(templates).toContain(`templates${sep}eight-bit.css`);
+  expect(templateFiles).toContain(DEFAULT_TEMPLATE_FILE);
   expect(Object.keys(defined).length).toBeGreaterThan(100);
   expect(defined['--color-surface']).toBe('#16213e');
   expect(screens.length).toBeGreaterThan(15);
@@ -133,6 +151,46 @@ test('every token the template defines is used', () => {
   const unused = Object.keys(defined).filter(token => !used.has(token));
   // A token nothing uses is a value somebody will change and wonder why nothing happened
   expect(unused).toEqual([]);
+});
+
+// ============================================================================
+// The templates themselves
+// ============================================================================
+
+test('every template in the list has a stylesheet, and every template stylesheet is in the list', () => {
+  // A template in the list with no stylesheet would be offered to a manager and draw
+  // nothing new. A stylesheet not in the list could never be chosen.
+  const namesWithAStylesheet = templateFiles.flatMap(templateNamesIn);
+
+  expect([...new Set(namesWithAStylesheet)].sort()).toEqual(TEMPLATES.map(template => template.id).sort());
+});
+
+test('each template stylesheet gives its values to one template only', () => {
+  for (const file of templateFiles) {
+    expect([...new Set(templateNamesIn(file))], file).toHaveLength(1);
+  }
+});
+
+test('every template defines every token, and no token of its own', () => {
+  // A token a template leaves out silently keeps the default template's value: one
+  // neon-green button in the middle of the Coffee Shop. A token only one template has
+  // is one no screen can rely on.
+  const expected = Object.keys(defined).sort();
+
+  for (const file of templateFiles) {
+    expect(Object.keys(tokensDefinedIn(file)).sort(), file).toEqual(expected);
+  }
+});
+
+test('nothing is fetched from the internet: no stylesheet or the page itself names an outside address', () => {
+  // A restaurant's internet goes down; the app must not lose its fonts when it does.
+  // url('../fonts/x.ttf') is a file shipped with the app. url(https://...) is not.
+  const outside = /url\(\s*['"]?(https?:)?\/\//i;
+  const offenders = all.filter(file => outside.test(withoutComments(read(file))) || /@import/.test(withoutComments(read(file))));
+  expect(offenders).toEqual([]);
+
+  const page = readFileSync(join(cwd(), 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  expect(page).not.toMatch(/(href|src)\s*=\s*["'](https?:)?\/\//i);
 });
 
 test('the rules above do catch a literal value (the test tests itself)', () => {

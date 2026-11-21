@@ -1,12 +1,4 @@
-@font-face {
-  font-family: 'GothicByte';
-  src: url('./fonts/GothicByte.ttf') format('truetype');
-}
-
-@font-face {
-  font-family: 'Press Start 2P';
-  src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-}
+/* The fonts are declared in templates/fonts.css, with the templates that use them. */
 
 * {
   margin: 0;

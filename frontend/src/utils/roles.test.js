@@ -5,7 +5,7 @@ import { canDo, canOpenScreen, initialsOf } from './roles';
  */
 
 test('managers may open every screen', () => {
-  for (const view of ['home', 'floorMap', 'activeTables', 'quickOrders', 'activeOrders', 'createOrder', 'eightySix', 'financials', 'challenges', 'staff']) {
+  for (const view of ['home', 'floorMap', 'activeTables', 'quickOrders', 'activeOrders', 'createOrder', 'eightySix', 'financials', 'challenges', 'staff', 'settings']) {
     expect(canOpenScreen('manager', view)).toBe(true);
   }
 });
@@ -38,6 +38,13 @@ test('the kitchen may open the kitchen display and the 86 board only', () => {
   expect(canOpenScreen('kitchen', 'eightySix')).toBe(true);
   expect(canOpenScreen('kitchen', 'createOrder')).toBe(false);
   expect(canOpenScreen('kitchen', 'floorMap')).toBe(false);
+});
+
+test('only managers may open Settings, where the look of every terminal is chosen', () => {
+  expect(canOpenScreen('manager', 'settings')).toBe(true);
+  for (const role of ['server', 'bartender', 'host', 'kitchen']) {
+    expect(canOpenScreen(role, 'settings')).toBe(false);
+  }
 });
 
 test('everyone may open Home, and a role the app does not know may open nothing else', () => {

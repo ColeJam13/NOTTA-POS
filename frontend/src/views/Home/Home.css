@@ -85,3 +85,21 @@
   background: var(--color-accent-fill);
   color: var(--color-on-accent);
 }
+
+/* The gear that opens Settings (managers only), drawn like SIGN OUT beside it */
+.home-settings {
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: var(--border-width) solid var(--color-border);
+  color: var(--color-text);
+  padding: var(--space-6) var(--space-10);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.home-settings:hover {
+  background: var(--color-accent-fill);
+  color: var(--color-on-accent);
+}

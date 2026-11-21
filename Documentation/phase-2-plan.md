@@ -40,7 +40,7 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 8a | A6. Two follow-ups from the review: tips on closed checks, and releasing a paused terminal | Done (#288) |
 | 8b | U1. Spring Boot 3.5 to 4.1 (the 3.5 line no longer gets security fixes) | Done (#289) |
 | 9 | B4a. Design tokens: every screen reads its look from named values | Done (#290) |
-| 10 | **B4b and B4c. Template system, then the new templates** | B4b is next. D9 (default decided) |
+| 10 | **B4b and B4c. Template system, then the new templates** | B4b done (#291). B4c is next: each template is proposed to the owner first. D9 (default decided) |
 | 11 | P3. Phone-sized screens | |
 | 12 | P4. HTTPS on a private network, and the installable app | D8 |
 | 13 | B5, then B1, B2, B3 (features, in that order) | D4 (decided), D5, D6 |
@@ -399,6 +399,18 @@ The owner wants a list of default templates a manager can switch between: **Plai
 
 **B4b. The template system.**
 
+**Done 2026-11-21 (#291).** A manager can preview a template on their own terminal and choose it for the whole restaurant; the choice is a row in a new `settings` table (migration V7); every terminal picks it up within 15 seconds with no reload; and the fonts ship with the app. What was decided along the way, beyond the text below:
+
+- **There is still one template.** The plan puts Plain, Coffee Shop, and Nightclub in B4c, each proposed to the owner first, so this pull request ships the system with 8-Bit alone and the Settings screen says more are coming. The system was exercised in the real app with a throwaway second template (orange and cyan, a serif font, square corners) that is not in the repository: 26 checks across two terminals.
+- **The backend stores the name and keeps no list.** The templates are stylesheets in the frontend, and the frontend is the one list of which exist. The backend checks that a name is a plain short word, because the frontend writes it into the page. A name no frontend knows draws 8-Bit.
+- **Terminals ask every 15 seconds.** That is how a change reaches a kitchen tablet nobody touches. It costs one small request per signed-in terminal every 15 seconds.
+- **The device remembers the last template** and `index.html` applies it before anything is drawn. The backend only tells a signed-in person the template (as the plan said), so without this the PIN pad would always be 8-Bit and then change at sign-in.
+- **A preview goes with the manager from screen to screen.** The plan asked for "a preview before it is applied". A sample on the Settings screen shows each template side by side, and PREVIEW then puts the whole app in it on that terminal only, with a bar above every screen holding the two ways out. A template has to be judged on the order screen and the kitchen display, not on a sample.
+- **Settings is a gear, not a tenth button.** The manager's nav bar and Home screen are already full; the gear sits beside SIGN OUT on both.
+- **`GET /api/settings` gained a field** (`template`, beside `taxRate`); nothing was removed.
+- **The font is Press Start 2P's own file, under its SIL Open Font License,** which allows shipping it inside an app (the license is beside it in `src/fonts`). Ten screens that this change does not otherwise touch are pixel-identical to how they were drawn with the font from Google.
+- **What a template cannot change yet:** the logo picture on the Home and PIN screens (it is one image in the 8-Bit colors). B4c has to decide what each template shows there.
+
 - Each template is one file that sets the token values. The active template is applied at the top of the page.
 - The choice is stored on the backend (a settings table, added by a Flyway migration) so every terminal and phone shows the same template. Any signed-in person can read it; only a manager can change it.
 - A manager screen to pick a template, with a preview before it is applied.
@@ -436,7 +448,7 @@ Owner actions still open unless already done: turn on Dependabot alerts (U3), tu
 
 ## How to continue
 
-1. Start B4b (the template system). It needs no decision from the owner: the default template is 8-Bit (D9). B4c, the new templates, needs the owner's eye on each proposal. U2 (Node 24 in CI and the frontend tool bumps) and the rest of U3 (the Maven Wrapper) can go in at any gap. Part A (A1 to A6), P1, P2, and U1 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
+1. Start B4c with Plain: build it as a proposal (a palette and a font choice, with screenshots of the order screen, the kitchen display, and the Payment window in it), and get the owner's approval before finishing. Then Coffee Shop and Nightclub the same way, asking the owner first for any direction (D9). Each must pass the checks listed under B4c. U2 (Node 24 in CI and the frontend tool bumps) and the rest of U3 (the Maven Wrapper) can go in at any gap. Part A (A1 to A6), P1, P2, and U1 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
 2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 
 ## Completed

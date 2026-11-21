@@ -27,6 +27,8 @@ CI runs `lint`, `build`, and `test` on every pull request.
 
 ## How the app gets its look
 
+A **template** is the look of the whole app. `src/templates/index.js` lists the templates and switches between them; the restaurant's choice is kept on the backend and made by a manager on the Settings screen. Fonts are in `src/fonts` and ship with the app.
+
 `src/templates/eight-bit.css` gives a name (a "token") to every color, font, size, corner, border width, glow, and gap. Every other stylesheet uses those names (`var(--color-surface)`, `var(--space-10)`) and holds no values of its own, so a different look for the whole app is a second template file with other values. The top of that file explains how the names are built. `npm test` fails if a stylesheet goes back to a literal value (`src/templates/tokens.test.js`).
 
 ## Things that differ from Create React App

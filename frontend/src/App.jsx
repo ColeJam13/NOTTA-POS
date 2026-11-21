@@ -11,10 +11,17 @@ import EightySixBoard from './views/EightySixBoard';
 import SignIn from './views/SignIn';
 import ChangePin from './views/ChangePin';
 import Staff from './views/Staff';
+import Settings from './views/Settings';
+import TemplatePreviewBar from './components/TemplatePreviewBar';
 import { StaffContext } from './context/StaffContext';
-import { apiFetch, setSessionToken, setOnSessionEnded } from './services/api';
+import { apiFetch, getJson, setSessionToken, setOnSessionEnded } from './services/api';
+import { showChosenTemplate, stopPreview } from './templates';
 import { canOpenScreen } from './utils/roles';
 import './App.css';
+
+// How often a signed-in terminal asks the backend which template the restaurant uses,
+// in milliseconds. This is how long a manager's change takes to reach the other terminals.
+const TEMPLATE_REFRESH_MS = 15000;
 
 // Where the signed-in person's token is kept so a page reload does not sign them out.
 // sessionStorage belongs to one browser tab and is emptied when the tab is closed.
@@ -53,6 +60,7 @@ function App() {
 
   // Forget who was signed in and go back to the PIN screen
   const clearSession = useCallback(() => {
+    stopPreview();                  // A template a manager was trying out must not be left on for the next person
     setSessionToken(null);
     storeToken(null);
     setStaff(null);
@@ -96,6 +104,27 @@ function App() {
       .finally(() => setCheckingSession(false));
   }, [clearSession]);
 
+  // THE TEMPLATE (the look of every screen). The restaurant has one, chosen by a manager
+  // and kept on the backend. Ask for it as soon as someone is signed in, and again every
+  // few seconds, so a change made on one terminal reaches all the others without anyone
+  // reloading a page. The answer goes to templates/index.js, which restyles the page.
+  // Someone who must first choose a new PIN is refused everything else by the backend,
+  // so nothing is asked until that is done.
+  const signedInAndReady = staff !== null && !staff.mustChangePin;
+  useEffect(() => {
+    if (!signedInAndReady) return undefined;
+
+    const loadTemplate = () => {
+      getJson('/api/settings')
+        .then(settings => showChosenTemplate(settings.template))
+        .catch(() => {});             // No answer: keep the look the screen has. It is asked again shortly.
+    };
+
+    loadTemplate();
+    const interval = setInterval(loadTemplate, TEMPLATE_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, [signedInAndReady]);
+
   // Counts how many times the order screen has been opened. It is used as the
   // screen's "key": when a key changes, React throws the old copy of the component
   // away and builds a fresh one, with fresh state.
@@ -137,6 +166,9 @@ function App() {
   return (
     // Every screen below can read who is signed in with useStaff()
     <StaffContext.Provider value={{ staff, signOut }}>
+      {/* Draws nothing unless a manager is trying a template out; then it sits above
+          whichever screen is open */}
+      <TemplatePreviewBar />
       {renderView()}
     </StaffContext.Provider>
   );
@@ -178,6 +210,10 @@ function App() {
 
   if (currentView === 'staff') {
     return <Staff setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;
+  }
+
+  if (currentView === 'settings') {
+    return <Settings setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;
   }
 
   return <Home setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;  

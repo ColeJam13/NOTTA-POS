@@ -1,5 +1,5 @@
 import './NavBar.css';
-import { AlertCircle, LogOut } from 'lucide-react';
+import { AlertCircle, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext';
 import { canOpenScreen, initialsOf, ROLE_LABELS } from '../../utils/roles';
 
@@ -50,6 +50,18 @@ function NavBar({ currentView, setCurrentView, setSelectedTable, confirmLeave })
           <button className="notifications-btn">
             <AlertCircle size={20} /> <span className="notification-badge">2</span>
           </button>
+          {/* The gear opens Settings. Only a manager is offered it (utils/roles.js); it sits up
+              here because the row of screen buttons below is already full. */}
+          {staff && canOpenScreen(staff.role, 'settings') && (
+            <button
+              className={`settings-btn ${currentView === 'settings' ? 'active' : ''}`}
+              aria-label="Settings"
+              title="Settings"
+              onClick={() => goTo('settings')}
+            >
+              <SettingsIcon size={20} />
+            </button>
+          )}
           {/* Who is signed in, and the way to sign out (so the next person can type their own PIN) */}
           {staff && (
             <div className="user-info">
