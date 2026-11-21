@@ -1,0 +1,1 @@
+[{"menuItemId":9001,"groups":[{"modifierGroupId":9001,"name":"Side","description":"Choose one","isRequired":true,"maxSelections":1,"modifiers":[{"modifierId":9001,"name":"Hashbrowns","priceAdjustment":0.00},{"modifierId":9002,"name":"French Toast","priceAdjustment":2.00}]}]}]

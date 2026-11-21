@@ -1,0 +1,1 @@
+[{"menuItemId":9001,"name":"Omelette of the Day","description":"Three eggs","price":16.00,"category":"Savory","prepStationId":9001,"isActive":true,"is86d":false,"createdAt":"2026-11-18T09:00:00.123456"},{"menuItemId":9002,"name":"Garden Toast","description":null,"price":12.50,"category":"Savory","prepStationId":null,"isActive":true,"is86d":true,"createdAt":"2026-11-18T09:00:00"}]
