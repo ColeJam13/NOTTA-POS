@@ -14,12 +14,15 @@ import com.notapos.repository.MenuItemRepository;
 import com.notapos.repository.OrderItemRepository;
 import com.notapos.repository.OrderRepository;
 import com.notapos.repository.PaymentRepository;
+import com.notapos.security.StaffSession;
+import com.notapos.enums.StaffRole;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +65,11 @@ class TableOverviewServiceTest {
 
     @InjectMocks
     private TableOverviewService tableOverviewService;
+
+    // Who is asking. A manager sees every tip, so the tests about how a check is put
+    // together ask as one; the tests about who sees a tip are at the end of the file.
+    private static final StaffSession MANAGER = new StaffSession(2L, "Morgan", StaffRole.MANAGER, Instant.now(), false);
+    private static final StaffSession SARAH = new StaffSession(7L, "Sarah", StaffRole.SERVER, Instant.now(), false);
 
     private RestaurantTable table(Long id, String number) {
         RestaurantTable table = new RestaurantTable();
@@ -116,7 +124,7 @@ class TableOverviewServiceTest {
                 item(102L, 10L, 6L, "limbo", "17.00")));
 
         // When
-        TablesOverviewView overview = tableOverviewService.getOverview(false);
+        TablesOverviewView overview = tableOverviewService.getOverview(false, MANAGER);
 
         // Then - One card, for W1 only
         assertEquals(1, overview.activeTables().size());
@@ -168,7 +176,7 @@ class TableOverviewServiceTest {
                 200L, List.of(new OrderItemModifierView(200L, 14L, "French Toast", new BigDecimal("2.00")))));
 
         // When
-        TablesOverviewView overview = tableOverviewService.getOverview(false);
+        TablesOverviewView overview = tableOverviewService.getOverview(false, MANAGER);
 
         // Then
         assertTrue(overview.activeTables().isEmpty());
@@ -212,7 +220,7 @@ class TableOverviewServiceTest {
                 20L, "closed", 1, 0, new BigDecimal("16.00"), new BigDecimal("0.48"), new BigDecimal("16.48"), new BigDecimal("0.03")));
 
         // When
-        ClosedCheckView check = tableOverviewService.getOverview(false).closedChecks().get(0);
+        ClosedCheckView check = tableOverviewService.getOverview(false, MANAGER).closedChecks().get(0);
 
         // Then - Worked out from the items; no payment means no tip and no method
         assertEquals(new BigDecimal("16.48"), check.total());
@@ -232,11 +240,116 @@ class TableOverviewServiceTest {
         when(tableService.getTablesByQuickOrder(true)).thenReturn(List.of());
 
         // When
-        TablesOverviewView overview = tableOverviewService.getOverview(true);
+        TablesOverviewView overview = tableOverviewService.getOverview(true, MANAGER);
 
         // Then
         assertTrue(overview.activeTables().isEmpty());
         assertTrue(overview.closedChecks().isEmpty());
         verifyNoInteractions(orderRepository, orderItemRepository, paymentRepository, menuItemRepository);
+    }
+
+    // ------------------------------------------------------------------
+    // Who sees the tip on a closed check (the owner's decision D10)
+    // ------------------------------------------------------------------
+
+    // A closed order on W1, opened by the given staff member (null = nobody on record)
+    private Order closedOrderOpenedBy(Long orderId, Long staffId) {
+        Order closed = order(orderId, 1L, "closed");
+        closed.setStaffId(staffId);
+        closed.setSubtotal(new BigDecimal("20.00"));
+        closed.setTax(new BigDecimal("0.60"));
+        closed.setTotal(new BigDecimal("20.60"));
+        closed.setClosedAt(LocalDateTime.now());
+        return closed;
+    }
+
+    private Payment paymentWithTip(Long orderId, String tip) {
+        Payment payment = new Payment();
+        payment.setOrderId(orderId);
+        payment.setAmount(new BigDecimal("20.60"));
+        payment.setTipAmount(new BigDecimal(tip));
+        payment.setPaymentMethod("credit_card");
+        return payment;
+    }
+
+    @Test
+    void testGetOverview_ShouldGiveAServerTheTipOnTheirOwnCheckOnly() {
+        // WHAT: Test two closed checks read by Sarah: one she opened, one Dan (staff 8) opened
+        // WHY: A person sees the tip on checks they opened and nobody else's
+
+        // Given
+        Order hers = closedOrderOpenedBy(20L, 7L);
+        Order dans = closedOrderOpenedBy(21L, 8L);
+
+        when(tableService.getTablesByQuickOrder(false)).thenReturn(List.of(table(1L, "W1")));
+        when(orderRepository.findByTableIdInAndStatus(List.of(1L), "open")).thenReturn(List.of());
+        when(orderRepository.findTop50ByTableIdInAndStatusOrderByClosedAtDesc(List.of(1L), "closed")).thenReturn(List.of(hers, dans));
+        when(orderItemRepository.findByOrderIdIn(List.of(20L, 21L))).thenReturn(List.of());
+        when(paymentRepository.findByOrderIdIn(List.of(20L))).thenReturn(List.of(paymentWithTip(20L, "5.00")));
+        when(menuItemRepository.findAllById(any())).thenReturn(List.of());
+        when(orderItemModifierService.getModifierViewsForOrderItems(List.of())).thenReturn(Map.of());
+
+        // When
+        List<ClosedCheckView> checks = tableOverviewService.getOverview(false, SARAH).closedChecks();
+
+        // Then - her own check carries the tip and how it was paid
+        assertEquals(new BigDecimal("5.00"), checks.get(0).tipAmount());
+        assertEquals("credit_card", checks.get(0).paymentMethod());
+
+        // And - Dan's check is there with its total, and neither private field
+        assertEquals(21L, checks.get(1).orderId());
+        assertEquals(new BigDecimal("20.60"), checks.get(1).total());
+        assertNull(checks.get(1).tipAmount());
+        assertNull(checks.get(1).paymentMethod());
+
+        // And - Dan's payment was never read from the database at all
+        verify(paymentRepository).findByOrderIdIn(List.of(20L));
+        verifyNoMoreInteractions(paymentRepository);
+    }
+
+    @Test
+    void testGetOverview_ShouldNotReadAnyPaymentForSomeoneWhoOpenedNoneOfTheChecks() {
+        // WHAT: Test closed checks read by someone who opened none of them
+        // WHY: With no tip to show, the payments query is skipped: what is never read
+        //      cannot be sent by mistake
+
+        // Given
+        when(tableService.getTablesByQuickOrder(false)).thenReturn(List.of(table(1L, "W1")));
+        when(orderRepository.findByTableIdInAndStatus(List.of(1L), "open")).thenReturn(List.of());
+        when(orderRepository.findTop50ByTableIdInAndStatusOrderByClosedAtDesc(List.of(1L), "closed"))
+                .thenReturn(List.of(closedOrderOpenedBy(21L, 8L)));
+        when(orderItemRepository.findByOrderIdIn(List.of(21L))).thenReturn(List.of());
+        when(menuItemRepository.findAllById(any())).thenReturn(List.of());
+        when(orderItemModifierService.getModifierViewsForOrderItems(List.of())).thenReturn(Map.of());
+
+        // When
+        ClosedCheckView check = tableOverviewService.getOverview(false, SARAH).closedChecks().get(0);
+
+        // Then
+        assertNull(check.tipAmount());
+        assertNull(check.paymentMethod());
+        verifyNoInteractions(paymentRepository);
+    }
+
+    @Test
+    void testMaySeeTip_ShouldFollowTheOwnersRule() {
+        // WHAT: Test the rule on its own, for each kind of person and check
+        // WHY: One small method decides what is private. Every case is written out.
+
+        StaffSession kitchen = new StaffSession(9L, "Kit", StaffRole.KITCHEN, Instant.now(), false);
+        Order sarahs = closedOrderOpenedBy(20L, 7L);
+        Order dans = closedOrderOpenedBy(21L, 8L);
+        Order nobodyOnRecord = closedOrderOpenedBy(22L, null);       // Closed before staff profiles existed
+
+        // A manager: every check, including one with nobody on record
+        assertTrue(TableOverviewService.maySeeTip(sarahs, MANAGER));
+        assertTrue(TableOverviewService.maySeeTip(dans, MANAGER));
+        assertTrue(TableOverviewService.maySeeTip(nobodyOnRecord, MANAGER));
+
+        // Anyone else: the checks they opened, and no others
+        assertTrue(TableOverviewService.maySeeTip(sarahs, SARAH));
+        assertFalse(TableOverviewService.maySeeTip(dans, SARAH));
+        assertFalse(TableOverviewService.maySeeTip(nobodyOnRecord, SARAH));
+        assertFalse(TableOverviewService.maySeeTip(sarahs, kitchen));
     }
 }
