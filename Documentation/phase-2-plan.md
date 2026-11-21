@@ -302,7 +302,7 @@ Done when: all backend tests pass with unchanged meaning, the JSON tests pass un
 
 ### U2. Node 24 and the frontend tools
 
-Waits on the owner upgrading Node.js on the development machine from 20 to 24. Recommended to the owner: install a version manager (nvm) and add Node 24 through it, leaving the system-wide Node 20 in place, so nothing else on the machine is affected.
+Waits on the owner upgrading Node.js on the development machine from 20 to 24. Checked on 2026-11-21: the machine has Node 20.20.0 at `/usr/bin/node`, installed system-wide. The rest of the machine is current and needs nothing: Java 21.0.13, PostgreSQL 16.15, Docker 29, Ubuntu 24.04.4. Recommended to the owner: install a version manager (nvm) and add Node 24 through it, leaving the system-wide Node 20 in place, so nothing else on the machine is affected.
 
 One pull request, once Node 24 is there:
 
@@ -320,6 +320,7 @@ Done when: lint, build, tests, and the packaged-build check pass on Node 24 loca
 
 Upgrades should stop arriving as surprises.
 
+- **The Maven Wrapper.** Add `mvnw` to `backend/`, pinned to the current Maven 3.9 release, and use `./mvnw` in CI, `start.sh`, `package.sh`, and the documentation. The wrapper is a small script kept in the repository that downloads and runs one exact Maven version, so every machine and CI build with the same one. Today the build uses whatever Maven is installed: the development machine has 3.8.7 (the version Ubuntu packages, from 2022), and CI has whatever its image ships.
 - **A versions table in `CLAUDE.md`:** Spring Boot, Java, Node.js, PostgreSQL, and the main frontend tools, each with the version in use and the date its support ends. Update it in any pull request that changes a version.
 - **A check at the start of every plan step:** read the table, and if something is within three months of its support ending, or past it, tell the owner before starting the step.
 - **Owner action:** turn on GitHub's Dependabot alerts for the repository. It is a setting, free for a public repository, and it reports known security problems in the libraries the project uses. Alerts only, not automatic pull requests: those would break the one-pull-request-at-a-time rule.
