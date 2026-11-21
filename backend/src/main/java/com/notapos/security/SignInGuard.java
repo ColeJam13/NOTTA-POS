@@ -9,6 +9,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayDeque;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
@@ -40,10 +41,16 @@ import java.util.Map;
  *      a PIN of their own: guess four times, sign in properly to clear the row,
  *      guess four more.
  *
- *   3. EACH PAUSE ON A DEVICE IS LONGER THAN ITS LAST: 30 seconds, 1 minute,
- *      5 minutes, 15 minutes, then an hour every time. A device is given a
+ *   3. EACH PAUSE ON A DEVICE IS LONGER THAN ITS LAST, UP TO FIVE MINUTES:
+ *      30 seconds, 1 minute, then 5 minutes every time. A device is given a
  *      clean slate after a day with no wrong PIN. Guessing from one device
- *      ends up at five tries an hour.
+ *      ends up at five tries every five minutes.
+ *
+ *      The pauses used to carry on to 15 minutes and then an hour. The owner
+ *      capped them (decision D11, step A6 of the Phase 2 plan): a terminal
+ *      dead for an hour on a Friday night is worse than the guessing it guards
+ *      against. The price is that one device now gets about 60 guesses an
+ *      hour where it got 5; CLAUDE.md says what that means under known gaps.
  *
  *   4. THE WHOLE RESTAURANT, as a backstop: 40 wrong PINs within ten minutes,
  *      from all devices together, pauses sign-in everywhere for one minute.
@@ -54,6 +61,11 @@ import java.util.Map;
  * A pause stops sign-in only. People who are already signed in carry on.
  * While a device is paused its PINs are not looked at, so guessing during a
  * pause tells the guesser nothing.
+ *
+ * A MANAGER CAN END A DEVICE'S PAUSE EARLY (also D11): pausedDevices() lists
+ * what is paused and release() lets one go, with a clean slate. Both are
+ * reached through StaffService and are manager-only endpoints. The pause on
+ * the whole restaurant (rule 4) cannot be released: it lasts a minute.
  *
  * AN ATTEMPT IS COUNTED BEFORE ITS PIN IS CHECKED. Checking takes a moment. If
  * the count only went up afterwards, a script could send a hundred guesses in
@@ -82,13 +94,12 @@ public class SignInGuard {
     static final int WRONG_WITHIN_WINDOW = 10;                      // Rule 2
     static final Duration WINDOW = Duration.ofMinutes(10);
 
-    // Rule 3: how long each pause on a device lasts. The last one repeats.
+    // Rule 3: how long each pause on a device lasts. The last one repeats, so no pause
+    // is longer than five minutes (the owner's decision D11).
     static final List<Duration> PAUSES = List.of(
             Duration.ofSeconds(30),
             Duration.ofMinutes(1),
-            Duration.ofMinutes(5),
-            Duration.ofMinutes(15),
-            Duration.ofHours(1));
+            Duration.ofMinutes(5));
 
     // A device with no wrong PIN for this long is forgotten, and its next pause is 30 seconds again
     static final Duration CLEAN_SLATE_AFTER = Duration.ofHours(24);
@@ -106,6 +117,15 @@ public class SignInGuard {
         int pausesSoFar;                                            // Decides how long the next pause is
         Instant pausedUntil = Instant.MIN;
         Instant lastWrongAt = Instant.MIN;
+    }
+
+    /**
+     * One device that is paused right now, for the manager's list.
+     *
+     * @param device      The address its requests come from
+     * @param secondsLeft How long until the pause ends by itself, rounded up
+     */
+    public record PausedDevice(String device, long secondsLeft) {
     }
 
     private final Clock clock;                                      // "What time is it now?" (a test can hand in its own)
@@ -137,12 +157,14 @@ public class SignInGuard {
         Instant now = clock.instant();
 
         if (now.isBefore(everywherePausedUntil)) {
-            throw paused("Too many wrong PINs across the restaurant. Sign-in is paused for ", everywherePausedUntil, now);
+            throw paused("Too many wrong PINs across the restaurant. Sign-in is paused for ", everywherePausedUntil, now, ".");
         }
 
         Device record = devices.computeIfAbsent(key(device), address -> new Device());
         if (now.isBefore(record.pausedUntil)) {
-            throw paused("Too many wrong PINs on this device. Try again in ", record.pausedUntil, now);
+            // The second half tells the person at the terminal there is a way out other than waiting
+            throw paused("Too many wrong PINs on this device. Try again in ", record.pausedUntil, now,
+                    ", or ask a manager to release this terminal.");
         }
 
         forgetOlderThan(record.recentWrong, now.minus(WINDOW));
@@ -187,6 +209,62 @@ public class SignInGuard {
     public synchronized void endWithoutAnswer(String device) {      // The PIN was never checked (the database failed, say): not a wrong PIN
         Device record = finishCheck(device);
         forgetIfNothingToRemember(device, record, clock.instant());
+    }
+
+    // ------------------------------------------------------------------
+    // For a manager: what is paused, and letting one go (decision D11)
+    // ------------------------------------------------------------------
+
+    /**
+     * The devices that are paused right now, in address order so the list does
+     * not jump around on the screen. A device with wrong PINs on its count but
+     * no pause running is not in it: people can still sign in there.
+     */
+    public synchronized List<PausedDevice> pausedDevices() {
+        Instant now = clock.instant();
+        return devices.entrySet().stream()
+                .filter(entry -> now.isBefore(entry.getValue().pausedUntil))
+                .map(entry -> new PausedDevice(entry.getKey(), secondsLeft(entry.getValue().pausedUntil, now)))
+                .sorted(Comparator.comparing(PausedDevice::device))
+                .toList();
+    }
+
+    /**
+     * End a device's pause now and give it a clean slate: its wrong PINs are
+     * forgotten, and if it is paused again the pause is the shortest one.
+     *
+     * A manager does this for a terminal they can vouch for ("that was Sam
+     * fumbling, not somebody guessing"). It signs nobody in: the next person
+     * at that terminal still has to type a right PIN, and a wrong one counts
+     * from zero like on any other terminal.
+     *
+     * The count for the whole restaurant (rule 4) keeps the wrong PINs this
+     * device added to it. That rule is about all devices together, and one
+     * manager's word about one terminal does not change it.
+     *
+     * @param device The address to release
+     * @return True if that device was paused; false if there was nothing to end
+     *         (the pause had already run out, or the address was never paused)
+     */
+    public synchronized boolean release(String device) {
+        Device record = devices.get(key(device));
+        if (record == null) {
+            return false;
+        }
+        boolean wasPaused = clock.instant().isBefore(record.pausedUntil);
+
+        record.pausedUntil = Instant.MIN;
+        record.wrongInARow = 0;
+        record.recentWrong.clear();
+        record.pausesSoFar = 0;
+        record.lastWrongAt = Instant.MIN;
+        if (record.beingChecked == 0) {
+            devices.remove(key(device));                            // Nothing left to remember about it
+        }
+        // An attempt still being checked keeps its record, so that finishing it gives its
+        // place back to the right device. (A paused device has none: begin() refuses them.)
+
+        return wasPaused;
     }
 
     // ------------------------------------------------------------------
@@ -278,10 +356,16 @@ public class SignInGuard {
         return device == null ? "unknown" : device;
     }
 
-    private static TooManyAttemptsException paused(String messageStart, Instant until, Instant now) {
+    private static TooManyAttemptsException paused(String messageStart, Instant until, Instant now, String messageEnd) {
+        long secondsLeft = secondsLeft(until, now);
+        return new TooManyAttemptsException(messageStart + inWords(secondsLeft) + messageEnd, secondsLeft);
+    }
+
+    // How long until a pause ends, in whole seconds. Rounded up: "30 seconds", never "29"
+    // a moment after the pause starts, and never 0 while it is still running.
+    private static long secondsLeft(Instant until, Instant now) {
         long millisLeft = Duration.between(now, until).toMillis();
-        long secondsLeft = Math.max(1, (millisLeft + 999) / 1000);  // Rounded up: "30 seconds", never "29" a moment after the pause starts
-        return new TooManyAttemptsException(messageStart + inWords(secondsLeft) + ".", secondsLeft);
+        return Math.max(1, (millisLeft + 999) / 1000);
     }
 
     // 30 -> "30 seconds", 60 -> "1 minute", 290 -> "5 minutes", 3600 -> "1 hour"

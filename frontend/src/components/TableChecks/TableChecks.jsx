@@ -7,6 +7,18 @@ import './TableChecks.css';
 // How often the screen asks the backend for the latest checks, in milliseconds
 const REFRESH_MS = 3000;
 
+// WHO SEES A TIP is decided by the backend, not here. A person is sent the tip
+// and the payment method on checks they opened; a manager on every check (the
+// owner's decision D10). For anyone else those two fields are NOT IN the check
+// at all, and this screen shows nothing in their place: no "Tip: $0.00", no
+// blank label. The screen never looks at the signed-in person's role for
+// this. It draws what it was sent.
+const tipIsShown = (check) => check.tipAmount != null;              // != null is false for a missing field as well as for null
+
+// The amount on a closed check: what the guest paid (check + tip) when the tip
+// was sent, and the check alone when it was not
+const amountOn = (check) => check.total + (tipIsShown(check) ? check.tipAmount : 0);
+
 /**
  * The body of the Tables screen and the Quick Orders screen: an ACTIVE view of
  * open checks and a CLOSED view of recent paid ones.
@@ -18,6 +30,9 @@ const REFRESH_MS = 3000;
  *       already matched up by the backend. These screens used to download
  *       every order, order item, payment, and menu item every 3 seconds and
  *       match them up in the browser.
+ *
+ * The tip and payment method on a closed check are only shown when the
+ * backend sent them (see tipIsShown above).
  *
  * The page styles (cards, pop-up) come from Tables.css, loaded by the Tables view.
  *
@@ -115,11 +130,13 @@ function TableChecks({ quickOrders, title, navKey, emptyActiveText, emptyClosedT
                                 onClick={() => setSelectedClosedOrder(check)}
                             >
                                 <h3 className="table-card-number">{check.tableNumber}</h3>
-                                {/* What the guest paid: check + tip */}
-                                <div className="table-card-total">${(check.total + check.tipAmount).toFixed(2)}</div>
+                                {/* What the guest paid: check + tip. On somebody else's check, the check alone. */}
+                                <div className="table-card-total">${amountOn(check).toFixed(2)}</div>
                                 <div className="table-card-items">{check.items.length} items</div>
                                 <div className="table-card-server">Server: {check.serverName || 'N/A'}</div>
-                                <div className="table-card-payment">{formatPaymentMethod(check.paymentMethod)}</div>
+                                {tipIsShown(check) && (
+                                    <div className="table-card-payment">{formatPaymentMethod(check.paymentMethod)}</div>
+                                )}
                                 <div className="table-card-time">{formatTimeAgo(check.closedAt || check.createdAt)}</div>
                             </div>
                         ))}
@@ -141,7 +158,9 @@ function TableChecks({ quickOrders, title, navKey, emptyActiveText, emptyClosedT
                             <p><strong>Server:</strong> {selectedClosedOrder.serverName || 'N/A'}</p>
                             <p><strong>Order Created:</strong> {formatDateTime(selectedClosedOrder.createdAt)}</p>
                             <p><strong>Order Closed:</strong> {formatDateTime(selectedClosedOrder.closedAt)}</p>
-                            <p><strong>Payment Method:</strong> {formatPaymentMethod(selectedClosedOrder.paymentMethod)}</p>
+                            {tipIsShown(selectedClosedOrder) && (
+                                <p><strong>Payment Method:</strong> {formatPaymentMethod(selectedClosedOrder.paymentMethod)}</p>
+                            )}
                         </div>
 
                         <div className="modal-items">
@@ -181,13 +200,16 @@ function TableChecks({ quickOrders, title, navKey, emptyActiveText, emptyClosedT
                                 <span>Tax:</span>
                                 <span>${selectedClosedOrder.tax.toFixed(2)}</span>
                             </div>
-                            <div className="modal-total-row">
-                                <span>Tip:</span>
-                                <span>${selectedClosedOrder.tipAmount.toFixed(2)}</span>
-                            </div>
+                            {/* The Tip row is left out altogether on a check whose tip was not sent */}
+                            {tipIsShown(selectedClosedOrder) && (
+                                <div className="modal-total-row">
+                                    <span>Tip:</span>
+                                    <span>${selectedClosedOrder.tipAmount.toFixed(2)}</span>
+                                </div>
+                            )}
                             <div className="modal-total-row final">
                                 <span>Total:</span>
-                                <span>${(selectedClosedOrder.total + selectedClosedOrder.tipAmount).toFixed(2)}</span>
+                                <span>${amountOn(selectedClosedOrder).toFixed(2)}</span>
                             </div>
                         </div>
                     </div>

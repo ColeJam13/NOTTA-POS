@@ -37,14 +37,14 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 6 | A5. Small consistency fixes | Done (#284) |
 | 7 | P1. Replace Create React App with Vite | Done (#285) |
 | 8 | P2. One thing to start, and the home test host | Done (#286) |
-| 8a | **A6. Two follow-ups from the review: tips on closed checks, and releasing a paused terminal** | Next. D10, D11 (decided) |
-| 8b | U1. Spring Boot 3.5 to 4.1 (the 3.5 line no longer gets security fixes) | |
+| 8a | A6. Two follow-ups from the review: tips on closed checks, and releasing a paused terminal | Done (#288) |
+| 8b | **U1. Spring Boot 3.5 to 4.1 (the 3.5 line no longer gets security fixes)** | Next |
 | 9 | B4a. Design tokens: every screen reads its look from named values | |
 | 10 | B4b and B4c. Template system, then the new templates | D9 (default decided) |
 | 11 | P3. Phone-sized screens | |
 | 12 | P4. HTTPS on a private network, and the installable app | D8 |
 | 13 | B5, then B1, B2, B3 (features, in that order) | D4 (decided), D5, D6 |
-| Any gap | U2. Node 24 and the frontend tools held back by Node 20. Fits between any two steps, once the owner has upgraded Node | Owner upgrades Node |
+| Any gap | U2. Node 24 and the frontend tools held back by Node 20. Fits between any two steps | Ready: the owner installed Node 24 on 2026-11-21 |
 | Later | P5. Store apps and card payments through Square | D7 |
 | Later | U4. Standards backlog | D12 |
 
@@ -159,6 +159,18 @@ Build:
 - **Clock.** The countdown compares backend timestamps with the tablet's clock. Send the time remaining (or the server's current time) with the response so a tablet with a wrong clock still counts down correctly.
 
 ### A6. Two follow-ups from the review (one pull request)
+
+**Done 2026-11-21 (#288).** `GET /api/tables/overview` sends a closed check's tip and payment method only to the person who opened the check and to managers; the pauses for wrong PINs stop at five minutes; and a manager can see and release a paused terminal from the Staff screen. What was decided along the way, beyond the text below:
+
+- **"Left out" means not in the JSON at all**, not `null` and not zero. The screen asks one thing, whether `tipAmount` is there. The payments of checks a person may not see the tip on are not read from the database, so there is nothing to send by mistake.
+- **Somebody else's check shows its own total** (subtotal and tax) where an own check shows what the guest paid (total and tip).
+- **Whoever opened the check owns the tip**, also when someone else took the payment for it. The plan said this; it is listed here because it is the case that will be asked about on the floor.
+- **A release is a clean slate**: the pause ends, the wrong PINs are forgotten, and if that terminal is paused again it starts at 30 seconds. The plan asked for the first two.
+- **The pause on the whole restaurant cannot be released.** It lasts a minute, and it is about all devices together, which one manager's word about one terminal does not change.
+- **The message on a paused PIN pad now ends "or ask a manager to release this terminal"**, so the person standing there knows there is a way out other than waiting.
+- **The list marks the terminal the manager is standing at**, and a release answers with the list as it now stands. The address travels in the request body and must look like an address, because it is written to the log.
+- **"Log each release" is a line in the backend's log** (`Sign-in pause on <address> was released by <name>`), not a table. A record a manager can read on a screen belongs with B5, where voids and comps need the same thing.
+- **What the cap costs** is written into `CLAUDE.md` under the known gaps: guessing from one device went from about 5 tries an hour to about 60.
 
 Both come from the owner's answers on 2026-11-21. They are small and go before B4a.
 
@@ -302,7 +314,7 @@ Done when: all backend tests pass with unchanged meaning, the JSON tests pass un
 
 ### U2. Node 24 and the frontend tools
 
-Waits on the owner upgrading Node.js on the development machine from 20 to 24. Checked on 2026-11-21: the machine has Node 20.20.0 at `/usr/bin/node`, installed system-wide. The rest of the machine is current and needs nothing: Java 21.0.13, PostgreSQL 16.15, Docker 29, Ubuntu 24.04.4. Recommended to the owner: install a version manager (nvm) and add Node 24 through it, leaving the system-wide Node 20 in place, so nothing else on the machine is affected.
+No longer waiting: the owner installed Node 24 (24.22.3) through nvm on 2026-11-21, and it is the default in the owner's terminal. The system-wide Node 20 is still at `/usr/bin/node`, so a shell that has not loaded nvm gets that one. Lint, the 190 tests, and the build were run on Node 24 during A6 with the tools as they are, and pass. Checked earlier on 2026-11-21: the machine had Node 20.20.0 at `/usr/bin/node`, installed system-wide. The rest of the machine is current and needs nothing: Java 21.0.13, PostgreSQL 16.15, Docker 29, Ubuntu 24.04.4. Recommended to the owner: install a version manager (nvm) and add Node 24 through it, leaving the system-wide Node 20 in place, so nothing else on the machine is affected.
 
 One pull request, once Node 24 is there:
 
@@ -398,11 +410,11 @@ The owner wants a list of default templates a manager can switch between: **Plai
 
 Ask these at the point they are needed. Do not guess and build.
 
-Owner actions still open unless already done: upgrade Node.js on the development machine to 24 (see U2 for the safe way), turn on Dependabot alerts (U3), turn on branch protection for `main` (require both CI checks and an up-to-date branch), change the local database password, which is still readable in this public repository's history, and upgrade Node.js on the development machine from 20 to 22 or 24 (Node 20 is past its end of support; it needs the machine's password, so Claude cannot do it).
+Owner actions still open unless already done: turn on Dependabot alerts (U3), turn on branch protection for `main` (require the CI checks and an up-to-date branch), and change the local database password, which is still readable in this public repository's history. Done: Node.js 24 is installed on the development machine (2026-11-21, through nvm).
 
 ## How to continue
 
-1. Start A6, then U1 (Spring Boot 4.1), then B4a. None needs a decision from the owner. U2 goes in whenever the owner reports Node 24 is installed. Part A (A1 to A5), P1, and P2 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
+1. Start U1 (Spring Boot 4.1), then B4a. Neither needs a decision from the owner. U2 can go in at any gap: Node 24 is installed. Part A (A1 to A6), P1, and P2 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
 2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 
 ## Completed

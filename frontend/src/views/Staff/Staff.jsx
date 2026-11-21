@@ -2,11 +2,16 @@ import { useState, useEffect, useCallback } from 'react';
 import NavBar from '../../components/NavBar';
 import { apiFetch } from '../../services/api';
 import { ROLE_LABELS } from '../../utils/roles';
+import { formatTimeLeft } from '../../utils/formatters';
 import { useStaff } from '../../context/StaffContext';
 import './Staff.css';
 
 // An empty "add staff" form
 const EMPTY_NEW_STAFF = { name: '', role: 'server', pin: '' };
+
+// How often the screen asks which terminals are paused, in milliseconds. A pause is five
+// minutes at most and the time left is shown in words, so this does not need to be quick.
+const PAUSED_REFRESH_MS = 5000;
 
 // Keep only digits, at most four: what a PIN box may hold
 const pinDigits = (text) => text.replace(/\D/g, '').slice(0, 4);
@@ -48,6 +53,9 @@ const sendStaffRequest = async (method, path, body) => {
  *   - deactivate someone who has left, so their PIN stops working. They stay
  *     on the list, because old orders still carry their name. Bringing them
  *     back needs a new PIN.
+ *   - see which terminals are paused after too many wrong PINs, and release
+ *     one so people can sign in there again without waiting the pause out.
+ *     A terminal is known by its network address. Releasing signs nobody in.
  *
  * The backend enforces the rules (one PIN per person, the last manager cannot
  * be removed) and this screen shows its explanation when it refuses.
@@ -65,6 +73,46 @@ function Staff({ setCurrentView, setSelectedTable }) {
   // The person being edited: { staffId, name, role, pin, isActive }, or null when no editor is open
   const [editing, setEditing] = useState(null);
   const [editMessage, setEditMessage] = useState('');
+
+  // Terminals where sign-in is paused: [{ device, secondsLeft, thisDevice }].
+  // null means "not known" (not loaded yet, or the request failed), which the screen
+  // must not show as "none paused".
+  const [pausedTerminals, setPausedTerminals] = useState(null);
+  const [pausedLoadFailed, setPausedLoadFailed] = useState(false);
+  const [releaseMessage, setReleaseMessage] = useState('');
+
+  const loadPausedTerminals = useCallback(() => {
+    apiFetch('/api/staff/paused-devices')
+      .then(response => {
+        if (!response.ok) throw new Error(`GET /api/staff/paused-devices failed with status ${response.status}`);
+        return response.json();
+      })
+      .then(data => { setPausedTerminals(data); setPausedLoadFailed(false); })
+      .catch(error => {
+        console.error('Error fetching paused terminals:', error);
+        setPausedTerminals(null);
+        setPausedLoadFailed(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    loadPausedTerminals();                                                    // Load on mount...
+    const interval = setInterval(loadPausedTerminals, PAUSED_REFRESH_MS);     // ...then keep the list and the time left current
+    return () => clearInterval(interval);
+  }, [loadPausedTerminals]);
+
+  // Let a paused terminal sign people in again. The backend answers with the list as it
+  // now stands, so the screen redraws from that one answer.
+  const releaseTerminal = async (device) => {
+    const result = await sendStaffRequest('POST', '/api/staff/paused-devices/release', { device });
+
+    if (!result.ok) {
+      setReleaseMessage(result.message);
+      return;
+    }
+    setReleaseMessage('');
+    setPausedTerminals(result.data);
+  };
 
   const loadStaff = useCallback(() => {
     apiFetch('/api/staff')
@@ -152,6 +200,36 @@ function Staff({ setCurrentView, setSelectedTable }) {
       <NavBar currentView="staff" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />
       <div className="staff-page">
         <h2>STAFF</h2>
+
+        {/* --- Terminals paused for wrong PINs --- */}
+        {/* A <section> with a name is a "region": a screen reader can jump to it, and the tests find it by that name */}
+        <section className="staff-paused" aria-label="Paused terminals">
+          <h3>PAUSED TERMINALS</h3>
+          <p className="staff-paused-help">
+            Too many wrong PINs pause sign-in on that terminal, for five minutes at most.
+            Releasing one lets people sign in there again straight away. It signs nobody in.
+          </p>
+
+          {pausedLoadFailed && <p className="staff-message" role="alert">The paused terminals could not be loaded.</p>}
+          {pausedTerminals && pausedTerminals.length === 0 && <p className="staff-paused-none">No terminal is paused.</p>}
+
+          {pausedTerminals && pausedTerminals.map(terminal => (
+            <div key={terminal.device} className="staff-paused-row">
+              <span className="staff-paused-device">{terminal.device}</span>
+              {terminal.thisDevice && <span className="staff-paused-here">THIS TERMINAL</span>}
+              <span className="staff-paused-left">{formatTimeLeft(terminal.secondsLeft)} left</span>
+              <button
+                className="staff-btn staff-btn-primary"
+                aria-label={`Release ${terminal.device}`}
+                onClick={() => releaseTerminal(terminal.device)}
+              >
+                RELEASE
+              </button>
+            </div>
+          ))}
+
+          {releaseMessage && <p className="staff-message" role="alert">{releaseMessage}</p>}
+        </section>
 
         {/* --- Add someone --- */}
         <form className="staff-add" onSubmit={addStaff} aria-label="Add staff">

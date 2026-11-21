@@ -5,6 +5,7 @@ import com.notapos.testsupport.MutableClock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.time.Duration;
+import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -84,7 +85,7 @@ class SignInGuardTest {
 
         // Then
         TooManyAttemptsException refused = refusal(BAR);
-        assertEquals("Too many wrong PINs on this device. Try again in 30 seconds.", refused.getMessage());
+        assertEquals("Too many wrong PINs on this device. Try again in 30 seconds, or ask a manager to release this terminal.", refused.getMessage());
         assertEquals(30, refused.getRetryAfterSeconds());
     }
 
@@ -98,10 +99,10 @@ class SignInGuardTest {
 
         // When & Then
         clock.advance(Duration.ofSeconds(18));
-        assertEquals("Too many wrong PINs on this device. Try again in 12 seconds.", refusal(BAR).getMessage());
+        assertEquals("Too many wrong PINs on this device. Try again in 12 seconds, or ask a manager to release this terminal.", refusal(BAR).getMessage());
 
         clock.advance(Duration.ofSeconds(11));
-        assertEquals("Too many wrong PINs on this device. Try again in 1 second.", refusal(BAR).getMessage());
+        assertEquals("Too many wrong PINs on this device. Try again in 1 second, or ask a manager to release this terminal.", refusal(BAR).getMessage());
 
         clock.advance(Duration.ofSeconds(1));
         assertFalse(isPaused(BAR));
@@ -204,9 +205,13 @@ class SignInGuardTest {
     void testEachPauseOnADevice_ShouldBeLongerThanTheLast() {
         // WHAT: Test five wrong PINs, wait out the pause, five more, and so on
         // WHY: The old pause was always 30 seconds and the count started fresh after it:
-        //      about ten guesses a minute for ever. Now it ends up at five an hour.
+        //      about ten guesses a minute for ever. Now it ends up at five every five minutes.
+        //
+        // NO PAUSE IS LONGER THAN FIVE MINUTES (the owner's decision D11, step A6 of the
+        // plan). The pauses used to carry on to 15 minutes and then an hour. A terminal
+        // dead for an hour on a Friday night is worse than the guessing it guards against.
 
-        String[] expected = {"30 seconds", "1 minute", "5 minutes", "15 minutes", "1 hour", "1 hour", "1 hour"};
+        String[] expected = {"30 seconds", "1 minute", "5 minutes", "5 minutes", "5 minutes", "5 minutes", "5 minutes"};
 
         for (int pause = 0; pause < expected.length; pause++) {
             // When - five more wrong PINs
@@ -214,7 +219,7 @@ class SignInGuardTest {
 
             // Then - a longer pause than last time
             TooManyAttemptsException refused = refusal(BAR);
-            assertEquals("Too many wrong PINs on this device. Try again in " + expected[pause] + ".", refused.getMessage());
+            assertEquals("Too many wrong PINs on this device. Try again in " + expected[pause] + ", or ask a manager to release this terminal.", refused.getMessage());
 
             // And - it ends exactly when it said it would
             clock.advance(Duration.ofSeconds(refused.getRetryAfterSeconds() - 1));
@@ -238,7 +243,7 @@ class SignInGuardTest {
         wrongPins(5, BAR);
 
         // Then - the second pause is still the longer one
-        assertEquals("Too many wrong PINs on this device. Try again in 1 minute.", refusal(BAR).getMessage());
+        assertEquals("Too many wrong PINs on this device. Try again in 1 minute, or ask a manager to release this terminal.", refusal(BAR).getMessage());
     }
 
     @Test
@@ -260,7 +265,7 @@ class SignInGuardTest {
 
         // Then
         wrongPins(5, BAR);
-        assertEquals("Too many wrong PINs on this device. Try again in 30 seconds.", refusal(BAR).getMessage());
+        assertEquals("Too many wrong PINs on this device. Try again in 30 seconds, or ask a manager to release this terminal.", refusal(BAR).getMessage());
     }
 
     @Test
@@ -356,7 +361,7 @@ class SignInGuardTest {
         for (int attempt = 0; attempt < letIn; attempt++) {
             guard.endWrong(BAR);
         }
-        assertEquals("Too many wrong PINs on this device. Try again in 30 seconds.", refusal(BAR).getMessage());
+        assertEquals("Too many wrong PINs on this device. Try again in 30 seconds, or ask a manager to release this terminal.", refusal(BAR).getMessage());
     }
 
     @Test
@@ -391,5 +396,170 @@ class SignInGuardTest {
         assertEquals("5 minutes", SignInGuard.inWords(287));         // Rounded up: never told a wait shorter than it is
         assertEquals("1 hour", SignInGuard.inWords(3600));
         assertEquals("2 hours", SignInGuard.inWords(3601));
+    }
+
+    // ------------------------------------------------------------------
+    // A manager's view: what is paused, and releasing one (decision D11)
+    // ------------------------------------------------------------------
+
+    @Test
+    void testNoPause_ShouldEverBeLongerThanFiveMinutes() {
+        // WHAT: Test a device that is paused twenty times over
+        // WHY: The owner's rule, stated on its own: however long a terminal misbehaves,
+        //      it is never dead for more than five minutes at a time.
+
+        for (int pause = 0; pause < 20; pause++) {
+            wrongPins(5, BAR);
+            long seconds = refusal(BAR).getRetryAfterSeconds();
+            assertTrue(seconds <= 300, "pause " + (pause + 1) + " was " + seconds + " seconds");
+            clock.advance(Duration.ofSeconds(seconds));
+        }
+        assertEquals(Duration.ofMinutes(5), SignInGuard.PAUSES.get(SignInGuard.PAUSES.size() - 1));
+    }
+
+    @Test
+    void testPausedDevices_ShouldListOnlyDevicesThatArePausedWithTheTimeLeft() {
+        // WHAT: Test the list with one paused device, one part-way to a pause, and one untouched
+        // WHY: The manager's list is of terminals nobody can sign in at. A terminal with
+        //      a couple of mistypes is working, and does not belong on it.
+
+        // Given
+        assertTrue(guard.pausedDevices().isEmpty());
+        wrongPins(5, BAR);
+        wrongPins(2, PATIO);
+
+        // When - ten seconds into the bar's 30-second pause
+        clock.advance(Duration.ofSeconds(10));
+        List<SignInGuard.PausedDevice> paused = guard.pausedDevices();
+
+        // Then
+        assertEquals(List.of(new SignInGuard.PausedDevice(BAR, 20)), paused);
+
+        // And - once the pause has run out it leaves the list by itself
+        clock.advance(Duration.ofSeconds(20));
+        assertTrue(guard.pausedDevices().isEmpty());
+    }
+
+    @Test
+    void testPausedDevices_ShouldComeInAddressOrder() {
+        // WHAT: Test two paused devices, paused in the "wrong" order
+        // WHY: The Staff screen redraws this list every few seconds. Rows that swap
+        //      places make it easy to press RELEASE on the wrong terminal.
+
+        wrongPins(5, PATIO);
+        wrongPins(5, BAR);
+
+        assertEquals(List.of(BAR, PATIO),
+                guard.pausedDevices().stream().map(SignInGuard.PausedDevice::device).toList());
+    }
+
+    @Test
+    void testRelease_ShouldEndThePauseAtOnce() {
+        // WHAT: Test releasing a device in the middle of its pause
+        // WHY: A manager can vouch for a terminal ("that was Sam fumbling, not somebody
+        //      guessing") and not leave it dead until the pause runs out
+
+        // Given - the bar is on its third pause: five minutes
+        wrongPins(5, BAR);
+        clock.advance(Duration.ofSeconds(30));
+        wrongPins(5, BAR);
+        clock.advance(Duration.ofMinutes(1));
+        wrongPins(5, BAR);
+        assertEquals(300, refusal(BAR).getRetryAfterSeconds());
+
+        // When
+        assertTrue(guard.release(BAR));
+
+        // Then
+        assertFalse(isPaused(BAR));
+        assertTrue(guard.pausedDevices().isEmpty());
+    }
+
+    @Test
+    void testRelease_ShouldGiveTheDeviceACleanSlate() {
+        // WHAT: Test what a released device is allowed afterwards
+        // WHY: Releasing forgets the wrong PINs (four more do not pause it; the fifth
+        //      does) and starts the pauses again at the shortest. A release that kept the
+        //      count would have the terminal paused again at the next mistype.
+
+        // Given - two pauses served, a third one running, then released
+        wrongPins(5, BAR);
+        clock.advance(Duration.ofSeconds(30));
+        wrongPins(5, BAR);
+        clock.advance(Duration.ofMinutes(1));
+        wrongPins(5, BAR);
+        guard.release(BAR);
+
+        // When - four wrong PINs
+        wrongPins(4, BAR);
+
+        // Then - still open; the fifth pauses it for 30 seconds, as on a new device
+        assertFalse(isPaused(BAR));
+        wrongPins(1, BAR);
+        assertEquals(30, refusal(BAR).getRetryAfterSeconds());
+    }
+
+    @Test
+    void testRelease_ShouldNotLetAWrongPinIn() {
+        // WHAT: Test that a released device is still guarded like any other
+        // WHY: Releasing opens the PIN pad again. It does not switch the counting off.
+
+        wrongPins(5, BAR);
+        guard.release(BAR);
+
+        wrongPins(5, BAR);
+
+        assertTrue(isPaused(BAR));
+    }
+
+    @Test
+    void testRelease_ShouldLeaveOtherDevicesAsTheyAre() {
+        // WHAT: Test releasing one of two paused devices
+        // WHY: Each terminal is its own decision
+
+        wrongPins(5, BAR);
+        wrongPins(5, PATIO);
+
+        guard.release(BAR);
+
+        assertFalse(isPaused(BAR));
+        assertTrue(isPaused(PATIO));
+    }
+
+    @Test
+    void testRelease_OfADeviceThatIsNotPaused_ShouldSayThereWasNothingToEnd() {
+        // WHAT: Test releasing an unknown device, and one whose pause has already run out
+        // WHY: The manager's list can be a few seconds old. The answer says whether a
+        //      pause was really ended, which is what decides if it is written to the log.
+
+        assertFalse(guard.release("192.168.1.99"));
+        assertFalse(guard.release(null));                            // A request with no address is counted under "unknown"
+
+        wrongPins(5, BAR);
+        clock.advance(Duration.ofSeconds(30));
+        assertFalse(guard.release(BAR));
+    }
+
+    @Test
+    void testRelease_ShouldNotEndThePauseOnTheWholeRestaurant() {
+        // WHAT: Test releasing a device while sign-in is paused everywhere
+        // WHY: Rule 4 is about all devices together: a guesser who keeps changing
+        //      address. One manager vouching for one terminal says nothing about that,
+        //      and that pause is only a minute.
+
+        // Given - forty devices type one wrong PIN each, which pauses sign-in everywhere
+        for (int device = 1; device <= 40; device++) {
+            wrongPin("10.0.0." + device);
+        }
+        assertTrue(isPaused(BAR));
+
+        // When
+        guard.release("10.0.0.1");
+        guard.release(BAR);
+
+        // Then - still paused everywhere, for the minute it said
+        assertEquals("Too many wrong PINs across the restaurant. Sign-in is paused for 1 minute.", refusal(BAR).getMessage());
+        clock.advance(SignInGuard.EVERYWHERE_PAUSE);
+        assertFalse(isPaused(BAR));
     }
 }

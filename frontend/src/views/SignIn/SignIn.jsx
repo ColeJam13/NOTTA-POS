@@ -11,7 +11,8 @@ import './SignIn.css';
  * The pad (components/PinPad) collects the four digits; the fourth digit sends
  * the PIN by itself. A wrong PIN clears the dots and says so. After too many
  * wrong PINs the backend pauses sign-in on this device and its message says
- * for how long.
+ * for how long, and that a manager can release the terminal (on the Staff
+ * screen) so nobody has to wait the pause out.
  *
  * @param {Function} onSignedIn - Called with { staff, token } when a PIN is accepted
  */

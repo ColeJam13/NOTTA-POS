@@ -13,10 +13,12 @@ import com.notapos.entity.Payment;
 import com.notapos.entity.RestaurantTable;
 import com.notapos.enums.OrderItemStatus;
 import com.notapos.enums.OrderStatus;
+import com.notapos.enums.StaffRole;
 import com.notapos.repository.MenuItemRepository;
 import com.notapos.repository.OrderItemRepository;
 import com.notapos.repository.OrderRepository;
 import com.notapos.repository.PaymentRepository;
+import com.notapos.security.StaffSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,7 +43,8 @@ import java.util.stream.Collectors;
  *         2. the open orders on those tables        (WHERE table_id IN (...))
  *         3. the 50 most recently closed orders     (WHERE table_id IN (...))
  *         4. every item on those orders             (WHERE order_id IN (...))
- *         5. the payments for the closed orders     (WHERE order_id IN (...))
+ *         5. the payments for the closed orders the person asking may see the tip on
+ *                                                   (WHERE order_id IN (...))
  *         6. the menu items those items use         (WHERE menu_item_id IN (...))
  *         7. the modifiers chosen on closed checks  (WHERE order_item_id IN (...))
  *         8. the names of those modifiers           (WHERE modifier_id IN (...))
@@ -53,6 +56,14 @@ import java.util.stream.Collectors;
  *
  * Only the 50 most recently closed checks are returned. Older ones are in the
  * Financials screen's numbers.
+ *
+ * WHO SEES A TIP (the owner's decision D10, step A6 of the Phase 2 plan): a
+ * person sees the tip and the payment method on checks they opened; a manager
+ * sees them on every check. Everyone sees that a check was closed, what was on
+ * it, and its total. The rule is maySeeTip() below, and it is applied HERE, on
+ * the backend: for anyone else the two fields are not in the answer at all.
+ * Sending them and hiding them on the screen would still hand them to anyone
+ * who opens the browser's network tab.
  *
  * @author CJ
  */
@@ -85,7 +96,13 @@ public class TableOverviewService {
         this.orderCheckService = orderCheckService;
     }
 
-    public TablesOverviewView getOverview(boolean quickOrders) {        // Get the active tables and recent closed checks (Quick Orders, or regular tables)
+    /**
+     * Get the active tables and recent closed checks (Quick Orders, or regular tables).
+     *
+     * @param quickOrders True for the Quick Orders screen, false for Tables
+     * @param viewer      The signed-in person asking. Decides which tips are in the answer.
+     */
+    public TablesOverviewView getOverview(boolean quickOrders, StaffSession viewer) {
         // Query 1: the tables this screen is about
         List<RestaurantTable> tables = tableService.getTablesByQuickOrder(quickOrders);
         if (tables.isEmpty()) {
@@ -109,7 +126,7 @@ public class TableOverviewService {
                 .collect(Collectors.groupingBy(OrderItem::getOrderId));
 
         List<ActiveTableView> activeTables = buildActiveTables(openOrders, tablesById, itemsByOrderId);
-        List<ClosedCheckView> closedChecks = buildClosedChecks(closedOrders, tablesById, itemsByOrderId);
+        List<ClosedCheckView> closedChecks = buildClosedChecks(closedOrders, tablesById, itemsByOrderId, viewer);
 
         return new TablesOverviewView(activeTables, closedChecks);
     }
@@ -157,10 +174,29 @@ public class TableOverviewService {
         return (int) items.stream().filter(item -> status.matches(item.getStatus())).count();
     }
 
+    /**
+     * May this person see the tip and payment method on this check?
+     *
+     * A manager: always. Anyone else: only on a check they opened, which means
+     * the order's staff ID is theirs (OrderController stamps it from the
+     * signed-in person when the order is created; taking the payment on
+     * someone else's check does not change it).
+     *
+     * A check with no staff ID was closed before staff profiles existed.
+     * Nobody can be shown to have opened it, so only a manager sees its tip.
+     */
+    static boolean maySeeTip(Order order, StaffSession viewer) {
+        if (viewer.role() == StaffRole.MANAGER) {
+            return true;
+        }
+        return order.getStaffId() != null && order.getStaffId().equals(viewer.staffId());
+    }
+
     // One card per closed order, in the order the query returned them (newest first)
     private List<ClosedCheckView> buildClosedChecks(List<Order> closedOrders,
                                                     Map<Long, RestaurantTable> tablesById,
-                                                    Map<Long, List<OrderItem>> itemsByOrderId) {
+                                                    Map<Long, List<OrderItem>> itemsByOrderId,
+                                                    StaffSession viewer) {
         if (closedOrders.isEmpty()) {
             return List.of();                                           // Nothing closed - skip queries 5 to 8
         }
@@ -171,8 +207,16 @@ public class TableOverviewService {
                 .toList();
 
         // Query 5: payments, keyed by order. An order has one payment; if it somehow has more, the first is shown.
-        Map<Long, Payment> paymentsByOrderId = paymentRepository.findByOrderIdIn(closedOrderIds).stream()
-                .collect(Collectors.toMap(Payment::getOrderId, Function.identity(), (first, second) -> first));
+        // Only for the checks this person may see the tip on: the others' payments are never
+        // read from the database, so there is nothing to leak by mistake further down.
+        List<Long> tipVisibleOrderIds = closedOrders.stream()
+                .filter(order -> maySeeTip(order, viewer))
+                .map(Order::getOrderId)
+                .toList();
+        Map<Long, Payment> paymentsByOrderId = tipVisibleOrderIds.isEmpty()
+                ? Map.of()                                              // Nothing to look up - skip the query
+                : paymentRepository.findByOrderIdIn(tipVisibleOrderIds).stream()
+                        .collect(Collectors.toMap(Payment::getOrderId, Function.identity(), (first, second) -> first));
 
         // Query 6: menu items, keyed by ID so each name lookup is instant
         Set<Long> menuItemIds = closedItems.stream().map(OrderItem::getMenuItemId).collect(Collectors.toSet());
@@ -217,6 +261,17 @@ public class TableOverviewService {
                         total = check.total();
                     }
 
+                    // The tip and how it was paid: left out (null) unless this person may see them.
+                    // For someone who may: zero when there was no tip, and no method when no
+                    // payment is on record at all (a check from before payments were kept).
+                    boolean tipVisible = tipVisibleOrderIds.contains(order.getOrderId());
+                    BigDecimal tipAmount = null;
+                    String paymentMethod = null;
+                    if (tipVisible) {
+                        tipAmount = payment != null && payment.getTipAmount() != null ? payment.getTipAmount() : BigDecimal.ZERO;
+                        paymentMethod = payment != null ? payment.getPaymentMethod() : null;
+                    }
+
                     return new ClosedCheckView(
                             order.getOrderId(),
                             order.getTableId(),
@@ -228,8 +283,8 @@ public class TableOverviewService {
                             subtotal,
                             tax,
                             total,
-                            payment != null && payment.getTipAmount() != null ? payment.getTipAmount() : BigDecimal.ZERO,
-                            payment != null ? payment.getPaymentMethod() : null,
+                            tipAmount,
+                            paymentMethod,
                             itemViews);
                 })
                 .toList();

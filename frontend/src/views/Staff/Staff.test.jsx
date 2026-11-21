@@ -19,6 +19,7 @@ import { StaffContext } from '../../context/StaffContext';
 let staff;            // what GET /api/staff returns
 let requests;         // [{ method, path, body }]
 let refusal;          // a message = the fake backend answers 409 with it to the next change
+let paused;           // what GET /api/staff/paused-devices returns: terminals paused for wrong PINs
 
 beforeEach(() => {
   staff = [
@@ -28,6 +29,7 @@ beforeEach(() => {
   ];
   requests = [];
   refusal = null;
+  paused = [];
 
   global.fetch = vi.fn(async (url, options = {}) => {
     const method = options.method || 'GET';
@@ -37,8 +39,15 @@ beforeEach(() => {
     const json = (data, status = 200) => ({ ok: status < 300, status, json: async () => data });
 
     if (method === 'GET' && path === '/api/staff') return json(staff);
+    if (method === 'GET' && path === '/api/staff/paused-devices') return json(paused);
 
     if (refusal && method !== 'GET') return json({ message: refusal }, 409);
+
+    // Releasing a terminal: like the real backend, the answer is the list as it now stands
+    if (method === 'POST' && path === '/api/staff/paused-devices/release') {
+      paused = paused.filter(terminal => terminal.device !== body.device);
+      return json(paused);
+    }
 
     if (method === 'POST' && path === '/api/staff') {
       const created = { staffId: 10, name: body.name, role: body.role, isActive: true };
@@ -255,4 +264,91 @@ test('changing someone else\'s PIN does not sign the manager out', async () => {
 
   await waitFor(() => expect(screen.queryByRole('form', { name: 'Edit Sarah' })).not.toBeInTheDocument());
   expect(signOut).not.toHaveBeenCalled();
+});
+
+// ============================================================================
+// Terminals paused for wrong PINs
+// ============================================================================
+// Too many wrong PINs pause sign-in on that terminal (the backend's SignInGuard).
+// A manager can see which terminals are paused and release one, so a fumbled
+// PIN on a busy night does not leave a terminal dead until the pause runs out.
+
+const pausedSection = () => screen.getByRole('region', { name: 'Paused terminals' });
+const pausedRow = (device) => within(pausedSection()).getByText(device).closest('.staff-paused-row');
+
+test('with no terminal paused, the screen says so', async () => {
+  await renderScreen();
+
+  expect(await within(pausedSection()).findByText('No terminal is paused.')).toBeInTheDocument();
+  expect(within(pausedSection()).queryByRole('button', { name: /Release/ })).not.toBeInTheDocument();
+});
+
+test('a paused terminal is listed with its address and how long is left', async () => {
+  paused = [
+    { device: '192.168.1.21', secondsLeft: 272, thisDevice: false },
+    { device: '192.168.1.22', secondsLeft: 45, thisDevice: false }
+  ];
+  await renderScreen();
+
+  // Rounded up, the way the PIN pad says it: 272 seconds is "5 minutes", never "4"
+  expect(within(await waitFor(() => pausedRow('192.168.1.21'))).getByText('5 minutes left')).toBeInTheDocument();
+  expect(within(pausedRow('192.168.1.22')).getByText('45 seconds left')).toBeInTheDocument();
+  expect(within(pausedSection()).queryByText('No terminal is paused.')).not.toBeInTheDocument();
+});
+
+test('the terminal the manager is standing at is marked', async () => {
+  paused = [
+    { device: '192.168.1.21', secondsLeft: 60, thisDevice: true },
+    { device: '192.168.1.22', secondsLeft: 60, thisDevice: false }
+  ];
+  await renderScreen();
+
+  expect(within(await waitFor(() => pausedRow('192.168.1.21'))).getByText('THIS TERMINAL')).toBeInTheDocument();
+  expect(within(pausedRow('192.168.1.22')).queryByText('THIS TERMINAL')).not.toBeInTheDocument();
+});
+
+test('RELEASE sends that terminal\'s address, and it leaves the list', async () => {
+  paused = [
+    { device: '192.168.1.21', secondsLeft: 272, thisDevice: false },
+    { device: '192.168.1.22', secondsLeft: 45, thisDevice: false }
+  ];
+  await renderScreen();
+  await waitFor(() => pausedRow('192.168.1.21'));
+
+  await userEvent.click(screen.getByRole('button', { name: 'Release 192.168.1.21' }));
+
+  await waitFor(() => expect(within(pausedSection()).queryByText('192.168.1.21')).not.toBeInTheDocument());
+  expect(changes()).toEqual([
+    { method: 'POST', path: '/api/staff/paused-devices/release', body: { device: '192.168.1.21' } }
+  ]);
+  // The other terminal was not touched
+  expect(pausedRow('192.168.1.22')).toBeInTheDocument();
+});
+
+test('when a release is refused, the screen shows why and the terminal stays listed', async () => {
+  paused = [{ device: '192.168.1.21', secondsLeft: 272, thisDevice: false }];
+  await renderScreen();
+  await waitFor(() => pausedRow('192.168.1.21'));
+  refusal = 'Only a manager may do that.';
+
+  await userEvent.click(screen.getByRole('button', { name: 'Release 192.168.1.21' }));
+
+  expect(await within(pausedSection()).findByRole('alert')).toHaveTextContent('Only a manager may do that.');
+  expect(pausedRow('192.168.1.21')).toBeInTheDocument();
+});
+
+test('if the paused list cannot be loaded, the rest of the screen still works', async () => {
+  const realFetch = global.fetch;
+  global.fetch = vi.fn(async (url, options) => {
+    if (url.endsWith('/api/staff/paused-devices')) return { ok: false, status: 500, json: async () => ({}) };
+    return realFetch(url, options);
+  });
+  vi.spyOn(console, 'error').mockImplementation(() => {});          // The screen logs the failure; keep the test output clean
+
+  await renderScreen();
+
+  // The staff list is there, and the section says it does not know, not "none paused"
+  expect(within(row(2)).getByText('Manager')).toBeInTheDocument();
+  expect(await within(pausedSection()).findByText('The paused terminals could not be loaded.')).toBeInTheDocument();
+  expect(within(pausedSection()).queryByText('No terminal is paused.')).not.toBeInTheDocument();
 });

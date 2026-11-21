@@ -87,3 +87,21 @@ export const formatUpcharge = (amount) => {
     const sign = amount > 0 ? '+' : '-';
     return `${sign}$${Math.abs(amount).toFixed(2)}`;
 };
+
+/**
+ * Say how long is left in words (e.g., "45 seconds", "5 minutes")
+ *
+ * Rounded UP to whole minutes, the same way the backend words a pause on the
+ * PIN pad: 272 seconds is "5 minutes", so nobody is told a wait shorter than
+ * it is.
+ *
+ * @param {number} seconds - How many seconds are left
+ * @returns {string} - "1 second", "45 seconds", "1 minute", "5 minutes"
+ */
+export const formatTimeLeft = (seconds) => {
+    if (seconds < 60) {
+        return `${seconds} ${seconds === 1 ? 'second' : 'seconds'}`;
+    }
+    const minutes = Math.ceil(seconds / 60);
+    return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+};
