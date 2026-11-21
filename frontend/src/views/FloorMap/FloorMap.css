@@ -1,22 +1,22 @@
 .floor-map-page {
   flex: 1;
-  background: #1a1a2e;
-  padding: 40px;
-  color: #e0e0e0;
+  background: var(--color-bg);
+  padding: var(--space-40);
+  color: var(--color-text);
   overflow: auto;                       /* The floor can be taller or wider than the screen: scroll to reach every table */
 }
 
 .floor-map-page h2 {
   text-align: center;
   text-transform: uppercase;
-  color: #39ff14;
-  background: #16213e;
-  padding: 15px;
-  border: 2px solid #b026ff;
-  border-radius: 8px;
-  font-size: 18px;
-  letter-spacing: 2px;
-  margin-bottom: 30px;
+  color: var(--color-heading);
+  background: var(--color-surface);
+  padding: var(--space-15);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-18);
+  letter-spacing: var(--letter-spacing-wide);
+  margin-bottom: var(--space-30);
 }
 
 /* The row of buttons above the floor: EDIT LAYOUT, or ROTATE / CANCEL / SAVE LAYOUT in edit mode */
@@ -24,33 +24,33 @@
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 15px;
+  gap: var(--space-10);
+  margin-bottom: var(--space-15);
 }
 
 .floor-edit-hint {
   margin-right: auto;                   /* Pushes the hint left and the buttons right */
-  color: #9ca3af;
-  font-size: 12px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-12);
 }
 
 .floor-btn {
-  background: #16213e;
-  color: #e0e0e0;
-  border: 2px solid #b026ff;
-  padding: 10px 20px;
-  font-size: 12px;
-  font-weight: bold;
-  letter-spacing: 1px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  padding: var(--space-10) var(--space-20);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing);
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   transition: all 0.3s;
   white-space: nowrap;                  /* Keep "SAVE LAYOUT" on one line */
 }
 
 .floor-btn:hover:not(:disabled) {
-  background: #1f2d50;
-  box-shadow: 0 0 15px rgba(176, 38, 255, 0.5);
+  background: var(--color-surface-hover);
+  box-shadow: var(--glow-accent-tight-soft);
 }
 
 .floor-btn:disabled {
@@ -59,17 +59,17 @@
 }
 
 .floor-btn-save {
-  border-color: #39ff14;
-  color: #39ff14;
+  border-color: var(--color-border-primary);
+  color: var(--color-primary);
 }
 
 .floor-error {
-  background: #3a1020;
-  border: 2px solid #ff3366;
-  border-radius: 8px;
-  color: #ff3366;
-  padding: 12px;
-  margin-bottom: 15px;
+  background: var(--status-error-surface);
+  border: var(--border-width) solid var(--status-error-border);
+  border-radius: var(--radius-md);
+  color: var(--status-error-text);
+  padding: var(--space-12);
+  margin-bottom: var(--space-15);
   text-align: center;
 }
 
@@ -77,9 +77,9 @@
   position: relative;
   width: 100%;
   height: 660px;
-  background: #0f0f1e;
-  border: 3px solid #b026ff;
-  border-radius: 12px;
+  background: var(--color-bg-deep);
+  border: var(--border-width-thick) solid var(--color-border);
+  border-radius: var(--radius-xl);
 }
 
 .table-visual {
@@ -90,21 +90,21 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s;
-  background: #16213e;
-  border: 3px solid #b026ff;
-  padding: 15px;
+  background: var(--color-surface);
+  border: var(--border-width-thick) solid var(--color-border);
+  padding: var(--space-15);
 }
 
 .table-visual.square {
   width: 80px;
   height: 80px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .table-visual.circle {
   width: 70px;
   height: 70px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
 }
 
 .table-visual.circle.large {
@@ -113,32 +113,32 @@
 }
 
 .table-visual.available {
-  border-color: #39ff14;
-  background: #16213e;
+  border-color: var(--status-table-available-border);
+  background: var(--color-surface);
 }
 
 .table-visual.occupied {
-  border-color: #ff3366;
-  background: #2a1a1e;
+  border-color: var(--status-table-occupied-border);
+  background: var(--status-table-occupied-surface);
 }
 
 .table-visual:hover {
   transform: scale(1.1);
-  box-shadow: 0 0 20px rgba(176, 38, 255, 0.6);
+  box-shadow: var(--glow-accent);
 }
 
 .table-label {
-  color: #e0e0e0;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 12px;
-  font-weight: bold;
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-bold);
 }
 
 .table-seats {
-  color: #666;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 8px;
-  margin-top: 5px;
+  color: var(--color-text-faint);
+  font-family: var(--font-body);
+  font-size: var(--font-size-8);
+  margin-top: var(--space-5);
   text-align: center;
   width: 100%;
 }
@@ -149,8 +149,8 @@
 .floor-canvas.editing {
   border-style: dashed;
   background-image:
-    linear-gradient(rgba(176, 38, 255, 0.12) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(176, 38, 255, 0.12) 1px, transparent 1px);
+    linear-gradient(var(--color-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-grid-line) 1px, transparent 1px);
   background-size: 50px 50px;
 }
 
@@ -170,5 +170,5 @@
 }
 
 .table-visual.selected {
-  box-shadow: 0 0 0 3px #1a1a2e, 0 0 0 6px #ffd60a;
+  box-shadow: var(--ring-selected);
 }

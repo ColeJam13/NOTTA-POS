@@ -4,27 +4,27 @@
 /* The four dots that fill in as the PIN is typed */
 .pin-dots {
   display: flex;
-  gap: 18px;
+  gap: var(--space-18);
 }
 
 .pin-dot {
   width: 22px;
   height: 22px;
-  border-radius: 50%;
-  border: 3px solid #b026ff;
+  border-radius: var(--radius-round);
+  border: var(--border-width-thick) solid var(--color-border);
   background: transparent;
   transition: background 0.15s;
 }
 
 .pin-dot.filled {
-  background: #39ff14;
-  border-color: #39ff14;
+  background: var(--color-primary-fill);
+  border-color: var(--color-border-primary);
 }
 
 .pin-message {
   min-height: 20px;                     /* Keeps its space when empty, so the pad never jumps */
-  color: #ff3366;
-  font-size: 12px;
+  color: var(--status-error-text);
+  font-size: var(--font-size-12);
   text-align: center;
 }
 
@@ -32,7 +32,7 @@
 .pin-pad {
   display: grid;
   grid-template-columns: repeat(3, 90px);
-  gap: 14px;
+  gap: var(--space-14);
 }
 
 .pin-key {
@@ -40,20 +40,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #16213e;
-  color: #e0e0e0;
-  border: 2px solid #b026ff;
-  border-radius: 12px;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 22px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xl);
+  font-family: var(--font-body);
+  font-size: var(--font-size-22);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .pin-key:hover:not(:disabled),
 .pin-key:active:not(:disabled) {
-  background: #b026ff;
-  color: #1a1a2e;
+  background: var(--color-accent-fill);
+  color: var(--color-on-accent);
 }
 
 .pin-key:disabled {
@@ -62,7 +62,7 @@
 }
 
 .pin-key-action {
-  font-size: 10px;
-  border-color: #666;
-  color: #9ca3af;
+  font-size: var(--font-size-10);
+  border-color: var(--color-border-muted);
+  color: var(--color-text-muted);
 }

@@ -12,20 +12,20 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-body);
 }
 
 .app {
 display: flex;
 height: 100vh;
-background: #1a1a2e;
-color: #e0e0e0;
-font-family: 'Courier New', monospace;
+background: var(--color-bg);
+color: var(--color-text);
+font-family: var(--font-fallback);
 overflow: hidden;
 }
 .page-with-nav {
 display: flex;
 flex-direction: column;
 height: 100vh;
-background: #1a1a2e;
+background: var(--color-bg);
 }

@@ -1,139 +1,139 @@
 .eighty-six-page {
   flex: 1;
-  background: #1a1a2e;
-  padding: 40px;
-  color: #e0e0e0;
+  background: var(--color-bg);
+  padding: var(--space-40);
+  color: var(--color-text);
   overflow-y: auto;
 }
 
 .eighty-six-page h2 {
   text-align: center;
   text-transform: uppercase;
-  color: #39ff14;
-  background: #16213e;
-  padding: 15px;
-  border: 2px solid #b026ff;
-  border-radius: 8px;
-  font-size: 18px;
-  letter-spacing: 2px;
-  margin-bottom: 20px;
+  color: var(--color-heading);
+  background: var(--color-surface);
+  padding: var(--space-15);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-18);
+  letter-spacing: var(--letter-spacing-wide);
+  margin-bottom: var(--space-20);
 }
 
 .eighty-six-page h3 {
-  color: #b026ff;
-  font-size: 14px;
-  letter-spacing: 2px;
-  margin-bottom: 12px;
+  color: var(--color-subheading);
+  font-size: var(--font-size-14);
+  letter-spacing: var(--letter-spacing-wide);
+  margin-bottom: var(--space-12);
 }
 
 .eighty-six-error {
-  background: #3a1020;
-  border: 2px solid #ff3366;
-  border-radius: 8px;
-  color: #ff3366;
-  padding: 12px;
-  margin-bottom: 20px;
+  background: var(--status-error-surface);
+  border: var(--border-width) solid var(--status-error-border);
+  border-radius: var(--radius-md);
+  color: var(--status-error-text);
+  padding: var(--space-12);
+  margin-bottom: var(--space-20);
   text-align: center;
 }
 
 /* --- What is 86'd right now --- */
 .eighty-six-now {
-  background: #16213e;
-  border: 2px solid #ff3366;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 30px;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--status-86-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-20);
+  margin-bottom: var(--space-30);
 }
 
 .eighty-six-now h3 {
-  color: #ff3366;
+  color: var(--status-86-text);
 }
 
 .eighty-six-none {
-  color: #888;
+  color: var(--color-text-subtle);
 }
 
 .eighty-six-now-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .eighty-six-chip {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
-  background: #3a1020;
-  color: #ff3366;
-  border: 2px solid #ff3366;
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 16px;
-  font-weight: bold;
+  gap: var(--space-4);
+  background: var(--status-86-surface);
+  color: var(--status-86-text);
+  border: var(--border-width) solid var(--status-86-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-12) var(--space-16);
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-bold);
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .eighty-six-chip small {
-  color: #e0e0e0;
-  font-size: 9px;
-  letter-spacing: 1px;
+  color: var(--color-text);
+  font-size: var(--font-size-9);
+  letter-spacing: var(--letter-spacing);
   opacity: 0.7;
 }
 
 .eighty-six-chip:hover {
-  background: #4d1529;
-  box-shadow: 0 0 15px rgba(255, 51, 102, 0.4);
+  background: var(--status-86-surface-hover);
+  box-shadow: var(--glow-danger-tight);
 }
 
 /* --- The whole menu, by category --- */
 .eighty-six-category {
-  margin-bottom: 30px;
+  margin-bottom: var(--space-30);
 }
 
 .eighty-six-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .eighty-six-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   min-height: 80px;                     /* Big enough to hit with a thumb on a kitchen tablet */
   justify-content: center;
-  background: #16213e;
-  color: #39ff14;
-  border: 2px solid #b026ff;
-  border-radius: 8px;
-  padding: 14px;
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-14);
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .eighty-six-item:hover {
-  background: #1f2d50;
+  background: var(--color-surface-hover);
 }
 
 .eighty-six-item-name {
-  font-size: 15px;
-  font-weight: bold;
+  font-size: var(--font-size-15);
+  font-weight: var(--font-weight-bold);
   text-align: center;
 }
 
 .eighty-six-item-status {
-  font-size: 10px;
-  letter-spacing: 1px;
-  color: #888;
+  font-size: var(--font-size-10);
+  letter-spacing: var(--letter-spacing);
+  color: var(--color-text-subtle);
 }
 
 .eighty-six-item.is-86d {
-  background: #3a1020;
-  border-color: #ff3366;
-  color: #ff3366;
+  background: var(--status-86-surface);
+  border-color: var(--status-86-border);
+  color: var(--status-86-text);
 }
 
 .eighty-six-item.is-86d .eighty-six-item-name {
@@ -141,16 +141,16 @@
 }
 
 .eighty-six-item.is-86d .eighty-six-item-status {
-  color: #ff3366;
+  color: var(--status-86-text);
 }
 
 
 /* Shown to people who can read the board but not change it */
 .eighty-six-read-only {
-  color: #9ca3af;
-  font-size: 12px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-12);
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-20);
 }
 
 .eighty-six-item:disabled,
@@ -159,9 +159,9 @@
 }
 
 .eighty-six-item:disabled:hover {
-  background: #16213e;
+  background: var(--color-surface);
 }
 
 .eighty-six-item.is-86d:disabled:hover {
-  background: #3a1020;
+  background: var(--status-86-surface);
 }
