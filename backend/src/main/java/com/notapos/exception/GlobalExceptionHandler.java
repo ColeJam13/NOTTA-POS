@@ -1,5 +1,6 @@
 package com.notapos.exception;
 
+import com.notapos.security.RefusalResponder;
 import com.notapos.security.StaffSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,17 +51,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), null);
     }
 
-    @ExceptionHandler(NotSignedInException.class)                               // Nobody is signed in -> 401
+    @ExceptionHandler(NotSignedInException.class)                               // The PIN was not recognized -> 401
     public ResponseEntity<ApiError> handleNotSignedIn(NotSignedInException ex) {
         return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), null);
     }
 
-    // A "who may do this" rule (@PreAuthorize on a controller method) said no.
-    // Spring Security throws the same exception whether nobody is signed in or the wrong
-    // person is, so the difference is worked out here:
-    //   nobody signed in            -> 401 (the frontend shows the PIN pad)
-    //   signed in, role not allowed -> 403, naming the role
+    // A "who may do this" rule (@PreAuthorize on a controller method) said no -> 403, naming the role.
     // The signed-in person is whoever StaffTokenFilter identified for this request.
+    //
+    // The 401 branch is a net. Since step A3b a request with no sign-in is refused in the
+    // filter chain (see SecurityConfig and RefusalResponder) and never reaches a controller,
+    // so in practice only signed-in people arrive here. If that ever changed, nobody would
+    // still be answered 401 and not let through.
     //
     // This handler has to exist. Without it the refusal would fall through to the
     // catch-all at the bottom of this class and come out as a 500.
@@ -69,10 +71,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         Authentication whoIsAsking = SecurityContextHolder.getContext().getAuthentication();
 
         if (whoIsAsking != null && whoIsAsking.getPrincipal() instanceof StaffSession staff) {
-            return buildResponse(HttpStatus.FORBIDDEN,
-                    "Your role (" + staff.role().getValue() + ") is not allowed to do that.", null);
+            return buildResponse(HttpStatus.FORBIDDEN, RefusalResponder.roleNotAllowed(staff.role()), null);
         }
-        return buildResponse(HttpStatus.UNAUTHORIZED, "Sign in to do that.", null);
+        return buildResponse(HttpStatus.UNAUTHORIZED, RefusalResponder.NOT_SIGNED_IN, null);
     }
 
     @ExceptionHandler(TooManyAttemptsException.class)                           // Too many wrong PINs in a row -> 429

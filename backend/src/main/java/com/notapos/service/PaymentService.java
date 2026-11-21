@@ -137,12 +137,18 @@ public class PaymentService {
         // so an item cannot be removed from a check that has already been paid.
         orderItemService.sendOrderNow(order.getOrderId());
 
-        // Save the payment. The amount is the backend's own number, to the cent.
-        payment.setAmount(check.total());
-        if (payment.getTipAmount() == null) {
-            payment.setTipAmount(BigDecimal.ZERO);
-        }
-        Payment savedPayment = paymentRepository.save(payment);
+        // Save the payment as a NEW row, built here from the four things a request may say.
+        // The request's own object is never saved: one that carried the ID of an earlier
+        // payment meant "update that row", and replaced that payment with this one.
+        // The amount is the backend's own number, to the cent. The status is left at the
+        // entity's default (completed): this is a record of money taken just now.
+        Payment newPayment = new Payment();                         // No ID: this is always a new row
+        newPayment.setOrderId(order.getOrderId());
+        newPayment.setAmount(check.total());
+        newPayment.setTipAmount(payment.getTipAmount() != null ? payment.getTipAmount() : BigDecimal.ZERO);
+        newPayment.setPaymentMethod(payment.getPaymentMethod());
+        newPayment.setTransactionReference(payment.getTransactionReference());
+        Payment savedPayment = paymentRepository.save(newPayment);
 
         // Close the order, and record what the check came to
         order.setSubtotal(check.subtotal());
@@ -163,18 +169,6 @@ public class PaymentService {
         return savedPayment;
     }
 
-    @Transactional
-    public Payment updatePayment(Long id, Payment updatedPayment) {                                     // Update existing payment
-        Payment existing = paymentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Payment not found with id: " + id));
-        existing.setAmount(updatedPayment.getAmount());
-        existing.setTipAmount(updatedPayment.getTipAmount());
-        existing.setStatus(updatedPayment.getStatus());
-        return paymentRepository.save(existing);
-    }
-
-    @Transactional
-    public void deletePayment(Long id) {                                                        // Delete existing payment
-        paymentRepository.deleteById(id);
-    }
+    // A payment is never changed or deleted once saved. Refunds and voids will be added as
+    // their own records (step B5 of the Phase 2 plan).
 }

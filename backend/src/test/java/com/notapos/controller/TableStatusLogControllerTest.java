@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -33,6 +34,9 @@ class TableStatusLogControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private SignIn signIn;              // Says who a request comes from: .with(signIn.asServer())
+
     @MockBean
     private TableStatusLogService tableStatusLogService;
 
@@ -56,7 +60,7 @@ class TableStatusLogControllerTest {
         List<TableStatusLog> logs = Arrays.asList(testLog);
         when(tableStatusLogService.getAllLogs()).thenReturn(logs);
 
-        mockMvc.perform(get("/api/table-status-logs"))
+        mockMvc.perform(get("/api/table-status-logs").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].oldStatus").value("available"))
                 .andExpect(jsonPath("$[0].newStatus").value("occupied"));
@@ -71,7 +75,7 @@ class TableStatusLogControllerTest {
         
         when(tableStatusLogService.getLogById(1L)).thenReturn(Optional.of(testLog));
 
-        mockMvc.perform(get("/api/table-status-logs/1"))
+        mockMvc.perform(get("/api/table-status-logs/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.logId").value(1))
                 .andExpect(jsonPath("$.changedBy").value("Server Alice"));
@@ -86,7 +90,7 @@ class TableStatusLogControllerTest {
         
         when(tableStatusLogService.getLogById(999L)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/table-status-logs/999"))
+        mockMvc.perform(get("/api/table-status-logs/999").with(signIn.asServer()))
                 .andExpect(status().isNotFound());
 
         verify(tableStatusLogService).getLogById(999L);
@@ -100,7 +104,7 @@ class TableStatusLogControllerTest {
         List<TableStatusLog> logs = Arrays.asList(testLog);
         when(tableStatusLogService.getLogsByTable(1L)).thenReturn(logs);
 
-        mockMvc.perform(get("/api/table-status-logs/table/1"))
+        mockMvc.perform(get("/api/table-status-logs/table/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].tableId").value(1));
 
@@ -114,7 +118,7 @@ class TableStatusLogControllerTest {
         
         when(tableStatusLogService.createLog(any(TableStatusLog.class))).thenReturn(testLog);
 
-        mockMvc.perform(post("/api/table-status-logs")
+        mockMvc.perform(post("/api/table-status-logs").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tableId\":1,\"oldStatus\":\"available\",\"newStatus\":\"occupied\"}"))
                 .andExpect(status().isCreated())
@@ -130,7 +134,7 @@ class TableStatusLogControllerTest {
         
         doNothing().when(tableStatusLogService).deleteLog(1L);
 
-        mockMvc.perform(delete("/api/table-status-logs/1"))
+        mockMvc.perform(delete("/api/table-status-logs/1").with(signIn.asManager()))
                 .andExpect(status().isNoContent());
 
         verify(tableStatusLogService).deleteLog(1L);

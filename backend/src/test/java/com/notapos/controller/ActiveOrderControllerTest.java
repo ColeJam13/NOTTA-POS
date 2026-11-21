@@ -7,6 +7,7 @@ import com.notapos.service.ActiveOrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -34,6 +35,9 @@ class ActiveOrderControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private SignIn signIn;              // Says who a request comes from: .with(signIn.asServer())
+
     @MockBean
     private ActiveOrderService activeOrderService;
 
@@ -49,7 +53,7 @@ class ActiveOrderControllerTest {
         when(activeOrderService.getActiveOrders()).thenReturn(List.of(order));
 
         // When/Then
-        mockMvc.perform(get("/api/orders/active"))
+        mockMvc.perform(get("/api/orders/active").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].orderId").value(1))
@@ -76,7 +80,7 @@ class ActiveOrderControllerTest {
         when(activeOrderService.getActiveOrders()).thenReturn(List.of());
 
         // When/Then
-        mockMvc.perform(get("/api/orders/active"))
+        mockMvc.perform(get("/api/orders/active").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
     }

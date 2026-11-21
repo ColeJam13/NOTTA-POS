@@ -5,6 +5,8 @@ import com.notapos.service.PrepStationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.notapos.security.Permissions;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -42,12 +44,14 @@ public class PrepStationController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize(Permissions.MANAGER_ONLY)                                     // Managers only
     @PostMapping
     public ResponseEntity<PrepStation> createPrepStation(@RequestBody PrepStation prepStation) {        // Create prep station
         PrepStation created = prepStationService.createPrepStation(prepStation);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    @PreAuthorize(Permissions.MANAGER_ONLY)                                     // Managers only
     @PutMapping("/{id}")
     public ResponseEntity<PrepStation> updatePrepStation(                       // Update prep station
             @PathVariable Long id,
@@ -56,6 +60,7 @@ public class PrepStationController {
         return ResponseEntity.ok(updated);
     }
 
+    @PreAuthorize(Permissions.MANAGER_ONLY)                                     // Managers only
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePrepStation(@PathVariable Long id) {          // Delete prep station
         prepStationService.deletePrepStation(id);

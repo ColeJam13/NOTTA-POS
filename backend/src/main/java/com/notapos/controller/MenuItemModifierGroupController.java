@@ -6,6 +6,8 @@ import com.notapos.service.MenuItemModifierGroupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.notapos.security.Permissions;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -51,12 +53,14 @@ public class MenuItemModifierGroupController {
                 return ResponseEntity.ok(menuItemModifierGroupService.getMenuItemsForModifierGroup(modifierGroupId));
             }
 
+    @PreAuthorize(Permissions.MANAGER_ONLY)                                     // Managers only
     @PostMapping
     public ResponseEntity<MenuItemModifierGroup> createLink(@RequestBody MenuItemModifierGroup link) {          // Create new link
         MenuItemModifierGroup created = menuItemModifierGroupService.createLink(link);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    @PreAuthorize(Permissions.MANAGER_ONLY)                                     // Managers only
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteLink(@PathVariable Long id) {                                     // Delete existing link
         menuItemModifierGroupService.deleteLink(id);

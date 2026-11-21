@@ -72,7 +72,7 @@ class MenuItemControllerTest {
         when(menuItemService.getActiveMenuItems()).thenReturn(items);
 
         // When/Then
-        mockMvc.perform(get("/api/menu-items").param("active", "true"))
+        mockMvc.perform(get("/api/menu-items").with(signIn.asServer()).param("active", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Chicken Cutty"))
                 .andExpect(jsonPath("$[0].isActive").value(true));
@@ -90,7 +90,7 @@ class MenuItemControllerTest {
         when(menuItemService.getAllMenuItems()).thenReturn(Arrays.asList(testItem));
 
         // When/Then - Just verify endpoint works
-        mockMvc.perform(get("/api/menu-items"))
+        mockMvc.perform(get("/api/menu-items").with(signIn.asServer()))
                 .andExpect(status().isOk());
         
         // Manual testing confirms this returns proper data in production
@@ -106,7 +106,7 @@ class MenuItemControllerTest {
         when(menuItemService.getActiveMenuItems()).thenReturn(items);
 
         // When/Then
-        mockMvc.perform(get("/api/menu-items").param("active", "true"))
+        mockMvc.perform(get("/api/menu-items").with(signIn.asServer()).param("active", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].isActive").value(true));
 
@@ -122,7 +122,7 @@ class MenuItemControllerTest {
         when(menuItemService.getMenuItemById(1L)).thenReturn(Optional.of(testItem));
 
         // When/Then
-        mockMvc.perform(get("/api/menu-items/1"))
+        mockMvc.perform(get("/api/menu-items/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Chicken Cutty"));
 
@@ -138,7 +138,7 @@ class MenuItemControllerTest {
         when(menuItemService.getMenuItemById(999L)).thenReturn(Optional.empty());
 
         // When/Then
-        mockMvc.perform(get("/api/menu-items/999"))
+        mockMvc.perform(get("/api/menu-items/999").with(signIn.asServer()))
                 .andExpect(status().isNotFound());
 
         verify(menuItemService).getMenuItemById(999L);
@@ -154,7 +154,7 @@ class MenuItemControllerTest {
         when(menuItemService.getMenuItemsByCategory("Savory")).thenReturn(items);
 
         // When/Then
-        mockMvc.perform(get("/api/menu-items/category/Savory"))
+        mockMvc.perform(get("/api/menu-items/category/Savory").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].category").value("Savory"));
 
@@ -171,7 +171,7 @@ class MenuItemControllerTest {
         when(menuItemService.getActiveMenuItemsByCategory("Savory")).thenReturn(items);
 
         // When/Then
-        mockMvc.perform(get("/api/menu-items/category/Savory").param("active", "true"))
+        mockMvc.perform(get("/api/menu-items/category/Savory").with(signIn.asServer()).param("active", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].category").value("Savory"));
 
@@ -188,7 +188,7 @@ class MenuItemControllerTest {
         when(menuItemService.getMenuItemsByPrepStation(1L)).thenReturn(items);
 
         // When/Then
-        mockMvc.perform(get("/api/menu-items/prep-station/1"))
+        mockMvc.perform(get("/api/menu-items/prep-station/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].prepStationId").value(1));
 
@@ -204,7 +204,7 @@ class MenuItemControllerTest {
         when(menuItemService.createMenuItem(any(MenuItem.class))).thenReturn(testItem);
 
         // When/Then
-        mockMvc.perform(post("/api/menu-items")
+        mockMvc.perform(post("/api/menu-items").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Chicken Cutty\",\"price\":17.00,\"category\":\"Savory\"}"))
                 .andExpect(status().isCreated())
@@ -220,7 +220,7 @@ class MenuItemControllerTest {
         //      instead of reaching the database and failing with a 500
 
         // When/Then
-        mockMvc.perform(post("/api/menu-items")
+        mockMvc.perform(post("/api/menu-items").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"price\":-5.00,\"category\":\"Savory\"}"))
                 .andExpect(status().isBadRequest())
@@ -242,7 +242,7 @@ class MenuItemControllerTest {
                 .thenThrow(new IllegalStateException("database exploded: secret-internal-detail"));
 
         // When/Then
-        mockMvc.perform(put("/api/menu-items/1")
+        mockMvc.perform(put("/api/menu-items/1").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Chicken Cutty\",\"price\":17.00,\"category\":\"Savory\"}"))
                 .andExpect(status().isInternalServerError())
@@ -259,7 +259,7 @@ class MenuItemControllerTest {
         when(menuItemService.updateMenuItem(eq(1L), any(MenuItem.class))).thenReturn(testItem);
 
         // When/Then
-        mockMvc.perform(put("/api/menu-items/1")
+        mockMvc.perform(put("/api/menu-items/1").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Chicken Cutty\",\"price\":18.00}"))
                 .andExpect(status().isOk())
@@ -278,7 +278,7 @@ class MenuItemControllerTest {
         when(menuItemService.deactivateMenuItem(1L)).thenReturn(testItem);
 
         // When/Then
-        mockMvc.perform(put("/api/menu-items/1/deactivate"))
+        mockMvc.perform(put("/api/menu-items/1/deactivate").with(signIn.asManager()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isActive").value(false));
 
@@ -294,7 +294,7 @@ class MenuItemControllerTest {
         when(menuItemService.activateMenuItem(1L)).thenReturn(testItem);
 
         // When/Then
-        mockMvc.perform(put("/api/menu-items/1/activate"))
+        mockMvc.perform(put("/api/menu-items/1/activate").with(signIn.asManager()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isActive").value(true));
 
@@ -310,7 +310,7 @@ class MenuItemControllerTest {
         doNothing().when(menuItemService).deleteMenuItem(1L);
 
         // When/Then
-        mockMvc.perform(delete("/api/menu-items/1"))
+        mockMvc.perform(delete("/api/menu-items/1").with(signIn.asManager()))
                 .andExpect(status().isNoContent());
 
         verify(menuItemService).deleteMenuItem(1L);
@@ -326,7 +326,7 @@ class MenuItemControllerTest {
                 .thenThrow(new ResourceNotFoundException("Menu item not found"));
 
         // When/Then
-        mockMvc.perform(put("/api/menu-items/999")
+        mockMvc.perform(put("/api/menu-items/999").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Test Item\",\"price\":10.00}"))
                 .andExpect(status().isNotFound());
@@ -344,7 +344,7 @@ class MenuItemControllerTest {
                 .thenThrow(new ResourceNotFoundException("Menu item not found"));
 
         // When/Then
-        mockMvc.perform(put("/api/menu-items/999/deactivate"))
+        mockMvc.perform(put("/api/menu-items/999/deactivate").with(signIn.asManager()))
                 .andExpect(status().isNotFound());
 
         verify(menuItemService).deactivateMenuItem(999L);
@@ -360,7 +360,7 @@ class MenuItemControllerTest {
                 .thenThrow(new ResourceNotFoundException("Menu item not found"));
 
         // When/Then
-        mockMvc.perform(put("/api/menu-items/999/activate"))
+        mockMvc.perform(put("/api/menu-items/999/activate").with(signIn.asManager()))
                 .andExpect(status().isNotFound());
 
         verify(menuItemService).activateMenuItem(999L);
@@ -424,7 +424,7 @@ class MenuItemControllerTest {
         when(menuItemService.get86dMenuItems()).thenReturn(java.util.List.of(testItem));
 
         // When/Then
-        mockMvc.perform(get("/api/menu-items/86"))
+        mockMvc.perform(get("/api/menu-items/86").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].is86d").value(true));
     }
@@ -470,7 +470,7 @@ class MenuItemControllerTest {
 
         when(menuItemService.getActiveMenuItems()).thenReturn(java.util.List.of(testItem));
 
-        mockMvc.perform(get("/api/menu-items"))
+        mockMvc.perform(get("/api/menu-items").with(signIn.asServer()))
                 .andExpect(status().isOk());
     }
 }

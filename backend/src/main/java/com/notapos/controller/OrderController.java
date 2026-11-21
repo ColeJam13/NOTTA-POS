@@ -10,9 +10,10 @@ import com.notapos.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.notapos.security.Permissions;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -76,36 +77,22 @@ public ResponseEntity<List<Order>> getAllOrders(
         return ResponseEntity.ok(orderService.getOrdersByTable(tableId));
     }
 
+    @PreAuthorize(Permissions.TAKE_ORDERS)                                      // Anyone who takes orders
     @PostMapping                                                                // Create new order
     public ResponseEntity<Order> createOrder(
             @Valid @RequestBody Order order,
-            @AuthenticationPrincipal StaffSession currentStaff) {            // The signed-in person, or null if nobody is
+            @AuthenticationPrincipal StaffSession currentStaff) {            // The signed-in person (never null: nobody else gets this far)
         // The order belongs to whoever is signed in at the screen that opened it.
-        // (The name a screen sends is only used when nobody is signed in.)
-        if (currentStaff != null) {
-            order.setServerName(currentStaff.name());
-            order.setStaffId(currentStaff.staffId());
-        }
+        // A name or staff ID sent in the request is ignored: otherwise a request could
+        // open a check in someone else's name.
+        order.setServerName(currentStaff.name());
+        order.setStaffId(currentStaff.staffId());
 
         Order created = orderService.createOrder(order);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    @PutMapping("/{id}/totals")                                                 // Update order Totals
-    public ResponseEntity<Order> updateOrderTotals(
-            @PathVariable Long id,
-            @RequestParam BigDecimal subtotal,
-            @RequestParam BigDecimal taxRate) {
-        Order updated = orderService.updateOrderTotals(id, subtotal, taxRate);
-        return ResponseEntity.ok(updated);
-    }
-
-    @PutMapping("/{id}/close")                                           // Mark order as closed
-    public ResponseEntity<Order> closeOrder(@PathVariable Long id) {
-        Order closed = orderService.closeOrder(id);
-        return ResponseEntity.ok(closed);
-    }
-
+    @PreAuthorize(Permissions.TAKE_ORDERS)                                      // Anyone who takes orders
     @DeleteMapping("/{id}")                                                     // Clear an empty open order off its table (409 if it has items or is closed)
     public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
         orderService.deleteOrder(id);

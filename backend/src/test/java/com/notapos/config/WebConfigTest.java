@@ -5,6 +5,7 @@ import com.notapos.service.TableService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
@@ -35,6 +36,9 @@ class WebConfigTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private SignIn signIn;              // Says who a request comes from: .with(signIn.asServer())
+
     @MockBean
     private TableService tableService;
 
@@ -43,7 +47,7 @@ class WebConfigTest {
         // WHAT: Test a request from the second address in the setting
         // WHY: Every address in the comma-separated list must work, not only the first
 
-        mockMvc.perform(get("/api/tables").header("Origin", "http://192.168.1.50:3000"))
+        mockMvc.perform(get("/api/tables").with(signIn.asServer()).header("Origin", "http://192.168.1.50:3000"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://192.168.1.50:3000"));
     }
@@ -53,7 +57,7 @@ class WebConfigTest {
         // WHAT: Test a request from an address that is not allowed
         // WHY: Only the restaurant's own screens should be able to read orders and payments
 
-        mockMvc.perform(get("/api/tables").header("Origin", "http://somewhere-else.example"))
+        mockMvc.perform(get("/api/tables").with(signIn.asServer()).header("Origin", "http://somewhere-else.example"))
                 .andExpect(status().isForbidden());
     }
 }

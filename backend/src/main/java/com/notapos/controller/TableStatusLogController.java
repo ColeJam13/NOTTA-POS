@@ -5,6 +5,8 @@ import com.notapos.service.TableStatusLogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.notapos.security.Permissions;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -42,12 +44,18 @@ public class TableStatusLogController {
         return ResponseEntity.ok(tableStatusLogService.getLogsByTable(tableId));
     }
 
+    // Not in the role matrix, and no screen calls it. Managers only until a feature needs it
+    // and opens it on purpose.
+    @PreAuthorize(Permissions.MANAGER_ONLY)
     @PostMapping
     public ResponseEntity<TableStatusLog> createLog(@RequestBody TableStatusLog log) {              // create new log
         TableStatusLog created = tableStatusLogService.createLog(log);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    // Not in the role matrix, and no screen calls it. Managers only until a feature needs it
+    // and opens it on purpose.
+    @PreAuthorize(Permissions.MANAGER_ONLY)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteLog(@PathVariable Long id) {                                  // Delete existing log
         tableStatusLogService.deleteLog(id);

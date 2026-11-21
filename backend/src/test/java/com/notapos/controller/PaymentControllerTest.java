@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -37,6 +38,9 @@ class PaymentControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private SignIn signIn;              // Says who a request comes from: .with(signIn.asServer())
+
     @MockBean
     private PaymentService paymentService;
 
@@ -61,7 +65,7 @@ class PaymentControllerTest {
         List<Payment> payments = Arrays.asList(testPayment);
         when(paymentService.getAllPayments()).thenReturn(payments);
 
-        mockMvc.perform(get("/api/payments"))
+        mockMvc.perform(get("/api/payments").with(signIn.asManager()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].paymentId").value(1))
                 .andExpect(jsonPath("$[0].paymentMethod").value("credit_card"));
@@ -77,7 +81,7 @@ class PaymentControllerTest {
         List<Payment> payments = Arrays.asList(testPayment);
         when(paymentService.getPaymentsByStatus("completed")).thenReturn(payments);
 
-        mockMvc.perform(get("/api/payments").param("status", "completed"))
+        mockMvc.perform(get("/api/payments").with(signIn.asManager()).param("status", "completed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("completed"));
 
@@ -92,7 +96,7 @@ class PaymentControllerTest {
         List<Payment> payments = Arrays.asList(testPayment);
         when(paymentService.getPaymentsByMethod("credit_card")).thenReturn(payments);
 
-        mockMvc.perform(get("/api/payments").param("method", "credit_card"))
+        mockMvc.perform(get("/api/payments").with(signIn.asManager()).param("method", "credit_card"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].paymentMethod").value("credit_card"));
 
@@ -106,7 +110,7 @@ class PaymentControllerTest {
         
         when(paymentService.getPaymentById(1L)).thenReturn(Optional.of(testPayment));
 
-        mockMvc.perform(get("/api/payments/1"))
+        mockMvc.perform(get("/api/payments/1").with(signIn.asManager()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paymentId").value(1));
 
@@ -120,7 +124,7 @@ class PaymentControllerTest {
         
         when(paymentService.getPaymentById(999L)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/payments/999"))
+        mockMvc.perform(get("/api/payments/999").with(signIn.asManager()))
                 .andExpect(status().isNotFound());
 
         verify(paymentService).getPaymentById(999L);
@@ -134,7 +138,7 @@ class PaymentControllerTest {
         List<Payment> payments = Arrays.asList(testPayment);
         when(paymentService.getPaymentsByOrder(1L)).thenReturn(payments);
 
-        mockMvc.perform(get("/api/payments/order/1"))
+        mockMvc.perform(get("/api/payments/order/1").with(signIn.asManager()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].orderId").value(1));
 
@@ -148,41 +152,13 @@ class PaymentControllerTest {
         
         when(paymentService.createPayment(any(Payment.class))).thenReturn(testPayment);
 
-        mockMvc.perform(post("/api/payments")
+        mockMvc.perform(post("/api/payments").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":1,\"amount\":54.00,\"paymentMethod\":\"credit_card\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.paymentId").value(1));
 
         verify(paymentService).createPayment(any(Payment.class));
-    }
-
-    @Test
-    void testUpdatePayment_ShouldReturnUpdated() throws Exception {
-        // WHAT: Test PUT /api/payments/{id}
-        // WHY: Update payment details
-        
-        when(paymentService.updatePayment(eq(1L), any(Payment.class))).thenReturn(testPayment);
-
-        mockMvc.perform(put("/api/payments/1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"amount\":60.00,\"tipAmount\":12.00}"))
-                .andExpect(status().isOk());
-
-        verify(paymentService).updatePayment(eq(1L), any(Payment.class));
-    }
-
-    @Test
-    void testDeletePayment_ShouldReturn204() throws Exception {
-        // WHAT: Test DELETE /api/payments/{id}
-        // WHY: Delete payment
-        
-        doNothing().when(paymentService).deletePayment(1L);
-
-        mockMvc.perform(delete("/api/payments/1"))
-                .andExpect(status().isNoContent());
-
-        verify(paymentService).deletePayment(1L);
     }
 
     @Test
@@ -193,7 +169,7 @@ class PaymentControllerTest {
         when(paymentService.createPayment(any(Payment.class))).thenThrow(new OrderStateException(
                 "This order has 2 unsent item(s). Send or remove them before closing the check."));
 
-        mockMvc.perform(post("/api/payments")
+        mockMvc.perform(post("/api/payments").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":1,\"amount\":54.00,\"paymentMethod\":\"credit_card\"}"))
                 .andExpect(status().isConflict())
@@ -209,7 +185,7 @@ class PaymentControllerTest {
         when(paymentService.createPayment(any(Payment.class)))
                 .thenThrow(new ResourceNotFoundException("Order not found with id: 99"));
 
-        mockMvc.perform(post("/api/payments")
+        mockMvc.perform(post("/api/payments").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":99,\"amount\":54.00,\"paymentMethod\":\"credit_card\"}"))
                 .andExpect(status().isNotFound());
@@ -220,7 +196,7 @@ class PaymentControllerTest {
         // WHAT: Test POST /api/payments with a tip below zero
         // WHY: A negative tip would quietly take money off the check
 
-        mockMvc.perform(post("/api/payments")
+        mockMvc.perform(post("/api/payments").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":1,\"amount\":54.00,\"tipAmount\":-5.00,\"paymentMethod\":\"credit_card\"}"))
                 .andExpect(status().isBadRequest())

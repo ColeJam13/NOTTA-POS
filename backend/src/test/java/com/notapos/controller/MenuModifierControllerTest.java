@@ -7,6 +7,7 @@ import com.notapos.service.MenuModifierService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -33,6 +34,9 @@ class MenuModifierControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private SignIn signIn;              // Says who a request comes from: .with(signIn.asServer())
+
     @MockBean
     private MenuModifierService menuModifierService;
 
@@ -48,7 +52,7 @@ class MenuModifierControllerTest {
                 .thenReturn(List.of(new MenuItemModifiersView(1L, List.of(bread))));
 
         // When/Then
-        mockMvc.perform(get("/api/menu-items/modifier-groups"))
+        mockMvc.perform(get("/api/menu-items/modifier-groups").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].menuItemId").value(1))
@@ -71,7 +75,7 @@ class MenuModifierControllerTest {
         when(menuModifierService.getModifierGroupsForMenu()).thenReturn(List.of());
 
         // When/Then
-        mockMvc.perform(get("/api/menu-items/modifier-groups"))
+        mockMvc.perform(get("/api/menu-items/modifier-groups").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
     }

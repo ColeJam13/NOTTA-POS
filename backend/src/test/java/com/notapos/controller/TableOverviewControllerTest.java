@@ -9,6 +9,7 @@ import com.notapos.service.TableOverviewService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
@@ -34,6 +35,9 @@ class TableOverviewControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private SignIn signIn;              // Says who a request comes from: .with(signIn.asServer())
+
     @MockBean
     private TableOverviewService tableOverviewService;
 
@@ -51,7 +55,7 @@ class TableOverviewControllerTest {
                         List.of(new ClosedCheckItemView(200L, "Combo Plate", 1, new BigDecimal("17.00"), "nut allergy",
                                 List.of(new OrderItemModifierView(200L, 14L, "French Toast", new BigDecimal("2.00")))))))));
 
-        mockMvc.perform(get("/api/tables/overview"))
+        mockMvc.perform(get("/api/tables/overview").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.activeTables[0].tableNumber").value("W1"))
                 .andExpect(jsonPath("$.activeTables[0].itemCount").value(3))
@@ -74,7 +78,7 @@ class TableOverviewControllerTest {
 
         when(tableOverviewService.getOverview(true)).thenReturn(new TablesOverviewView(List.of(), List.of()));
 
-        mockMvc.perform(get("/api/tables/overview").param("quickOrders", "true"))
+        mockMvc.perform(get("/api/tables/overview").with(signIn.asServer()).param("quickOrders", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.activeTables").isEmpty())
                 .andExpect(jsonPath("$.closedChecks").isEmpty());

@@ -257,60 +257,6 @@ class OrderServiceTest {
     }
 
     @Test
-    void testUpdateOrderTotals_ShouldCalculateTaxAndTotal() {
-        // WHAT: Test calculating tax and total when items are added
-        // WHY: Order totals need to update as items are added
-        
-        // Given - Order exists, tax rate is 8%
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
-        when(orderRepository.save(any(Order.class))).thenReturn(testOrder);
-
-        BigDecimal subtotal = new BigDecimal("50.00");
-        BigDecimal taxRate = new BigDecimal("0.08");
-
-        // When - Update totals with $50 subtotal and 8% tax
-        Order updated = orderService.updateOrderTotals(1L, subtotal, taxRate);
-
-        // Then - Should calculate $4.00 tax and $54.00 total
-        assertEquals(new BigDecimal("50.00"), updated.getSubtotal());
-        assertEquals(new BigDecimal("4.00"), updated.getTax());
-        assertEquals(new BigDecimal("54.00"), updated.getTotal());
-        verify(orderRepository, times(1)).save(testOrder);
-    }
-
-    @Test
-    void testUpdateOrderTotals_WhenOrderNotFound_ShouldThrowException() {
-        // WHAT: Test error handling when order doesn't exist
-        // WHY: Can't update totals for non-existent order
-        
-        // Given - Order doesn't exist
-        when(orderRepository.findById(999L)).thenReturn(Optional.empty());
-
-        // When & Then - Should throw exception
-        assertThrows(RuntimeException.class, () -> {
-            orderService.updateOrderTotals(999L, BigDecimal.TEN, new BigDecimal("0.08"));
-        });
-    }
-
-    @Test
-    void testCloseOrder_ShouldSetStatusAndTimestamp() {
-        // WHAT: Test closing an order (guest pays and leaves)
-        // WHY: Need to close the check when guest is done
-        
-        // Given - Order exists and is open
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
-        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        // When - Close the order
-        Order closed = orderService.closeOrder(1L);
-
-        // Then - Status should be "closed" with timestamp
-        assertEquals("closed", closed.getStatus());
-        assertNotNull(closed.getClosedAt());
-        verify(orderRepository, times(1)).save(testOrder);
-    }
-
-    @Test
     void testGetOrdersByStatus_ShouldFilterByStatus() {
         // WHAT: Test filtering orders by status
         // WHY: Want to see all open orders, or all completed orders

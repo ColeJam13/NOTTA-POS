@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -34,6 +35,9 @@ class PrepStationControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private SignIn signIn;              // Says who a request comes from: .with(signIn.asServer())
+
     @MockBean
     private PrepStationService prepStationService;
 
@@ -56,7 +60,7 @@ class PrepStationControllerTest {
         List<PrepStation> stations = Arrays.asList(testStation);
         when(prepStationService.getAllPrepStations()).thenReturn(stations);
 
-        mockMvc.perform(get("/api/prep-stations"))
+        mockMvc.perform(get("/api/prep-stations").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Kitchen"));
 
@@ -71,7 +75,7 @@ class PrepStationControllerTest {
         List<PrepStation> stations = Arrays.asList(testStation);
         when(prepStationService.getActivePrepStations()).thenReturn(stations);
 
-        mockMvc.perform(get("/api/prep-stations").param("active", "true"))
+        mockMvc.perform(get("/api/prep-stations").with(signIn.asServer()).param("active", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].isActive").value(true));
 
@@ -85,7 +89,7 @@ class PrepStationControllerTest {
         
         when(prepStationService.getPrepStationById(1L)).thenReturn(Optional.of(testStation));
 
-        mockMvc.perform(get("/api/prep-stations/1"))
+        mockMvc.perform(get("/api/prep-stations/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.prepStationId").value(1))
                 .andExpect(jsonPath("$.name").value("Kitchen"));
@@ -100,7 +104,7 @@ class PrepStationControllerTest {
         
         when(prepStationService.getPrepStationById(999L)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/prep-stations/999"))
+        mockMvc.perform(get("/api/prep-stations/999").with(signIn.asServer()))
                 .andExpect(status().isNotFound());
 
         verify(prepStationService).getPrepStationById(999L);
@@ -113,7 +117,7 @@ class PrepStationControllerTest {
         
         when(prepStationService.createPrepStation(any(PrepStation.class))).thenReturn(testStation);
 
-        mockMvc.perform(post("/api/prep-stations")
+        mockMvc.perform(post("/api/prep-stations").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Kitchen\",\"description\":\"Main kitchen\"}"))
                 .andExpect(status().isCreated())
@@ -129,7 +133,7 @@ class PrepStationControllerTest {
         
         when(prepStationService.updatePrepStation(eq(1L), any(PrepStation.class))).thenReturn(testStation);
 
-        mockMvc.perform(put("/api/prep-stations/1")
+        mockMvc.perform(put("/api/prep-stations/1").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Updated Kitchen\"}"))
                 .andExpect(status().isOk());
@@ -144,7 +148,7 @@ class PrepStationControllerTest {
         
         doNothing().when(prepStationService).deletePrepStation(1L);
 
-        mockMvc.perform(delete("/api/prep-stations/1"))
+        mockMvc.perform(delete("/api/prep-stations/1").with(signIn.asManager()))
                 .andExpect(status().isNoContent());
 
         verify(prepStationService).deletePrepStation(1L);

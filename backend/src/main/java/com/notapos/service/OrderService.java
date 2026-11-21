@@ -12,11 +12,9 @@ import com.notapos.repository.OrderRepository;
 import com.notapos.repository.TableRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.math.RoundingMode;
 
 /**
  * Service layer for Order operations.
@@ -116,29 +114,10 @@ public class OrderService {
         return saved;
     }
 
-    @Transactional
-    public Order updateOrderTotals(Long id, BigDecimal subtotal, BigDecimal taxRate) {          // Update order totals as we add items
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id)); 
-
-        BigDecimal tax = subtotal.multiply(taxRate).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal total = subtotal.add(tax);
-
-        order.setSubtotal(subtotal);
-        order.setTax(tax);
-        order.setTotal(total);
-
-        return orderRepository.save(order);
-    }
-
-    @Transactional
-    public Order closeOrder(Long id) {                                       // Close out an order
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
-        order.setStatus(OrderStatus.CLOSED.getValue());
-        order.setClosedAt(LocalDateTime.now());
-        return orderRepository.save(order);
-    }
+    // There is no "close order" or "update totals" here. An order is closed by a payment
+    // (PaymentService.createPayment, which also records its totals) or cleared when empty
+    // (deleteOrder below). The two methods that did it directly were removed in step A3b:
+    // one closed a check with no payment, the other took the tax rate from the caller.
 
     public List<Order> getOrdersBetween(LocalDateTime start, LocalDateTime end) {       // get all orders in a certain time frame
         return orderRepository.findOrdersBetween(start, end);

@@ -5,6 +5,8 @@ import com.notapos.service.ModifierGroupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.notapos.security.Permissions;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -42,12 +44,14 @@ public class ModifierGroupController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize(Permissions.MANAGER_ONLY)                                     // Managers only
     @PostMapping                                                                                            // Create new modifier group
     public ResponseEntity<ModifierGroup> createModifierGroup(@RequestBody ModifierGroup modifierGroup) {
         ModifierGroup created = modifierGroupService.createModifierGroup(modifierGroup);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    @PreAuthorize(Permissions.MANAGER_ONLY)                                     // Managers only
     @PutMapping("/{id}")                                                                // Update existing modifier group
     public ResponseEntity<ModifierGroup> updateModifierGroup(
             @PathVariable Long id,
@@ -56,6 +60,7 @@ public class ModifierGroupController {
         return ResponseEntity.ok(updated);
     }
 
+    @PreAuthorize(Permissions.MANAGER_ONLY)                                     // Managers only
     @DeleteMapping("/{id}")                                                             // Delete existing modifier group
     public ResponseEntity<Void> deleteModifierGroup(@PathVariable Long id) {
         modifierGroupService.deleteModifierGroup(id);

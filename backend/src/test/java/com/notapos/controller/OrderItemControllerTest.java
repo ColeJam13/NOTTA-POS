@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -40,6 +41,9 @@ class OrderItemControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private SignIn signIn;              // Says who a request comes from: .with(signIn.asServer())
 
     @MockBean
     private OrderItemService orderItemService;
@@ -73,7 +77,7 @@ class OrderItemControllerTest {
         when(orderItemService.getAllOrderItems()).thenReturn(items);
 
         // When/Then - GET request should return 200 OK with items
-        mockMvc.perform(get("/api/order-items"))
+        mockMvc.perform(get("/api/order-items").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].orderItemId").value(1))
                 .andExpect(jsonPath("$[0].status").value("draft"));
@@ -91,7 +95,7 @@ class OrderItemControllerTest {
         when(orderItemService.getItemsByStatus("draft")).thenReturn(draftItems);
 
         // When/Then - GET with status param should return filtered items
-        mockMvc.perform(get("/api/order-items").param("status", "draft"))
+        mockMvc.perform(get("/api/order-items").with(signIn.asServer()).param("status", "draft"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("draft"));
 
@@ -107,7 +111,7 @@ class OrderItemControllerTest {
         when(orderItemService.getOrderItemById(1L)).thenReturn(Optional.of(testItem));
 
         // When/Then - GET request should return 200 OK with item
-        mockMvc.perform(get("/api/order-items/1"))
+        mockMvc.perform(get("/api/order-items/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderItemId").value(1))
                 .andExpect(jsonPath("$.status").value("draft"));
@@ -124,7 +128,7 @@ class OrderItemControllerTest {
         when(orderItemService.getOrderItemById(999L)).thenReturn(Optional.empty());
 
         // When/Then - GET request should return 404 Not Found
-        mockMvc.perform(get("/api/order-items/999"))
+        mockMvc.perform(get("/api/order-items/999").with(signIn.asServer()))
                 .andExpect(status().isNotFound());
 
         verify(orderItemService, times(1)).getOrderItemById(999L);
@@ -139,7 +143,7 @@ class OrderItemControllerTest {
         doNothing().when(orderItemService).deleteOrderItem(1L);
 
         // When/Then - DELETE request should return 204 No Content
-        mockMvc.perform(delete("/api/order-items/1"))
+        mockMvc.perform(delete("/api/order-items/1").with(signIn.asServer()))
                 .andExpect(status().isNoContent());
 
         verify(orderItemService, times(1)).deleteOrderItem(1L);
@@ -155,7 +159,7 @@ class OrderItemControllerTest {
         when(orderItemService.getItemsByOrder(1L)).thenReturn(orderItems);
 
         // When/Then - GET request should return 200 OK with items
-        mockMvc.perform(get("/api/order-items/order/1"))
+        mockMvc.perform(get("/api/order-items/order/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].orderId").value(1));
 
@@ -172,7 +176,7 @@ class OrderItemControllerTest {
         when(orderItemService.getDraftItemsByOrder(1L)).thenReturn(draftItems);
 
         // When/Then - GET with status=draft should return draft items
-        mockMvc.perform(get("/api/order-items/order/1").param("status", "draft"))
+        mockMvc.perform(get("/api/order-items/order/1").with(signIn.asServer()).param("status", "draft"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("draft"));
 
@@ -190,7 +194,7 @@ class OrderItemControllerTest {
         when(orderItemService.getPendingItemsByOrder(1L)).thenReturn(pendingItems);
 
         // When/Then - GET with status=pending should return pending items
-        mockMvc.perform(get("/api/order-items/order/1").param("status", "pending"))
+        mockMvc.perform(get("/api/order-items/order/1").with(signIn.asServer()).param("status", "pending"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("pending"));
 
@@ -209,7 +213,7 @@ class OrderItemControllerTest {
         when(orderItemService.sendItemsForOrder(1L)).thenReturn(sentItems);
 
         // When/Then - POST request should return 200 OK
-        mockMvc.perform(post("/api/order-items/order/1/send"))
+        mockMvc.perform(post("/api/order-items/order/1/send").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("pending"));
 
@@ -227,7 +231,7 @@ class OrderItemControllerTest {
         when(orderItemService.sendItemNow(1L)).thenReturn(testItem);
 
         // When/Then - PUT request should return 200 OK
-        mockMvc.perform(put("/api/order-items/1/send-now"))
+        mockMvc.perform(put("/api/order-items/1/send-now").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("pending"))
                 .andExpect(jsonPath("$.isLocked").value(true));
@@ -245,7 +249,7 @@ class OrderItemControllerTest {
         when(orderItemService.completeItem(1L)).thenReturn(testItem);
 
         // When/Then - PUT request should return 200 OK
-        mockMvc.perform(put("/api/order-items/1/complete"))
+        mockMvc.perform(put("/api/order-items/1/complete").with(signIn.asKitchen()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("completed"));
 
@@ -271,7 +275,7 @@ class OrderItemControllerTest {
         when(orderItemService.sendOrderNow(1L)).thenReturn(Arrays.asList(sentDraft, sentLimbo));
 
         // When/Then - POST request should return 200 OK with sent items
-        mockMvc.perform(post("/api/order-items/order/1/send-now"))
+        mockMvc.perform(post("/api/order-items/order/1/send-now").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].status").value("pending"))
@@ -290,7 +294,7 @@ class OrderItemControllerTest {
         when(orderItemService.startItem(1L)).thenReturn(testItem);
 
         // When/Then - PUT request should return 200 OK
-        mockMvc.perform(put("/api/order-items/1/start"))
+        mockMvc.perform(put("/api/order-items/1/start").with(signIn.asKitchen()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderItemId").value(1))
                 .andExpect(jsonPath("$.status").value("fired"));
@@ -307,7 +311,7 @@ class OrderItemControllerTest {
         when(orderItemService.startItem(999L)).thenThrow(new ResourceNotFoundException("Item not found"));
 
         // When/Then - PUT request should return 404 Not Found
-        mockMvc.perform(put("/api/order-items/999/start"))
+        mockMvc.perform(put("/api/order-items/999/start").with(signIn.asKitchen()))
                 .andExpect(status().isNotFound());
 
         verify(orderItemService, times(1)).startItem(999L);
@@ -325,7 +329,7 @@ class OrderItemControllerTest {
         when(orderItemService.lockAndSendExpiredItems()).thenReturn(lockedItems);
 
         // When/Then - POST request should return 200 OK with locked items
-        mockMvc.perform(post("/api/order-items/lock-expired"))
+        mockMvc.perform(post("/api/order-items/lock-expired").with(signIn.asManager()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].isLocked").value(true));
 
@@ -343,7 +347,7 @@ class OrderItemControllerTest {
         when(orderItemService.sendItemNow(999L)).thenThrow(new ResourceNotFoundException("Item not found"));
 
         // When/Then - PUT request should return 404 Not Found
-        mockMvc.perform(put("/api/order-items/999/send-now"))
+        mockMvc.perform(put("/api/order-items/999/send-now").with(signIn.asServer()))
                 .andExpect(status().isNotFound());
 
         verify(orderItemService, times(1)).sendItemNow(999L);
@@ -358,7 +362,7 @@ class OrderItemControllerTest {
         when(orderItemService.completeItem(999L)).thenThrow(new ResourceNotFoundException("Item not found"));
 
         // When/Then - PUT request should return 404 Not Found
-        mockMvc.perform(put("/api/order-items/999/complete"))
+        mockMvc.perform(put("/api/order-items/999/complete").with(signIn.asKitchen()))
                 .andExpect(status().isNotFound());
 
         verify(orderItemService, times(1)).completeItem(999L);
@@ -373,7 +377,7 @@ class OrderItemControllerTest {
         doThrow(new ItemLockedException("Item is locked")).when(orderItemService).deleteOrderItem(1L);
 
         // When/Then - DELETE request should return 409 Conflict (item exists but is locked)
-        mockMvc.perform(delete("/api/order-items/1"))
+        mockMvc.perform(delete("/api/order-items/1").with(signIn.asServer()))
                 .andExpect(status().isConflict());
 
         verify(orderItemService, times(1)).deleteOrderItem(1L);
@@ -389,7 +393,7 @@ class OrderItemControllerTest {
         when(orderItemService.getItemsByOrder(1L)).thenReturn(allItems);
 
         // When/Then - GET with unsupported status should return all items
-        mockMvc.perform(get("/api/order-items/order/1").param("status", "fired"))
+        mockMvc.perform(get("/api/order-items/order/1").with(signIn.asServer()).param("status", "fired"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].orderId").value(1));
 
@@ -413,7 +417,7 @@ class OrderItemControllerTest {
         when(orderItemModifierService.ringInItem(any(OrderItemRequest.class))).thenReturn(testItem);
 
         // When/Then - POST request should return 201 Created (note: the request carries no price)
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":1,\"menuItemId\":1,\"quantity\":1,\"specialInstructions\":\"no onions\",\"modifierIds\":[14,16]}"))
                 .andExpect(status().isCreated())
@@ -432,7 +436,7 @@ class OrderItemControllerTest {
         // WHAT: Test POST /api/order-items without an order
         // WHY: @Valid rejects the request before it reaches the service
 
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"menuItemId\":1,\"modifierIds\":[14]}"))
                 .andExpect(status().isBadRequest())
@@ -449,7 +453,7 @@ class OrderItemControllerTest {
 
         String longNote = "x".repeat(501);
 
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":1,\"menuItemId\":1,\"specialInstructions\":\"" + longNote + "\"}"))
                 .andExpect(status().isBadRequest())
@@ -468,7 +472,7 @@ class OrderItemControllerTest {
                 .thenThrow(new InvalidModifierSelectionException("\"Bread Choice\" must be chosen for Combo Plate"));
 
         // When/Then
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":1,\"menuItemId\":1,\"modifierIds\":[]}"))
                 .andExpect(status().isBadRequest())
@@ -487,7 +491,7 @@ class OrderItemControllerTest {
                 .thenReturn(testItem);
 
         // When/Then - PUT request should return 200 OK
-        mockMvc.perform(put("/api/order-items/1/modifiers")
+        mockMvc.perform(put("/api/order-items/1/modifiers").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"specialInstructions\":\"nut allergy\",\"modifierIds\":[14]}"))
                 .andExpect(status().isOk())
@@ -508,7 +512,7 @@ class OrderItemControllerTest {
                 .thenThrow(new ItemLockedException("Cannot change modifiers on locked item. Item has been sent to kitchen."));
 
         // When/Then
-        mockMvc.perform(put("/api/order-items/1/modifiers")
+        mockMvc.perform(put("/api/order-items/1/modifiers").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"modifierIds\":[14]}"))
                 .andExpect(status().isConflict());
@@ -523,7 +527,7 @@ class OrderItemControllerTest {
                 .thenThrow(new ResourceNotFoundException("Order item not found with id: 999"));
 
         // When/Then
-        mockMvc.perform(put("/api/order-items/999/modifiers")
+        mockMvc.perform(put("/api/order-items/999/modifiers").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"modifierIds\":[]}"))
                 .andExpect(status().isNotFound());
@@ -540,7 +544,7 @@ class OrderItemControllerTest {
         saved.setPrice(new BigDecimal("17.00"));
         when(orderItemModifierService.ringInItem(any())).thenReturn(saved);
 
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":1,\"menuItemId\":2,\"quantity\":1,\"price\":0.01,\"status\":\"completed\",\"modifierIds\":[]}"))
                 .andExpect(status().isCreated())
@@ -560,7 +564,7 @@ class OrderItemControllerTest {
         when(orderItemModifierService.ringInItem(any())).thenThrow(
                 new com.notapos.exception.OrderNotOpenException("This check was already closed, most likely on another terminal. Nothing was added or sent."));
 
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":1,\"menuItemId\":2,\"quantity\":1,\"modifierIds\":[]}"))
                 .andExpect(status().isConflict())
@@ -576,7 +580,7 @@ class OrderItemControllerTest {
         when(orderItemService.sendItemsForOrder(1L)).thenThrow(
                 new com.notapos.exception.OrderNotOpenException("This check was already closed."));
 
-        mockMvc.perform(post("/api/order-items/order/1/send"))
+        mockMvc.perform(post("/api/order-items/order/1/send").with(signIn.asServer()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("ORDER_NOT_OPEN"));
     }
@@ -590,7 +594,7 @@ class OrderItemControllerTest {
         doThrow(new com.notapos.exception.ItemLockedException("Cannot delete locked item. Item has been sent to kitchen."))
                 .when(orderItemService).deleteOrderItem(1L);
 
-        mockMvc.perform(delete("/api/order-items/1"))
+        mockMvc.perform(delete("/api/order-items/1").with(signIn.asServer()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.nullValue()));
     }

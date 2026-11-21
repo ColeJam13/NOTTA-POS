@@ -6,6 +6,8 @@ import com.notapos.service.OrderItemModifierService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.notapos.security.Permissions;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -58,6 +60,11 @@ public class OrderItemModifierController {
         return ResponseEntity.ok(orderItemModifierService.getModifierViewsForOrder(orderId));
     }
 
+    // Managers only, and no screen calls it. This adds a modifier to an item directly, with
+    // none of the checks ringing in has (is the check open, is the item locked, does the
+    // menu allow it) and without changing the item's price. Servers change modifiers through
+    // PUT /api/order-items/{id}/modifiers, which has all of them.
+    @PreAuthorize(Permissions.MANAGER_ONLY)
     @PostMapping
     public ResponseEntity<OrderItemModifier> createOrderItemModifier(                                       // Create new order item modifier
             @RequestBody OrderItemModifier orderItemModifier) {
@@ -65,6 +72,8 @@ public class OrderItemModifierController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    // Managers only, for the same reason as the POST above
+    @PreAuthorize(Permissions.MANAGER_ONLY)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteOrderItemModifier(@PathVariable Long id) {                            // Delete Existing order item modifier
         orderItemModifierService.deleteOrderItemModifier(id);

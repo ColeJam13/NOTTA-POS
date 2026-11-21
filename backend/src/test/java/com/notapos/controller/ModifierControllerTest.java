@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -35,6 +36,9 @@ class ModifierControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private SignIn signIn;              // Says who a request comes from: .with(signIn.asServer())
+
     @MockBean
     private ModifierService modifierService;
 
@@ -58,7 +62,7 @@ class ModifierControllerTest {
         List<Modifier> modifiers = Arrays.asList(testModifier);
         when(modifierService.getAllModifiers()).thenReturn(modifiers);
 
-        mockMvc.perform(get("/api/modifiers"))
+        mockMvc.perform(get("/api/modifiers").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Add Bacon"));
 
@@ -73,7 +77,7 @@ class ModifierControllerTest {
         List<Modifier> modifiers = Arrays.asList(testModifier);
         when(modifierService.getActiveModifiers()).thenReturn(modifiers);
 
-        mockMvc.perform(get("/api/modifiers").param("active", "true"))
+        mockMvc.perform(get("/api/modifiers").with(signIn.asServer()).param("active", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].isActive").value(true));
 
@@ -87,7 +91,7 @@ class ModifierControllerTest {
         
         when(modifierService.getModifierById(1L)).thenReturn(Optional.of(testModifier));
 
-        mockMvc.perform(get("/api/modifiers/1"))
+        mockMvc.perform(get("/api/modifiers/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.modifierId").value(1))
                 .andExpect(jsonPath("$.name").value("Add Bacon"));
@@ -102,7 +106,7 @@ class ModifierControllerTest {
         
         when(modifierService.getModifierById(999L)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/modifiers/999"))
+        mockMvc.perform(get("/api/modifiers/999").with(signIn.asServer()))
                 .andExpect(status().isNotFound());
 
         verify(modifierService).getModifierById(999L);
@@ -116,7 +120,7 @@ class ModifierControllerTest {
         List<Modifier> modifiers = Arrays.asList(testModifier);
         when(modifierService.getModifiersByGroup(1L)).thenReturn(modifiers);
 
-        mockMvc.perform(get("/api/modifiers/group/1"))
+        mockMvc.perform(get("/api/modifiers/group/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].modifierGroupId").value(1));
 
@@ -131,7 +135,7 @@ class ModifierControllerTest {
         List<Modifier> modifiers = Arrays.asList(testModifier);
         when(modifierService.getActiveModifiersByGroup(1L)).thenReturn(modifiers);
 
-        mockMvc.perform(get("/api/modifiers/group/1").param("active", "true"))
+        mockMvc.perform(get("/api/modifiers/group/1").with(signIn.asServer()).param("active", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].isActive").value(true));
 
@@ -145,7 +149,7 @@ class ModifierControllerTest {
         
         when(modifierService.createModifier(any(Modifier.class))).thenReturn(testModifier);
 
-        mockMvc.perform(post("/api/modifiers")
+        mockMvc.perform(post("/api/modifiers").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Add Bacon\",\"priceAdjustment\":2.00}"))
                 .andExpect(status().isCreated())
@@ -161,7 +165,7 @@ class ModifierControllerTest {
         
         when(modifierService.updateModifier(eq(1L), any(Modifier.class))).thenReturn(testModifier);
 
-        mockMvc.perform(put("/api/modifiers/1")
+        mockMvc.perform(put("/api/modifiers/1").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Add Bacon\",\"priceAdjustment\":2.50}"))
                 .andExpect(status().isOk());
@@ -176,7 +180,7 @@ class ModifierControllerTest {
         
         doNothing().when(modifierService).deleteModifier(1L);
 
-        mockMvc.perform(delete("/api/modifiers/1"))
+        mockMvc.perform(delete("/api/modifiers/1").with(signIn.asManager()))
                 .andExpect(status().isNoContent());
 
         verify(modifierService).deleteModifier(1L);

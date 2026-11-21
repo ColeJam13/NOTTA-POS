@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -34,6 +35,9 @@ class ModifierGroupControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private SignIn signIn;              // Says who a request comes from: .with(signIn.asServer())
+
     @MockBean
     private ModifierGroupService modifierGroupService;
 
@@ -58,7 +62,7 @@ class ModifierGroupControllerTest {
         List<ModifierGroup> groups = Arrays.asList(testGroup);
         when(modifierGroupService.getAllModifierGroups()).thenReturn(groups);
 
-        mockMvc.perform(get("/api/modifier-groups"))
+        mockMvc.perform(get("/api/modifier-groups").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Choose a Side"));
 
@@ -73,7 +77,7 @@ class ModifierGroupControllerTest {
         List<ModifierGroup> groups = Arrays.asList(testGroup);
         when(modifierGroupService.getActiveModifierGroups()).thenReturn(groups);
 
-        mockMvc.perform(get("/api/modifier-groups").param("active", "true"))
+        mockMvc.perform(get("/api/modifier-groups").with(signIn.asServer()).param("active", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].isActive").value(true));
 
@@ -87,7 +91,7 @@ class ModifierGroupControllerTest {
         
         when(modifierGroupService.getModifierGroupById(1L)).thenReturn(Optional.of(testGroup));
 
-        mockMvc.perform(get("/api/modifier-groups/1"))
+        mockMvc.perform(get("/api/modifier-groups/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.modifierGroupId").value(1))
                 .andExpect(jsonPath("$.name").value("Choose a Side"));
@@ -102,7 +106,7 @@ class ModifierGroupControllerTest {
         
         when(modifierGroupService.getModifierGroupById(999L)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/modifier-groups/999"))
+        mockMvc.perform(get("/api/modifier-groups/999").with(signIn.asServer()))
                 .andExpect(status().isNotFound());
 
         verify(modifierGroupService).getModifierGroupById(999L);
@@ -115,7 +119,7 @@ class ModifierGroupControllerTest {
         
         when(modifierGroupService.createModifierGroup(any(ModifierGroup.class))).thenReturn(testGroup);
 
-        mockMvc.perform(post("/api/modifier-groups")
+        mockMvc.perform(post("/api/modifier-groups").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Choose a Side\",\"isRequired\":true}"))
                 .andExpect(status().isCreated())
@@ -131,7 +135,7 @@ class ModifierGroupControllerTest {
         
         when(modifierGroupService.updateModifierGroup(eq(1L), any(ModifierGroup.class))).thenReturn(testGroup);
 
-        mockMvc.perform(put("/api/modifier-groups/1")
+        mockMvc.perform(put("/api/modifier-groups/1").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Updated Side\"}"))
                 .andExpect(status().isOk());
@@ -146,7 +150,7 @@ class ModifierGroupControllerTest {
         
         doNothing().when(modifierGroupService).deleteModifierGroup(1L);
 
-        mockMvc.perform(delete("/api/modifier-groups/1"))
+        mockMvc.perform(delete("/api/modifier-groups/1").with(signIn.asManager()))
                 .andExpect(status().isNoContent());
 
         verify(modifierGroupService).deleteModifierGroup(1L);
