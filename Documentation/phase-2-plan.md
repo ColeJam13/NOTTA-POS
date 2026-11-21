@@ -40,7 +40,7 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 8a | A6. Two follow-ups from the review: tips on closed checks, and releasing a paused terminal | Done (#288) |
 | 8b | U1. Spring Boot 3.5 to 4.1 (the 3.5 line no longer gets security fixes) | Done (#289) |
 | 9 | B4a. Design tokens: every screen reads its look from named values | Done (#290) |
-| 10 | **B4b and B4c. Template system, then the new templates** | B4b done (#291). B4c is next: each template is proposed to the owner first. D9 (default decided) |
+| 10 | **B4b and B4c. Template system, then the new templates** | B4b done (#291). B4c is next and follows `Documentation/templates-brief.md`: groundwork, then twelve templates in three batches. D9 (default decided), D13 |
 | 11 | P3. Phone-sized screens | |
 | 12 | P4. HTTPS on a private network, and the installable app | D8 |
 | 13 | B5, then B1, B2, B3 (features, in that order) | D4 (decided), D5, D6 |
@@ -416,10 +416,11 @@ The owner wants a list of default templates a manager can switch between: **Plai
 - A manager screen to pick a template, with a preview before it is applied.
 - Fonts ship with the app. Nothing is loaded from the internet, so a template works when the connection is down.
 
-**B4c. The new templates:** Plain, Coffee Shop, Nightclub, one pull request each.
+**B4c. The new templates: twelve, built as drafts in batches.** The work order for this step is `Documentation/templates-brief.md`. It replaces what stood here (three templates, one pull request each, approved from screenshots first).
 
-- Propose each as a palette and font choice with screenshots of the order screen, the kitchen display, and the payment screen, and get the owner's approval before finishing it. **Decision D9:** which template is the default for a new restaurant, and any direction the owner wants to give for Coffee Shop and Nightclub.
-- Every template must pass the same checks: body text and status colors meet the standard contrast ratio of 4.5 to 1, the kitchen display is readable from a distance, and a locked item, an 86'd item, and a late ticket are each unmistakable.
+- The owner asked on 2026-11-21 for at least ten templates beside 8-Bit, all selectable, to judge by switching between them in the running app. The brief names twelve: Plain, Coffee Shop, Brunch Spot, Diner, Cantina, Fancy, Nightclub, Dive Bar, Izakaya, Beach Bar, Sports Bar, and High Contrast.
+- Four pull requests, one at a time: groundwork (an automated contrast test, light-template readiness, the logo, a template gallery, a picker that scales), then three batches of four templates.
+- 8-Bit stays the default (D9). The owner's notes after each batch are handled in a polish pull request.
 
 ### B5. Check handling (recommended addition)
 
@@ -441,6 +442,7 @@ The owner wants a list of default templates a manager can switch between: **Plai
 | D10 | Who sees tips on closed checks. **Decided 2026-11-21: each person sees tips on checks they opened; managers see all.** | A6 |
 | D11 | A terminal paused for wrong PINs. **Decided 2026-11-21: a manager can release it, and no pause is longer than 5 minutes.** | A6 |
 | D12 | TypeScript on the frontend: adopt it gradually, or stay with JavaScript | U4 |
+| D13 | The logo in templates other than 8-Bit. Default until the owner says otherwise: the name NOTTA-POS as text in the template's heading font; the picture stays with 8-Bit | B4c groundwork |
 
 Ask these at the point they are needed. Do not guess and build.
 
