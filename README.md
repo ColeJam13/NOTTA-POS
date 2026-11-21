@@ -23,13 +23,13 @@ pain points not addressed in other systems.
 
 ## What works today
 
-- **Sign-in:** each person signs in with a 4-digit PIN. Their role (server, bartender, host, kitchen, manager) decides which screens they see. Managers add staff and set PINs on the Staff screen.
+- **Sign-in:** each person signs in with a 4-digit PIN. Their role (server, bartender, host, kitchen, manager) decides which screens they see. Managers add staff and set PINs on the Staff screen. Too many wrong PINs pause sign-in on that terminal for up to five minutes; a manager can release it from the Staff screen.
 - **Floor Map:** tap a table to open or reopen its order.
 - **Create Order:** ring in items, choose modifiers, add kitchen notes, save a draft, or send.
 - **The edit window:** after Send, items wait 15 seconds before they lock and reach the kitchen. Adding, changing, or removing an item restarts the window; SEND NOW ends it.
 - **Active Orders:** front-of-house and kitchen views of every open order, with modifiers and notes. The kitchen starts and completes items.
 - **Close Order:** the check (subtotal, tax, total) is worked out by the backend; pay by cash, credit, debit, or gift card, with a tip.
-- **Tables and Quick Orders:** open and closed checks.
+- **Tables and Quick Orders:** open and closed checks. The tip on a closed check is shown to the person who opened it and to managers.
 - **Financials:** revenue, tips, and payment methods for today, this week, this month, or a custom range.
 
 Challenges is a mock-up with sample data. See `CLAUDE.md` for the build plan and the known gaps.

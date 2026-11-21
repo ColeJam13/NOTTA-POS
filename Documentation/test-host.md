@@ -206,7 +206,7 @@ If you are going back to an older version of the app as well, put the older `not
 | It stops with `Schema-validation` or `Migration checksum mismatch` | An older jar was started against a newer database, or the reverse. See "Updating". |
 | "Something is already using port 8080" | The app is already running in another window, or another program has the port. Use `-Port`. |
 | Works on the machine, phone says "can't reach this site" | The firewall rule (step 7), the network marked Public instead of Private, the phone on mobile data or a guest Wi-Fi, or a wrong address. |
-| The phone shows the PIN pad but every PIN is refused with a wait | Five wrong PINs pause that device, longer each time. Wait it out. Restarting the app also clears the counts. |
+| The phone shows the PIN pad but every PIN is refused with a wait | Five wrong PINs pause that device, longer each time, five minutes at most. Wait it out, or have a manager who is signed in on another device open STAFF and press RELEASE beside that device's address. Restarting the app also clears the counts. |
 | The PIN pad appears with no styling, or a blank page | The package was made without the screens in it. `./package.sh` checks for this; make the package again. |
 | Double-clicking the `.cmd` opens and closes at once | Open PowerShell in the folder and run `.\start-notta-pos.cmd` to read the message. |
 
