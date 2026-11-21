@@ -263,8 +263,8 @@ class DatabaseMigrationTest {
 
         // Then - V1 actually ran here (type SQL, not BASELINE) and created the tables
         assertEquals("SQL", value(jdbcUrl, "SELECT type FROM flyway_schema_history WHERE version = '1'"));
-        // (the twelve from V1, and staff_sessions from V4)
-        assertEquals("13", value(jdbcUrl, "SELECT count(*) FROM information_schema.tables "
+        // (the twelve from V1, staff_sessions from V4, and settings from V7)
+        assertEquals("14", value(jdbcUrl, "SELECT count(*) FROM information_schema.tables "
                 + "WHERE table_schema = 'public' AND table_name <> 'flyway_schema_history'"));
     }
 
@@ -446,5 +446,37 @@ class DatabaseMigrationTest {
         assertEquals("0", value(jdbcUrl, "SELECT max(ring_in_position) FROM order_items"));
         assertEquals("NO", value(jdbcUrl, "SELECT is_nullable FROM information_schema.columns "
                 + "WHERE table_name = 'order_items' AND column_name = 'ring_in_position'"));
+    }
+
+    // ------------------------------------------------------------------
+    // V7: the settings table
+    // ------------------------------------------------------------------
+
+    @Test
+    void testV7_ShouldAddAnEmptySettingsTableToAnExistingDatabase() throws Exception {
+        // WHAT: Test the settings table V7 adds
+        // WHY: It must arrive EMPTY. With no row, the app uses each setting's default
+        //      (for the template, the look the app has always had), so an existing
+        //      restaurant's screens do not change on the day this migration runs. And a
+        //      setting's name is the table's key, so there can only be one row for each.
+
+        // Given - a database from before Flyway
+        String jdbcUrl = databaseFromBeforeFlyway("v7_settings");
+
+        // When
+        migrate(jdbcUrl);
+
+        // Then - the table is there, and empty
+        assertEquals("0", value(jdbcUrl, "SELECT count(*) FROM settings"));
+
+        // And - the same name cannot be stored twice
+        run(jdbcUrl, "INSERT INTO settings (setting_key, setting_value, updated_at) VALUES ('template', 'plain', now())");
+        assertThrows(Exception.class, () -> run(jdbcUrl,
+                "INSERT INTO settings (setting_key, setting_value, updated_at) VALUES ('template', '8-bit', now())"));
+        assertEquals("plain", value(jdbcUrl, "SELECT setting_value FROM settings WHERE setting_key = 'template'"));
+
+        // And - the time is a moment with a zone, like every table added since V4
+        assertEquals("timestamp with time zone", value(jdbcUrl, "SELECT data_type FROM information_schema.columns "
+                + "WHERE table_name = 'settings' AND column_name = 'updated_at'"));
     }
 }
