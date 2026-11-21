@@ -20,11 +20,17 @@ test('servers and bartenders may open the floor screens but not Financials or St
   }
 });
 
-test('hosts may open the Floor Map and Tables only', () => {
+test('hosts may seat guests and take an order, but not open the kitchen display or the 86 board', () => {
+  // The backend lets a host open a check, ring in, send, and take payment (decision D2),
+  // so the screens that do those things are offered
   expect(canOpenScreen('host', 'floorMap')).toBe(true);
   expect(canOpenScreen('host', 'activeTables')).toBe(true);
-  expect(canOpenScreen('host', 'createOrder')).toBe(false);
+  expect(canOpenScreen('host', 'createOrder')).toBe(true);
+  expect(canOpenScreen('host', 'quickOrders')).toBe(true);
+  expect(canOpenScreen('host', 'activeOrders')).toBe(false);
+  expect(canOpenScreen('host', 'eightySix')).toBe(false);
   expect(canOpenScreen('host', 'financials')).toBe(false);
+  expect(canOpenScreen('host', 'staff')).toBe(false);
 });
 
 test('the kitchen may open the kitchen display and the 86 board only', () => {
@@ -52,6 +58,15 @@ test('the kitchen, the bar, and managers may change what is 86\'d', () => {
   expect(canDo('manager', 'change-86')).toBe(true);
   expect(canDo('server', 'change-86')).toBe(false);
   expect(canDo('manager', 'something-that-does-not-exist')).toBe(false);
+});
+
+test('the kitchen, the bar, and managers may start and complete items', () => {
+  // The same three roles the backend allows on PUT /api/order-items/{id}/start and /complete
+  expect(canDo('kitchen', 'make-items')).toBe(true);
+  expect(canDo('bartender', 'make-items')).toBe(true);
+  expect(canDo('manager', 'make-items')).toBe(true);
+  expect(canDo('server', 'make-items')).toBe(false);
+  expect(canDo('host', 'make-items')).toBe(false);
 });
 
 test('with nobody signed in (a screen drawn on its own in a test) nothing is restricted', () => {

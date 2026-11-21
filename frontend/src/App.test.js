@@ -157,20 +157,22 @@ test('the kitchen is offered the kitchen display and the 86 board only', async (
   expect(homeButtons()).toEqual(['ACTIVE ORDERS', '86 BOARD']);
 });
 
-test('a host is offered the Floor Map and Tables, and tapping a table does not open an order', async () => {
+test('a host is offered the screens for seating and taking an order, and tapping a table opens its order', async () => {
+  // Hosts may open a check, ring in, send, and take payment (the owner's decision D2, and
+  // what the backend allows), so the screens that do those things are offered. The
+  // kitchen display and the 86 board are not.
   await signIn('4444');
-  expect(homeButtons()).toEqual(['FLOOR MAP', 'TABLES']);
+  expect(homeButtons()).toEqual(['FLOOR MAP', 'TABLES', 'QUICK ORDERS', 'CREATE ORDER']);
 
   await userEvent.click(screen.getByRole('button', { name: 'FLOOR MAP' }));
   await userEvent.click(await screen.findByText('W1'));
 
-  // Still on the Floor Map: hosts seat guests, they do not ring in orders
-  expect(screen.getByRole('heading', { name: 'FLOOR MAP' })).toBeInTheDocument();
-  expect(screen.queryByText(/Current Order/)).not.toBeInTheDocument();
+  // The order screen for that table
+  expect(await screen.findByText('Current Order - Table W1')).toBeInTheDocument();
 
-  // The nav bar offers a host the same two screens
+  // The nav bar offers a host the same four screens
   const navButtons = [...document.querySelectorAll('.nav-btn')].map(button => button.textContent);
-  expect(navButtons).toEqual(['FLOOR MAP', 'TABLES']);
+  expect(navButtons).toEqual(['FLOOR MAP', 'TABLES', 'QUICK ORDERS', 'CREATE ORDER']);
 });
 
 // ============================================================================
