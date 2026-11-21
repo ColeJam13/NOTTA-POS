@@ -1,6 +1,7 @@
 import {
   DEFAULT_TEMPLATE, TEMPLATES, isKnownTemplate, showChosenTemplate, previewTemplate, stopPreview, forgetTemplates
 } from './index';
+import { TEST_LOOK } from './testSupport';
 
 /**
  * Tests for switching templates: what is put on the page, what the device remembers,
@@ -18,7 +19,7 @@ const onThePage = () => document.documentElement.getAttribute('data-template');
 const remembered = () => window.localStorage.getItem('notta.template');
 
 beforeEach(() => {
-  TEMPLATES.push({ id: 'test-look', name: 'Test Look', description: 'Made up for the tests.' });
+  TEMPLATES.push(TEST_LOOK);
   window.localStorage.clear();
   forgetTemplates();
 });
@@ -115,4 +116,19 @@ test('a browser with storage switched off still shows the template', () => {
 
   expect(() => showChosenTemplate('test-look')).not.toThrow();
   expect(onThePage()).toBe('test-look');
+});
+
+test('a page that is loaded again starts on the template this device remembers', async () => {
+  // The backend only names the template once someone has signed in. Until then the
+  // device goes by what it was told last time, so the PIN pad (and its logo) is right.
+  window.localStorage.setItem('notta.template', '8-bit');
+  vi.resetModules();                                  // Load the file afresh, as a page load does
+  const fresh = await import('./index');
+  expect(fresh.templateOnScreen().id).toBe('8-bit');
+
+  // Something that is not a template this app has is not believed
+  window.localStorage.setItem('notta.template', 'a-template-from-the-future');
+  vi.resetModules();
+  const again = await import('./index');
+  expect(again.templateOnScreen().id).toBe('8-bit');
 });

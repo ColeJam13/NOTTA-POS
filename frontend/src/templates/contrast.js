@@ -70,6 +70,12 @@ export const contrastRatio = (foreground, background) => {
 };
 
 /**
+ * A color as it looks when the thing it is on is FADED (CSS "opacity") over what is
+ * behind it. Fading at 0.5 draws something half see-through.
+ */
+export const faded = (color, opacity, behind) => over({ ...color, a: color.a * opacity }, behind);
+
+/**
  * The LOWEST contrast between a foreground value and a background value, either of
  * which may be a gradient (then every one of its colors has to work).
  *

@@ -244,7 +244,7 @@
 
 /* A finished ticket brought back with SHOW DONE */
 .order-card.done {
-  opacity: 0.55;
+  opacity: var(--status-ticket-done-opacity);
   border-color: var(--status-ticket-done-border);
 }
 

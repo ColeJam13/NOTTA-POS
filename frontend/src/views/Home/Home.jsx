@@ -1,5 +1,5 @@
 import { Settings as SettingsIcon } from 'lucide-react';
-import logo from '../../assets/NOTTA LOGO.png';
+import Logo from '../../components/Logo';
 import { useStaff } from '../../context/StaffContext';
 import { canOpenScreen, ROLE_LABELS } from '../../utils/roles';
 import './Home.css';
@@ -38,11 +38,8 @@ function Home({ setCurrentView }) {
       )}
 
       <div className="logo-container">
-        <img 
-          src={logo} 
-          alt="NOTTA-POS Logo"
-          className="home-logo"
-        />
+        {/* The picture in 8-Bit; the name as text in a template with no artwork (see Logo) */}
+        <Logo pictureClassName="home-logo" size="large" />
       </div>
       
       <div className="home-buttons">

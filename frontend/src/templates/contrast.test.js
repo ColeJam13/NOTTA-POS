@@ -1,4 +1,4 @@
-import { parseColor, colorsIn, contrastRatio, lowestContrast } from './contrast';
+import { parseColor, colorsIn, contrastRatio, lowestContrast, faded } from './contrast';
 import { templateFiles, templateNameOf, resolvedTokensOf } from './testSupport';
 
 /**
@@ -22,6 +22,12 @@ import { templateFiles, templateNameOf, resolvedTokensOf } from './testSupport';
  *   look unavailable.
  *   A template may be held to more than this: see STRICTER.
  *
+ * THREE STATES ARE ALSO FADED (a locked item, a finished ticket, an 86'd menu card): the
+ * whole box is drawn partly see-through, so its text and its background both sink
+ * toward the page behind. For those the test works out the colors as they END UP, not
+ * as the tokens name them. A pair's fifth entry says which opacity token fades it and
+ * what is behind.
+ *
  * 8-BIT DOES NOT PASS ALL OF IT. It was drawn before this test existed, and the owner's
  * instruction is that 8-Bit is not changed by it. Every pair 8-Bit fails is written
  * down in KNOWN_EXCEPTIONS, by name, with what is drawn there. EVERY OTHER TEMPLATE
@@ -33,7 +39,12 @@ const TEXT = 4.5;
 const FAINT = 3;
 const MARK = 3;       // A border or icon that carries a meaning
 
-// [ foreground token, background token, minimum, what is drawn there ]
+// A box faded by an opacity token, over the page
+const LOCKED = { fadedBy: '--status-locked-opacity', onto: '--color-bg' };
+const TICKET_DONE = { fadedBy: '--status-ticket-done-opacity', onto: '--color-bg' };
+const CARD_86 = { fadedBy: '--status-86-card-opacity', onto: '--color-bg' };
+
+// [ foreground token, background token, minimum, what is drawn there, (how it is faded) ]
 const PAIRS = [
   // ----- Ordinary text, on everything it is written on -----
   ['--color-text', '--color-bg', TEXT, 'ordinary text on the page'],
@@ -90,16 +101,16 @@ const PAIRS = [
 
   // ----- Status: text that carries a meaning -----
   ['--status-draft-text', '--status-draft-surface', TEXT, 'a saved draft on the order'],
-  ['--status-locked-text', '--status-locked-surface', TEXT, 'a locked item on the order'],
+  ['--status-locked-text', '--status-locked-surface', TEXT, 'a locked item on the order', LOCKED],
   ['--status-item-label', '--color-bg-deep', TEXT, 'PENDING / FIRED / COMPLETED on a ticket'],
   ['--status-wait-ok', '--color-surface', TEXT, 'a ticket\'s wait: on time'],
   ['--status-wait-warning', '--color-surface', TEXT, 'a ticket\'s wait: the 10-minute warning'],
   ['--status-wait-late', '--color-surface', TEXT, 'a ticket\'s wait: late'],
-  ['--status-ticket-done-text', '--color-surface', TEXT, 'DONE on a finished ticket'],
+  ['--status-ticket-done-text', '--color-surface', TEXT, 'DONE on a finished ticket', TICKET_DONE],
   ['--status-86-text', '--status-86-surface', TEXT, 'an 86\'d item on the 86 board'],
   ['--status-86-text', '--color-surface', TEXT, 'the "86\'d now" heading'],
-  ['--status-86-card-text', '--color-surface', TEXT, 'the name of an 86\'d item on the order screen'],
-  ['--status-86-label', '--color-surface', TEXT, '86\'D on a menu card'],
+  ['--status-86-card-text', '--color-surface', TEXT, 'the name of an 86\'d item on the order screen', CARD_86],
+  ['--status-86-label', '--color-surface', TEXT, '86\'D on a menu card', CARD_86],
   ['--status-error-text', '--color-bg', TEXT, 'the message under the PIN dots'],
   ['--status-error-text', '--color-surface', TEXT, 'a refusal on the Staff screen'],
   ['--status-error-text', '--status-error-surface', TEXT, 'an error box (Floor Map, 86 board)'],
@@ -108,7 +119,7 @@ const PAIRS = [
   // ----- Status: borders and icons that carry a meaning -----
   ['--status-draft-border', '--color-bg', MARK, 'the border of a saved draft'],
   ['--status-locked-border', '--color-bg', MARK, 'the border of a locked item'],
-  ['--status-locked-icon', '--status-locked-surface', MARK, 'the lock on a locked item'],
+  ['--status-locked-icon', '--status-locked-surface', MARK, 'the lock on a locked item', LOCKED],
   ['--status-limbo-border', '--color-bg', MARK, 'a table card with something in its edit window'],
   ['--status-in-kitchen-border', '--color-bg', MARK, 'a table card the kitchen is working on'],
   ['--status-all-done-border', '--color-bg', MARK, 'a table card with everything made'],
@@ -155,6 +166,12 @@ const KNOWN_EXCEPTIONS = {
     '--status-ticket-done-text on --color-surface',   // 4.4  DONE on a finished ticket (grey #888)
     '--status-86-card-text on --color-surface',       // 4.4  the name of an 86'd item on the order screen (grey #888)
 
+    // --- A locked order line is drawn half faded, which halves what is left of its contrast ---
+    '--status-locked-text on --status-locked-surface',  // 2.3  a locked item on the order (needs 4.5)
+    '--status-locked-icon on --status-locked-surface',  // 2.1  the lock on a locked item (needs 3)
+    // (The 86'd menu card and the finished ticket above are faded as well; their figures
+    // above are before fading, and they are lower still on screen.)
+
     // --- The faintest grey (#666): 2.7 to 2.9, needs 3 ---
     '--color-text-faint on --color-surface',          // 2.7  the time on a table card; seats on a table
     '--color-text-faint on --color-bg',               // 2.9  placeholders and "nothing here" messages
@@ -167,15 +184,25 @@ const KNOWN_EXCEPTIONS = {
 const key = ([foreground, background]) => `${foreground} on ${background}`;
 const oneDecimal = (ratio) => Math.floor(ratio * 10) / 10;         // Rounded DOWN: 4.49 is not "4.5"
 
+// The contrast of text on its box when the whole box is faded over what is behind it:
+// both colors move toward the color behind, and so toward each other
+const contrastWhenFaded = (foregroundValue, backgroundValue, opacity, behindValue) => {
+  const [front, back, behind] = [foregroundValue, backgroundValue, behindValue].map(parseColor);
+  if (!front || !back || !behind || Number.isNaN(opacity)) return null;
+  return contrastRatio(faded(front, opacity, behind), faded(back, opacity, behind));
+};
+
 // Every pair a template does not pass: ['--a on --b: 3.2 to 1, needs 4.5 (what is drawn there)']
 const failuresOf = (file) => {
   const tokens = resolvedTokensOf(file);
   const stricter = STRICTER[templateNameOf(file)] || {};
   const failures = [];
   for (const pair of PAIRS) {
-    const [foreground, background, usualMinimum, where] = pair;
+    const [foreground, background, usualMinimum, where, fade] = pair;
     const minimum = stricter[usualMinimum] || usualMinimum;
-    const ratio = lowestContrast(tokens[foreground], tokens[background]);
+    const ratio = fade
+      ? contrastWhenFaded(tokens[foreground], tokens[background], Number(tokens[fade.fadedBy]), tokens[fade.onto])
+      : lowestContrast(tokens[foreground], tokens[background]);
     if (ratio === null) {
       failures.push({ key: key(pair), line: `${key(pair)}: one of the two is not a color (${tokens[foreground]} / ${tokens[background]})` });
     } else if (ratio < minimum) {
@@ -208,6 +235,16 @@ test('the contrast ratio matches the published figures', () => {
   // #767676 on white is the well-known grey that only just passes 4.5 to 1
   expect(contrastRatio(parseColor('#767676'), white)).toBeGreaterThanOrEqual(4.5);
   expect(contrastRatio(parseColor('#777777'), white)).toBeLessThan(4.5);
+});
+
+test('fading a box brings its text and its background closer together', () => {
+  const white = parseColor('#fff'), black = parseColor('#000');
+
+  // Black text on a white box, the box half faded over a black page: the box ends up
+  // mid-grey, the text stays black
+  expect(contrastRatio(faded(black, 0.5, black), faded(white, 0.5, black))).toBeLessThan(6);
+  // Not faded at all: nothing changes
+  expect(contrastRatio(faded(black, 1, black), faded(white, 1, black))).toBeCloseTo(21, 5);
 });
 
 test('on a gradient, the worst of its colors is the one that counts', () => {

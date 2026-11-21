@@ -1,0 +1,23 @@
+/* The logo as text, for templates with no artwork of their own. (The picture's size on
+   each screen is set by that screen's stylesheet, as it always was.) */
+.logo-text {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-heading);
+  color: var(--color-accent);
+  letter-spacing: var(--letter-spacing-logo);
+  line-height: var(--line-height-tight);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.logo-text-large {
+  font-size: var(--font-size-50);
+}
+
+.logo-text-medium {
+  font-size: var(--font-size-36);
+}
+
+.logo-text-small {
+  font-size: var(--font-size-28);
+}

@@ -281,6 +281,11 @@
   --status-locked-surface: var(--color-bg-deep);
   --status-locked-text: var(--color-text-subtle);
   --status-locked-icon: var(--color-danger);
+  /* A locked line is also FADED: 0.5 draws it half see-through, so it sinks into the
+     page behind. (1 = not faded at all.) That makes its text fainter than the color
+     above says, which contrast.test.js takes into account. A new template should say
+     "locked" with its colors and leave this at 1. */
+  --status-locked-opacity: 0.5;
 
   /* --- A table's card on Tables and Quick Orders, by what its items are doing --- */
   --status-limbo-border: var(--color-border);                 /* Something is still in its edit window */
@@ -294,6 +299,7 @@
   --status-wait-late: var(--color-danger);                    /* ...15 minutes */
   --status-ticket-done-border: var(--color-border-muted);     /* A ticket with nothing left to make */
   --status-ticket-done-text: var(--color-text-subtle);
+  --status-ticket-done-opacity: 0.55;                         /* A finished ticket is faded too */
 
   /* --- 86'd: out for now --- */
   --status-86-text: var(--color-danger);
@@ -305,6 +311,7 @@
   --status-86-card-border: var(--color-border-muted);
   --status-86-card-text: var(--color-text-subtle);
   --status-86-label: var(--color-danger);
+  --status-86-card-opacity: 0.45;                             /* ...and faded */
 
   /* --- An error or refusal shown to the person at the screen --- */
   --status-error-text: var(--color-danger);

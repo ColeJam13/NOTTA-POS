@@ -95,3 +95,15 @@ export const resolvedTokensOf = (file) => {
 
 // The one template name a template stylesheet is for: 'templates/eight-bit.css' -> '8-bit'
 export const templateNameOf = (file) => templateNamesIn(file)[0];
+
+// A second, made-up template for tests that need something to switch to: light, where
+// the real default is dark, and with the name as its logo. It has no stylesheet; tests
+// that draw screens only look at what is put on the page.
+export const TEST_LOOK = {
+  id: 'test-look',
+  name: 'Test Look',
+  description: 'Made up for the tests.',
+  scheme: 'light',
+  swatches: ['--color-bg', '--color-accent-fill', '--color-primary-fill', '--color-danger-fill'],
+  logo: 'text'
+};

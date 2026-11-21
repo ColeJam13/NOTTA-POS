@@ -134,7 +134,7 @@
 }
 
 .order-item.locked {
-  opacity: 0.5;
+  opacity: var(--status-locked-opacity);
   background: var(--status-locked-surface);
   border-color: var(--status-locked-border);
 }
@@ -376,7 +376,7 @@
 
 /* An 86'd menu item: still shown, greyed out, and not tappable */
 .menu-item-card.is-86d {
-  opacity: 0.45;
+  opacity: var(--status-86-card-opacity);
   border-color: var(--status-86-card-border);
   cursor: not-allowed;
 }

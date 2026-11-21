@@ -4,6 +4,7 @@ import { apiFetch, getJson } from '../../services/api';
 import { useStaff } from '../../context/StaffContext';
 import { canDo } from '../../utils/roles';
 import './EightySixBoard.css';
+import { EightySixChip, EightySixTile } from './EightySixPieces';
 
 // How often the board asks the backend for the latest menu, in milliseconds
 const REFRESH_MS = 3000;
@@ -88,16 +89,7 @@ function EightySixBoard({ setCurrentView, setSelectedTable }) {
           ) : (
             <div className="eighty-six-now-list">
               {eightySixed.map(item => (
-                <button
-                  key={item.menuItemId}
-                  className="eighty-six-chip"
-                  aria-label={`Put ${item.name} back on`}
-                  disabled={!canChange}
-                  onClick={() => toggle86(item)}
-                >
-                  <span>{item.name}</span>
-                  {canChange && <small>TAP TO PUT BACK ON</small>}
-                </button>
+                <EightySixChip key={item.menuItemId} item={item} canChange={canChange} onToggle={toggle86} />
               ))}
             </div>
           )}
@@ -111,16 +103,7 @@ function EightySixBoard({ setCurrentView, setSelectedTable }) {
               {menuItems
                 .filter(item => item.category === category)
                 .map(item => (
-                  <button
-                    key={item.menuItemId}
-                    className={`eighty-six-item ${item.is86d ? 'is-86d' : ''}`}
-                    aria-pressed={item.is86d}                     // Tells screen readers (and tests) whether the item is 86'd
-                    disabled={!canChange}
-                    onClick={() => toggle86(item)}
-                  >
-                    <span className="eighty-six-item-name">{item.name}</span>
-                    <span className="eighty-six-item-status">{item.is86d ? "86'D" : 'AVAILABLE'}</span>
-                  </button>
+                  <EightySixTile key={item.menuItemId} item={item} canChange={canChange} onToggle={toggle86} />
                 ))}
             </div>
           </section>

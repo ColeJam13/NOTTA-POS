@@ -40,10 +40,12 @@ test('the kitchen may open the kitchen display and the 86 board only', () => {
   expect(canOpenScreen('kitchen', 'floorMap')).toBe(false);
 });
 
-test('only managers may open Settings, where the look of every terminal is chosen', () => {
-  expect(canOpenScreen('manager', 'settings')).toBe(true);
-  for (const role of ['server', 'bartender', 'host', 'kitchen']) {
-    expect(canOpenScreen(role, 'settings')).toBe(false);
+test('only managers may open Settings, where the look of every terminal is chosen, and its template gallery', () => {
+  for (const view of ['settings', 'gallery']) {
+    expect(canOpenScreen('manager', view)).toBe(true);
+    for (const role of ['server', 'bartender', 'host', 'kitchen']) {
+      expect(canOpenScreen(role, view)).toBe(false);
+    }
   }
 });
 

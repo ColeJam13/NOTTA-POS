@@ -39,7 +39,8 @@ const FLOOR_SCREENS = ['floorMap', 'activeTables', 'quickOrders', 'activeOrders'
 
 // The screens each role may open (everyone may open 'home')
 const SCREENS_BY_ROLE = {
-  manager: [...FLOOR_SCREENS, 'financials', 'staff', 'settings'],     // Managers see everything
+  // Managers see everything. 'gallery' is the template gallery, reached from Settings.
+  manager: [...FLOOR_SCREENS, 'financials', 'staff', 'settings', 'gallery'],
   server: FLOOR_SCREENS,
   bartender: FLOOR_SCREENS,
   // Hosts seat guests, and may also open a check, ring in, and take payment (owner's

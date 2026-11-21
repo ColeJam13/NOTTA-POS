@@ -125,6 +125,25 @@ test('every template defines every token, and no token of its own', () => {
   }
 });
 
+test('each template\'s entry in the list agrees with its stylesheet', () => {
+  for (const template of TEMPLATES) {
+    const file = templateFiles.find(candidate => templateNamesIn(candidate).includes(template.id));
+    const tokens = tokensDefinedIn(file);
+
+    // Light or dark, as the card on the Settings screen says it
+    expect(['light', 'dark'], template.id).toContain(template.scheme);
+    // ...and as the browser is told for its own controls. 8-Bit keeps the browser's
+    // default ("normal"), as it always has; every template since says which it is.
+    if (file !== DEFAULT_TEMPLATE_FILE) expect(tokens['--color-scheme'], template.id).toBe(template.scheme);
+
+    // Four swatches, each a token the template defines (never a color written into the list)
+    expect(template.swatches, template.id).toHaveLength(4);
+    for (const swatch of template.swatches) expect(Object.keys(tokens), `${template.id}: ${swatch}`).toContain(swatch);
+
+    expect(['picture', 'text'], template.id).toContain(template.logo);
+  }
+});
+
 test('nothing is fetched from the internet: no stylesheet or the page itself names an outside address', () => {
   // A restaurant's internet goes down; the app must not lose its fonts when it does.
   // url('../fonts/x.ttf') is a file shipped with the app. url(https://...) is not.

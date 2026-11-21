@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, useRef, memo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import NavBar from '../../components/NavBar';
+import TableVisual from './TableVisual';
 import './FloorMap.css';
 import { apiFetch } from '../../services/api';
 import { useStaff } from '../../context/StaffContext';
@@ -32,34 +33,6 @@ const positionOnFloor = (event, floorElement) => {
         y: pointer.y - floor.top - floorElement.clientTop
     };
 };
-
-/**
- * Memoized Table Component - prevents unnecessary re-renders
- * Only re-renders if table data actually changes
- *
- * In edit mode a table can be picked up (onDragStart) instead of opened, and
- * the selected one is outlined.
- */
-const TableVisual = memo(({ table, onTableClick, editing, selected, onDragStart }) => {
-    return (
-        <div
-            className={`table-visual ${table.shape} ${table.status} ${table.seatCount >= 6 ? 'large' : ''} ${editing ? 'editing' : ''} ${selected ? 'selected' : ''}`}
-            style={{
-                left: `${table.xposition}px`,
-                top: `${table.yposition}px`,
-                // Only set when the table is turned, so an unturned table keeps its hover effect
-                transform: table.rotation ? `rotate(${table.rotation}deg)` : undefined
-            }}
-            data-testid={`table-${table.tableNumber}`}
-            onClick={() => { if (!editing) onTableClick(table); }}                 // In edit mode a tap must not open the table's order
-            onMouseDown={editing ? (event) => onDragStart(event, table) : undefined}
-            onTouchStart={editing ? (event) => onDragStart(event, table) : undefined}
-        >
-            <span className="table-label">{table.tableNumber}</span>
-            <span className="table-seats">{table.seatCount} seats</span>
-        </div>
-    );
-});
 
 /**
  * Floor Map: every table where it sits in the room. Tap a table to open its order.

@@ -12,6 +12,7 @@ import SignIn from './views/SignIn';
 import ChangePin from './views/ChangePin';
 import Staff from './views/Staff';
 import Settings from './views/Settings';
+import Gallery from './views/Gallery';
 import TemplatePreviewBar from './components/TemplatePreviewBar';
 import { StaffContext } from './context/StaffContext';
 import { apiFetch, getJson, setSessionToken, setOnSessionEnded } from './services/api';
@@ -214,6 +215,10 @@ function App() {
 
   if (currentView === 'settings') {
     return <Settings setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;
+  }
+
+  if (currentView === 'gallery') {
+    return <Gallery setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;
   }
 
   return <Home setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />;  

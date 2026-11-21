@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Banknote, CreditCard, Gift } from 'lucide-react';
+import PaymentForm from './PaymentForm';
 import './PaymentModal.css';
 import { apiFetch, getJson, ORDER_NOT_OPEN } from '../../services/api';
 import { formatTaxRate } from '../../utils/totals';
@@ -124,95 +124,22 @@ function PaymentModal({ order, onClose, onPaymentSuccess, onCheckClosedElsewhere
           ) : !check ? (
             <p className="payment-check-message">Loading check...</p>
           ) : (
-            <>
-              <div className="order-summary">
-                <div className="summary-row">
-                  <span>Subtotal:</span>
-                  <span>${subtotal.toFixed(2)}</span>
-                </div>
-                <div className="summary-row">
-                  <span>Tax ({taxRateLabel}):</span>
-                  <span>${tax.toFixed(2)}</span>
-                </div>
-                <div className="summary-row total">
-                  <span>Total:</span>
-                  <span>${total.toFixed(2)}</span>
-                </div>
-              </div>
-
-              <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                  <label>Payment Method</label>
-                  <div className="payment-methods">
-                    <button
-                      type="button"
-                      className={`payment-method-btn ${paymentMethod === 'cash' ? 'active' : ''}`}
-                      onClick={() => setPaymentMethod('cash')}
-                    >
-                      <Banknote size={20} />
-                      <span>CASH</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`payment-method-btn ${paymentMethod === 'credit_card' ? 'active' : ''}`}
-                      onClick={() => setPaymentMethod('credit_card')}
-                    >
-                      <CreditCard size={20} />
-                      <span>CREDIT</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`payment-method-btn ${paymentMethod === 'debit_card' ? 'active' : ''}`}
-                      onClick={() => setPaymentMethod('debit_card')}
-                    >
-                      <CreditCard size={20} />
-                      <span>DEBIT</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`payment-method-btn ${paymentMethod === 'gift_card' ? 'active' : ''}`}
-                      onClick={() => setPaymentMethod('gift_card')}
-                    >
-                      <Gift size={20} />
-                      <span>GIFT CARD</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>Tip Amount</label>
-                  <div className="tip-buttons">
-                    <button type="button" className={`tip-btn ${tipPercent === 15 ? 'active' : ''}`} onClick={() => handleTipPercentChange(15)}>15%</button>
-                    <button type="button" className={`tip-btn ${tipPercent === 18 ? 'active' : ''}`} onClick={() => handleTipPercentChange(18)}>18%</button>
-                    <button type="button" className={`tip-btn ${tipPercent === 20 ? 'active' : ''}`} onClick={() => handleTipPercentChange(20)}>20%</button>
-                    <button type="button" className={`tip-btn ${tipPercent === 25 ? 'active' : ''}`} onClick={() => handleTipPercentChange(25)}>25%</button>
-                  </div>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="Custom tip amount"
-                    value={tipAmount}
-                    onChange={(e) => handleTipAmountChange(e.target.value)}
-                    className="tip-input"
-                  />
-                </div>
-
-                <div className="grand-total">
-                  <span>GRAND TOTAL:</span>
-                  <span>${grandTotal.toFixed(2)}</span>
-                </div>
-
-                <div className="modal-actions">
-                  <button type="button" className="btn-cancel" onClick={onClose}>
-                    CANCEL
-                  </button>
-                  <button type="submit" className="btn-process" disabled={isProcessing}>
-                    {isProcessing ? 'PROCESSING...' : 'PROCESS PAYMENT'}
-                  </button>
-                </div>
-              </form>
-            </>
+            <PaymentForm
+              subtotal={subtotal}
+              tax={tax}
+              total={total}
+              taxRateLabel={taxRateLabel}
+              paymentMethod={paymentMethod}
+              onPaymentMethod={setPaymentMethod}
+              tipPercent={tipPercent}
+              onTipPercent={handleTipPercentChange}
+              tipAmount={tipAmount}
+              onTipAmount={handleTipAmountChange}
+              grandTotal={grandTotal}
+              isProcessing={isProcessing}
+              onSubmit={handleSubmit}
+              onCancel={onClose}
+            />
           )}
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import NavBar from '../NavBar/NavBar';
 import { formatTableName, formatTimeAgo, formatDateTime, formatPaymentMethod, formatUpcharge } from '../../utils/formatters';
+import ActiveTableCard from './ActiveTableCard';
 import { getJson } from '../../services/api';
 import './TableChecks.css';
 
@@ -61,14 +62,6 @@ function TableChecks({ quickOrders, title, navKey, emptyActiveText, emptyClosedT
         return () => clearInterval(interval);
     }, [loadOverview]);
 
-                                                                            // Determine border color based on status
-    const borderColorFor = (table) => {
-        if (table.completedCount === table.itemCount) return 'green';
-        if (table.limboCount > 0) return 'purple';
-        if (table.pendingCount > 0 || table.firedCount > 0) return 'yellow';
-        return 'default';
-    };
-
     return (
         <div className="page-with-nav">
         <NavBar currentView={navKey} setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />
@@ -93,26 +86,14 @@ function TableChecks({ quickOrders, title, navKey, emptyActiveText, emptyClosedT
                 {view === 'active' && (
                     <div className="tables-grid">
                         {overview.activeTables.map(table => (
-                            <div 
-                                key={table.tableId} 
-                                className={`table-card border-${borderColorFor(table)}`}
-                                onClick={() => {
+                            <ActiveTableCard
+                                key={table.tableId}
+                                table={table}
+                                onOpen={() => {
                                     setSelectedTable(table);                // The card carries the table's own fields, which is what the order screen needs
                                     setCurrentView('createOrder');
                                 }}
-                            >
-                                <h3 className="table-card-number">{table.tableNumber}</h3>
-                                <div className="table-card-total">${table.subtotal.toFixed(2)}</div>
-                                <div className="table-card-items">{table.itemCount} items</div>
-                                <div className="table-card-status">
-                                    {table.limboCount > 0 && `${table.limboCount}L `}
-                                    {table.pendingCount > 0 && `${table.pendingCount}P `}
-                                    {table.firedCount > 0 && `${table.firedCount}F `}
-                                    {table.completedCount > 0 && `${table.completedCount}C`}
-                                </div>
-                                <div className="table-card-server">Server: {table.serverName || 'N/A'}</div>
-                                <div className="table-card-time">{formatTimeAgo(table.openedAt)}</div>
-                            </div>
+                            />
                         ))}
 
                         {overview.activeTables.length === 0 && (
