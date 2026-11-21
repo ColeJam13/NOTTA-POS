@@ -189,9 +189,10 @@ public class TableOverviewService {
                     List<OrderItem> items = itemsByOrderId.getOrDefault(order.getOrderId(), List.of());
                     Payment payment = paymentsByOrderId.get(order.getOrderId());
 
-                    // Items sorted by ID so the check always lists them in the same order
+                    // Items in the order the server rang them in, so the check always lists them
+                    // in the same order and reads the way the order was taken
                     List<ClosedCheckItemView> itemViews = items.stream()
-                            .sorted(Comparator.comparing(OrderItem::getOrderItemId))
+                            .sorted(OrderItem.IN_RING_IN_ORDER)
                             .map(item -> {
                                 MenuItem menuItem = menuItemsById.get(item.getMenuItemId());
                                 return new ClosedCheckItemView(

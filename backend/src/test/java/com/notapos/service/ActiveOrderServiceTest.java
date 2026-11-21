@@ -259,4 +259,44 @@ class ActiveOrderServiceTest {
         assertNull(draftView.prepStationId());
         assertNull(draftView.sentAt());
     }
+
+    @Test
+    void testGetActiveOrders_ShouldListItemsInRingInOrderNotIdOrder() {
+        // WHAT: Test a ticket whose items were saved in a different order than they were rung in
+        // WHY: The server tapped Soup, Steak, Pie. The three saves reached the backend as
+        //      Steak, Pie, Soup, so Soup got the highest ID. Sorted by ID the kitchen would
+        //      read the main before the starter.
+
+        // Given - IDs in arrival order, positions in the order the server tapped
+        OrderItem steak = item(101L, 1L, 502L, "pending");
+        steak.setRingInPosition(1);
+        OrderItem pie = item(102L, 1L, 503L, "pending");
+        pie.setRingInPosition(2);
+        OrderItem soup = item(103L, 1L, 501L, "pending");
+        soup.setRingInPosition(0);
+        // Two items from a second terminal that both claim position 3: the tie goes to the lower ID
+        OrderItem laterFries = item(105L, 1L, 504L, "draft");
+        laterFries.setRingInPosition(3);
+        OrderItem earlierFries = item(104L, 1L, 504L, "draft");
+        earlierFries.setRingInPosition(3);
+
+        when(orderRepository.findByStatus("open")).thenReturn(Arrays.asList(order(1L, 10L)));
+        when(orderItemRepository.findByOrderIdIn(anyCollection()))
+                .thenReturn(Arrays.asList(laterFries, steak, pie, earlierFries, soup));
+        when(menuItemRepository.findAllById(any())).thenReturn(Arrays.asList(
+                menuItem(501L, "Soup"), menuItem(502L, "Steak"), menuItem(503L, "Pie"), menuItem(504L, "Fries")));
+        when(tableRepository.findAllById(any())).thenReturn(Arrays.asList(table(10L, "W3")));
+
+        // When
+        List<ActiveOrderItemView> items = activeOrderService.getActiveOrders().get(0).items();
+
+        // Then
+        assertEquals(List.of("Soup", "Steak", "Pie", "Fries", "Fries"),
+                items.stream().map(ActiveOrderItemView::name).toList());
+        assertEquals(List.of(103L, 101L, 102L, 104L, 105L),
+                items.stream().map(ActiveOrderItemView::orderItemId).toList());
+        // The view carries the position, so the screen can keep this order when it filters
+        assertEquals(List.of(0, 1, 2, 3, 3),
+                items.stream().map(ActiveOrderItemView::ringInPosition).toList());
+    }
 }

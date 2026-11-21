@@ -435,4 +435,81 @@ class OrderItemRepositoryTest extends BaseRepositoryTest {
         assertEquals(5, reloaded.getQuantity());
         assertEquals("No onions please", reloaded.getSpecialInstructions());
     }
+
+    // A draft item on order1 holding the given position
+    private OrderItem itemAtPosition(MenuItem menuItem, int position) {
+        OrderItem item = new OrderItem();
+        item.setOrderId(order1.getOrderId());
+        item.setMenuItemId(menuItem.getMenuItemId());
+        item.setQuantity(1);
+        item.setPrice(new BigDecimal("5.00"));
+        item.setStatus("draft");
+        item.setIsLocked(false);
+        item.setRingInPosition(position);
+        return orderItemRepository.save(item);
+    }
+
+    @Test
+    void testFindByOrderId_ShouldReturnItemsInRingInOrder() {
+        // WHAT: Test the order findByOrderId returns an order's items in
+        // WHY: Items are saved in whatever order their requests arrive, so ID order is not
+        //      the order the server rang them in. The query sorts by position, then ID.
+
+        // Given - an order of its own, with items saved out of order
+        orderItemRepository.deleteAll();
+        OrderItem second = itemAtPosition(menuItem2, 1);
+        OrderItem third = itemAtPosition(menuItem3, 2);
+        OrderItem first = itemAtPosition(menuItem1, 0);
+        OrderItem alsoThird = itemAtPosition(menuItem4, 2);        // Same position as "third": the lower ID comes first
+
+        // When
+        List<OrderItem> items = orderItemRepository.findByOrderId(order1.getOrderId());
+
+        // Then
+        assertEquals(
+                List.of(first.getOrderItemId(), second.getOrderItemId(), third.getOrderItemId(), alsoThird.getOrderItemId()),
+                items.stream().map(OrderItem::getOrderItemId).toList());
+    }
+
+    @Test
+    void testFindHighestRingInPosition_ShouldBeTheHighestOnThatOrderOnly() {
+        // WHAT: Test the query that says where the next item on an order would go
+        // WHY: An item rung in without a position goes one after this. Another order's
+        //      items must not count.
+
+        // Given - order1 holds positions 0 and 7; order2 holds 40
+        orderItemRepository.deleteAll();
+        itemAtPosition(menuItem1, 0);
+        itemAtPosition(menuItem2, 7);
+        OrderItem onAnotherOrder = itemAtPosition(menuItem3, 40);
+        onAnotherOrder.setOrderId(order2.getOrderId());
+        orderItemRepository.save(onAnotherOrder);
+
+        // When & Then
+        assertEquals(7, orderItemRepository.findHighestRingInPosition(order1.getOrderId()));
+        assertEquals(40, orderItemRepository.findHighestRingInPosition(order2.getOrderId()));
+    }
+
+    @Test
+    void testFindHighestRingInPosition_WhenOrderHasNoItems_ShouldBeMinusOne() {
+        // WHAT: Test the same query on an order with nothing on it
+        // WHY: -1 means "one after this" is 0, the first place. A query that returned
+        //      nothing at all here would crash the first ring-in onto every new order.
+
+        // Given
+        orderItemRepository.deleteAll();
+
+        // When & Then
+        assertEquals(-1, orderItemRepository.findHighestRingInPosition(order1.getOrderId()));
+    }
+
+    @Test
+    void testSave_WithNoPositionSet_ShouldDefaultToZero() {
+        // WHAT: Test an item saved without anyone setting its position
+        // WHY: The column does not allow "no value". A new OrderItem starts at 0 so that
+        //      code which builds one without thinking about position still saves.
+
+        // Then - the items the set-up saved never set one
+        assertEquals(0, orderItemRepository.findById(draftItem.getOrderItemId()).orElseThrow().getRingInPosition());
+    }
 }

@@ -428,7 +428,7 @@ class OrderItemControllerTest {
 
         // The controller handed the service exactly what was sent
         verify(orderItemModifierService, times(1)).ringInItem(
-                new OrderItemRequest(1L, 1L, 1, "no onions", List.of(14L, 16L)));
+                new OrderItemRequest(1L, 1L, 1, "no onions", List.of(14L, 16L), null));
     }
 
     @Test
@@ -552,7 +552,7 @@ class OrderItemControllerTest {
 
         // What reached the service: the order, the menu item, the quantity, no note, no modifiers - and nothing else
         verify(orderItemModifierService).ringInItem(
-                new com.notapos.dto.OrderItemRequest(1L, 2L, 1, null, java.util.List.of()));
+                new com.notapos.dto.OrderItemRequest(1L, 2L, 1, null, java.util.List.of(), null));
     }
 
     @Test

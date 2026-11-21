@@ -41,6 +41,10 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addMapping("/api/**")
                 .allowedOrigins(allowedOrigins)
                 .allowedMethods("GET", "POST", "PUT", "DELETE")
-                .allowedHeaders("*");
+                .allowedHeaders("*")
+                // A browser shows a page only a short standard list of response headers
+                // from another origin. Any other header the frontend needs to read has to
+                // be named here: the backend's time, which every screen measures against.
+                .exposedHeaders(ServerTimeFilter.SERVER_TIME_HEADER);
     }
 }

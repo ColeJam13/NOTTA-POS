@@ -5,6 +5,7 @@ import com.notapos.enums.OrderItemStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 
 /**
  * Entity representing a single item within an order.
@@ -18,6 +19,27 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "order_items")
 public class OrderItem {
+
+    /**
+     * The order an order's items are listed in, everywhere: the order the server rang
+     * them in.
+     *
+     * WHY NOT BY ID: the order screen saves a round of items with several requests at
+     * the same moment, and IDs are handed out as the requests arrive. The network does
+     * not keep them in order, so the item tapped first can get the highest ID. Sorted
+     * by ID, a kitchen ticket could list the main before the starter.
+     *
+     * The position comes first. ID settles a tie, which keeps two items that claim the
+     * same position (two terminals on one table, or orders from before this column
+     * existed, which all hold 0) in the order they were saved, and means the list
+     * never shuffles between one refresh and the next.
+     *
+     * A Comparator is a rule for putting two things in order; list.sort(...) and
+     * stream.sorted(...) take one.
+     */
+    public static final Comparator<OrderItem> IN_RING_IN_ORDER =
+            Comparator.comparing(OrderItem::getRingInPosition)
+                    .thenComparing(OrderItem::getOrderItemId);
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,6 +66,11 @@ public class OrderItem {
 
     @Column(name = "special_instructions", length = 500)
     private String specialInstructions;
+
+    // Where this item sits on its order, as the server entered it: 0 for the first item
+    // rung in, 1 for the next. See IN_RING_IN_ORDER below for why this exists.
+    @Column(name = "ring_in_position", nullable = false)
+    private Integer ringInPosition = 0;
 
     @Column(name = "status", nullable = false, length = 20)
     private String status = OrderItemStatus.DRAFT.getValue();
@@ -117,6 +144,14 @@ public class OrderItem {
 
     public void setSpecialInstructions(String specialInstructions) {
         this.specialInstructions = specialInstructions;
+    }
+
+    public Integer getRingInPosition() {
+        return ringInPosition;
+    }
+
+    public void setRingInPosition(Integer ringInPosition) {
+        this.ringInPosition = ringInPosition;
     }
 
     public String getStatus() {
