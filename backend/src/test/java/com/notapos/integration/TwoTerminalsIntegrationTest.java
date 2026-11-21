@@ -8,6 +8,7 @@ import com.notapos.repository.MenuItemRepository;
 import com.notapos.repository.OrderItemModifierRepository;
 import com.notapos.repository.OrderItemRepository;
 import com.notapos.repository.OrderRepository;
+import com.notapos.entity.Payment;
 import com.notapos.repository.PaymentRepository;
 import com.notapos.repository.TableRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -378,6 +379,40 @@ class TwoTerminalsIntegrationTest extends BaseIntegrationTest {
         assertEquals("closed", stillPaid.getStatus());
         assertEquals(0, new BigDecimal("17.51").compareTo(stillPaid.getTotal()));
         assertEquals(2, orderRepository.findByTableId(paid.getTableId()).size());
+    }
+
+    @Test
+    void testPayment_WithTheIdOfAnEarlierPayment_ShouldNotOverwriteIt() throws Exception {
+        // WHAT: POST /api/payments with a "paymentId" in the body that belongs to another check's payment
+        // WHY: The same defect as the test above, in the payment endpoint. A request that
+        //      named an existing payment replaced it: that payment's row now pointed at the
+        //      new check, and the first check was left closed with no payment on record.
+        //      Taking a payment always adds one.
+
+        // Given - one check paid by card with a tip, and a second check still open
+        Order first = openOrderWithOneSentItem("W1");
+        mockMvc.perform(post("/api/payments").with(signIn.asServer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderId\":" + first.getOrderId() + ",\"amount\":17.51,\"tipAmount\":5.00,\"paymentMethod\":\"credit_card\"}"))
+                .andExpect(status().isCreated());
+        Payment firstPayment = paymentRepository.findByOrderId(first.getOrderId()).get(0);
+
+        Order second = openOrderWithOneSentItem("W2");
+
+        // When - the second check is paid in cash, naming the first payment's ID
+        mockMvc.perform(post("/api/payments").with(signIn.asServer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"paymentId\":" + firstPayment.getPaymentId() + ",\"orderId\":" + second.getOrderId()
+                        + ",\"amount\":17.51,\"tipAmount\":0,\"paymentMethod\":\"cash\"}"))
+                .andExpect(status().isCreated());
+
+        // Then - both payments exist, and the first is exactly as it was
+        assertEquals(2, paymentRepository.count());
+        Payment stillThere = paymentRepository.findById(firstPayment.getPaymentId()).orElseThrow();
+        assertEquals(first.getOrderId(), stillThere.getOrderId());
+        assertEquals("credit_card", stillThere.getPaymentMethod());
+        assertEquals(0, new BigDecimal("5.00").compareTo(stillThere.getTipAmount()));
+        assertEquals(1, paymentRepository.findByOrderId(second.getOrderId()).size());
     }
 
     // ------------------------------------------------------------------
