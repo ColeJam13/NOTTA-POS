@@ -1,6 +1,6 @@
 package com.notapos.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.notapos.enums.StaffRole;
 import com.notapos.exception.ApiError;
 import jakarta.servlet.http.HttpServletRequest;
@@ -62,10 +62,14 @@ public class RefusalResponder implements AuthenticationEntryPoint, AccessDeniedH
     public static final String PIN_CHANGE_REQUIRED = "PIN_CHANGE_REQUIRED";
     public static final String CHOOSE_A_NEW_PIN = "Choose a new PIN before doing anything else.";
 
-    private final ObjectMapper objectMapper;        // Turns the ApiError into JSON, the same way controllers' answers are
+    // Turns the ApiError into JSON, the same way controllers' answers are. JsonMapper is
+    // the JSON library's (Jackson's) converter, and this is the one Spring Boot sets up
+    // for the whole app, so a refusal written here looks like every other answer.
+    // (Until Spring Boot 4 this type was called ObjectMapper and lived in com.fasterxml.)
+    private final JsonMapper jsonMapper;
 
-    public RefusalResponder(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+    public RefusalResponder(JsonMapper jsonMapper) {
+        this.jsonMapper = jsonMapper;
     }
 
     @Override                                       // Nobody is signed in (no token, or one the backend does not know) -> 401
@@ -102,6 +106,6 @@ public class RefusalResponder implements AuthenticationEntryPoint, AccessDeniedH
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        objectMapper.writeValue(response.getWriter(), body);
+        jsonMapper.writeValue(response.getWriter(), body);
     }
 }

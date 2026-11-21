@@ -1,7 +1,7 @@
 package com.notapos.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.notapos.entity.Order;
 import com.notapos.entity.RestaurantTable;
 import com.notapos.repository.OrderItemModifierRepository;
@@ -157,7 +157,7 @@ class OneRateOneClockIntegrationTest extends BaseIntegrationTest {
                 .andReturn();
 
         LocalDateTime serverTime = LocalDateTime.parse(opened.getResponse().getHeader(SERVER_TIME_HEADER));
-        LocalDateTime createdAt = LocalDateTime.parse(bodyOf(opened).get("createdAt").asText());
+        LocalDateTime createdAt = LocalDateTime.parse(bodyOf(opened).get("createdAt").asString());
 
         assertTrue(gapBetween(serverTime, createdAt).compareTo(Duration.ofSeconds(5)) < 0,
                 "The header said " + serverTime + " and the order was stamped " + createdAt);

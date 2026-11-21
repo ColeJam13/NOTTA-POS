@@ -7,7 +7,7 @@ This file is read by Claude Code at the start of every session. It carries the c
 ## Layout
 
 ```
-backend/    Spring Boot 3.5 (Java 21, Maven), PostgreSQL
+backend/    Spring Boot 4.1 (Java 21, Maven), PostgreSQL
   src/main/java/com/notapos/
     controller/  REST endpoints (thin - no try/catch, no business logic)
     service/     business logic, @Transactional
@@ -76,6 +76,7 @@ Process rules, added 2026-11-20. They come out of the merge of pull request #273
 14. **Keep this file current** in the same pull request as the change it describes.
 15. **Every schema change is a new Flyway migration, in the same pull request as the entity change.** A new column, table, index, or constraint gets a new file `V<next number>__what_it_does.sql` in `backend/src/main/resources/db/migration`. Never edit a migration that has been merged: Flyway keeps a checksum of each file it has run and refuses to start if one changed. If a migration turns out wrong, fix it with another migration.
 16. **The `dev` branch is the owner's safety branch. Never touch it.** Do not commit to it, push to it, merge or rebase it, branch from it, or delete it, on this machine or on GitHub, and leave it out of any branch clean-up. The owner brings it up to date by hand when satisfied with what is on `main`. (The owner's instruction, repeated on 2026-11-21.)
+17. **Check the versions table before starting a plan step.** It is under "Versions in use" below. If anything in it is past the date its support ends, or within three months of it, tell the owner before starting the step. Update the table in any pull request that changes a version.
 
 When pair-programming interactively instead of automating: ask before writing code, go one file and one concept at a time, and let the owner type the changes.
 
@@ -139,7 +140,10 @@ When pair-programming interactively instead of automating: ask before writing co
 - **Tables and Quick Orders are one component.** `components/TableChecks` draws both screens from `GET /api/tables/overview`; `views/Tables/Tables.jsx` and `views/QuickOrders/QuickOrders.jsx` only pass it which tables to ask for and what the screen is called. A change to one screen belongs in `TableChecks`, so the other gets it too.
 - **Who sees a tip is decided on the backend, check by check.** A person is sent the tip and payment method on closed checks they opened (the order's `staffId`); a manager on every check (the owner's decision D10). `TableOverviewService.maySeeTip` is the rule. For anyone else `tipAmount` and `paymentMethod` are not in the answer at all: `ClosedCheckView` leaves a null one out of the JSON (`@JsonInclude(NON_NULL)` on those two fields), and the payments of those checks are never read from the database. `TableChecks` asks one thing, whether `tipAmount` is there, and shows nothing in its place when it is not. Do not send a private value and hide it on the screen: it can be read in the browser's network tab. A new answer that carries tips needs the same rule.
 - **Separation of concerns:** payment actions stay separate from order actions.
-- JSON quirk: `xPosition` / `yPosition` on tables serialize as `xposition` / `yposition`.
+- JSON quirk: `xPosition` / `yPosition` on tables are `xposition` / `yposition` in JSON. It began as an accident of how the JSON library named things, and the Floor Map was written against it; since the move to Spring Boot 4 it is written down with `@JsonProperty` on the getters and setters of `RestaurantTable`, because the new library would have sent `xPosition`.
+- **The JSON the screens depend on is recorded, and the recording is a test.** `JsonShapeIntegrationTest` inserts fixed rows and compares the whole answer of the main endpoints with the files in `backend/src/test/resources/json-shape` (every field, no extra field, lists in order; the order of fields inside an object is not checked, and no screen depends on it). It also reads the odd names, money (`16.00`), dates (`"2026-11-18T12:30:00"`, no zone), and nulls as plain text. A change that alters an answer on purpose records the files again (`mvn test -Dtest=JsonShapeIntegrationTest -Dnotta.json.record=true`) and the pull request shows the difference. Never record again to make a failure pass without reading what changed. A new endpoint a screen reads gets a line in its list.
+- **A JSON name that is not the plain field name is written down with `@JsonProperty`,** not left to the library's rules. The JSON library is Jackson 3 (package `tools.jackson`; its annotations are still in `com.fasterxml.jackson.annotation`). Its converter is `JsonMapper`, set up by Spring Boot; inject that one (as `RefusalResponder` does) and do not build another, so every answer is written the same way. The app sets no `spring.jackson.*` property and relies on the library's defaults, which is exactly why the recording above exists.
+- **A faked service in a controller test is `@MockitoBean`** (Spring Framework's; Spring Boot's `@MockBean` was removed in 4.0).
 
 ## Things learned the hard way
 
@@ -158,7 +162,11 @@ When pair-programming interactively instead of automating: ask before writing co
 - A slow Floor Map load once turned out to be a Firefox-on-localhost issue, not the code. Measure backend response times before changing code for performance.
 - On PostgreSQL 15+, the application's database user needs an explicit `CREATE` grant on the `public` schema on a new machine.
 - Build output (`backend/target/`) and `backend/restaurant.db` (left over from the SQLite days) were committed for a long time, so every Maven run showed up as changed files. They are ignored now. If `git status` ever lists something under `target/` again, it was added with `git add -f`; remove it with `git rm --cached`.
-- Testcontainers must be 1.21.4 or newer to work with current Docker engines.
+- Testcontainers must be 1.21.4 or newer to work with current Docker engines. Since Spring Boot 4 its version is the one Spring Boot manages (2.0.5 today), and the build file names none.
+- A green test suite does not mean an upgrade changed nothing. Moving to Spring Boot 4 left 805 of 807 tests passing, and the two that failed were the JSON recording written the day before for this purpose: the new JSON library sent `xPosition` where the Floor Map reads `xposition`. Every other test checks values a field at a time and never notices a renamed or added field. Record what the other side of an interface actually receives before changing what produces it.
+- `@JsonProperty` on a private field is not the same as on its getter. On the field of `RestaurantTable` it produced two entries, `xposition` from the field and `XPosition` from the getter. The note goes on the getter and the setter.
+- Since Spring Boot 4, a library on the classpath is not enough for Spring Boot to set it up: each technology's set-up code is its own module, brought in by its starter. `flyway-core` alone would start the app without running a single migration, and `ddl-auto=validate` would then refuse to start on a new database. The starter is `spring-boot-starter-flyway`.
+- Read the official migration guide before a major upgrade, and then trust the compiler and the tests over the guide and over memory. The guides did not mention where `@WebMvcTest` moved to, or that the new `PostgreSQLContainer` takes no type parameter; listing the classes inside the downloaded jars (`unzip -l`, `javap`) answered both in seconds.
 - Hibernate sends new rows to the database before it sends deletes, whatever order the code wrote them in. With the one-open-order index, "delete this table's open order, then save a new one" in one transaction is refused, because the old row is still there when the new one arrives. Call `flush()` on the repository between the two (see `OrderRepositoryTest`).
 - The seed file inserts rows with plain SQL and only names some columns. A new column that the app filters on needs a `DEFAULT` in its migration, and the migration should fill in existing rows too (see `V2__default_quick_order_flag.sql`). A missing default once left the Floor Map empty: the seeded tables held NULL for `is_quick_order` and the map asked for `false`.
 - `ddl-auto=update` let two databases drift apart without anyone noticing. When Flyway was adopted, the owner's database turned out to differ from a freshly created one in two ways (a missing default, and an older style of ID column). Comparing a structure-only dump (`pg_dump --schema-only`) of the real database with the migrations is what found it; write a baseline from the real thing, not from what the code would create today.
@@ -170,21 +178,38 @@ When pair-programming interactively instead of automating: ask before writing co
 
 ## Current state (November 2026)
 
-Everything through pull request #288 is merged, and `main` passes CI (777 backend tests, 190 frontend tests, a lint step, and a check of the packaged jar). Built: CI and the first cleanup pass, modifiers and kitchen notes, the working-state pass over the core flow, the 86 board, the editable floor map, combined endpoints for Tables, Quick Orders, and Financials, the kitchen display, Spring Boot 3.5, the start script, and staff profiles with PIN sign-in and roles.
+Everything through pull request #289 is merged, and `main` passes CI (807 backend tests, 190 frontend tests, a lint step, and a check of the packaged jar). Built: CI and the first cleanup pass, modifiers and kitchen notes, the working-state pass over the core flow, the 86 board, the editable floor map, combined endpoints for Tables, Quick Orders, and Financials, the kitchen display, the start script, staff profiles with PIN sign-in and roles, and the move to Spring Boot 4.1.
 
 **The work order from here is `Documentation/phase-2-plan.md`** (revision 2, with revision 3 notes from a check of #281 to #286). Read it before starting anything; its "Order of work" table says what is next. In short:
 
 - Part A fixes defects and open doors in what is built, in order: A1 one server-side ring-in path (done), A2 two terminals on one check (done), A3 lock the API (done: Spring Security in A3a, default deny and the role matrix in A3b), A4 sign-in hardening and sessions in the database (done), A5 one tax rate, ticket order, and the clock (done), A6 tips on own checks only and releasing a paused terminal (done). Part A is finished.
 - Part P is platform work: Vite in place of Create React App (P1, done), a packaged build and a home test host (P2, done), phone-sized screens, an installable app, and later store apps with Square.
-- Part B is features: notifications, host view with waitlist, challenges on real data, UI templates (Plain, Coffee Shop, Nightclub, 8-Bit), check handling. U1 (Spring Boot 4.1, below) is next, then B4a (design tokens, the groundwork for templates and phone layouts). Of the features, check handling comes first.
-- Part U is keeping current: U1 moves Spring Boot from 3.5 (no longer supported) to 4.1 and is next; U2 moves CI to Node 24 and bumps the frontend tools, and can go in at any gap now that the owner has installed Node 24; U3 is a versions table and a check before each step. The owner's condition for all of it: nothing that works may break.
+- Part B is features: notifications, host view with waitlist, challenges on real data, UI templates (Plain, Coffee Shop, Nightclub, 8-Bit), check handling. B4a (design tokens, the groundwork for templates and phone layouts) is next. Of the features, check handling comes first.
+- Part U is keeping current: U1 moved Spring Boot from 3.5 (no longer supported) to 4.1 (done); U2 moves CI to Node 24 and bumps the frontend tools, and can go in at any gap now that the owner has installed Node 24; U3 is the versions table below and the check before each step (both done), the Maven Wrapper, and Dependabot alerts (not done). The owner's condition for all of it: nothing that works may break.
 - It lists decisions that are the owner's (D5 to D8 and D12 are open; D4, D9, D10, and D11 were decided on 2026-11-21). Ask each one when it is needed. Do not guess and build.
+
+### Versions in use
+
+Read this before starting a plan step (working rule 17), and update it in any pull request that changes a version. Dates are from endoflife.date, read on 2026-11-21.
+
+| What | Version in use | Support ends | Notes |
+|---|---|---|---|
+| Spring Boot | 4.1.3 | 2027-07-31 | 4.2.0 came out on 2026-11-19 (supported to 2027-12-31). A step from 4.1 to 4.2 is small next to the one from 3.5; plan it before spring 2027. |
+| What Spring Boot brings | Spring Framework 7.0, Spring Security 7.1, Hibernate 7.4, Jackson 3.1, Flyway 12.4, Tomcat 11, Testcontainers 2.0 | with Spring Boot | Never set these versions by hand; they move when Spring Boot moves. |
+| Java | 21 (LTS) | September 2028 or later, depending on who built it | Java 25 is the next LTS. Spring Boot 4 needs 17 or newer. |
+| PostgreSQL | 16 | 2028-11-09 | The owner's machine and the tests both run 16. |
+| Node.js | 24 on the owner's machine (LTS); 22 in CI; the system-wide 20 is past its end (2026-04-30) | 24: 2028-04-30. 22: 2027-04-30 | U2 moves CI to 24. |
+| Maven | 3.8.7 on this machine (whatever Ubuntu packages); CI uses its image's | not tracked | U3 adds the Maven Wrapper so every machine builds with one exact version. |
+| React | 19 | no date published | |
+| Vite / Vitest / ESLint | 8 / 4 / 10 | no dates published | Vitest 5 and jsdom 30 are waiting on U2. |
 
 Known gaps left open on purpose:
 
 - A table opened at the very instant its previous check is being paid can be handed that check. The first item rung onto it is refused with `ORDER_NOT_OPEN`, and the screen recovers the usual way (it says so, and Send starts a new check). Nothing is lost or mischarged.
 - The task that locks items when the edit window runs out (`TimerScheduledTask`) does not take the order lock. Removing an item in the same few milliseconds its window expires is not guarded.
 
+- Spring Boot is on 4.1, one minor version behind the newest (4.2.0, two days old when 4.1 was chosen). That was the plan's choice and it is supported to 2027-07-31; the versions table says when to move.
+- Since Spring Boot 4, the fields of an entity come out in alphabetical order in JSON (they used to follow the order in the class). Names, values, and formats are unchanged and no screen reads by position; it only shows when reading raw answers.
 - The Windows side of the test host has not been run on a real machine. The package was built and clicked through on Linux at a network address; the two PowerShell scripts were parsed, and run as far as their first check, by Windows PowerShell 5.1. Everything after "Java is installed" is unverified until the owner works through the checklist at the end of `Documentation/test-host.md`.
 - On the test host the app is a window that must stay open: it is not a Windows service, does not start with the machine, and does not restart itself. Backups are a script someone has to run.
 - The packaged app is plain HTTP on the home network. Tokens and PINs cross the Wi-Fi unencrypted. HTTPS is P4.

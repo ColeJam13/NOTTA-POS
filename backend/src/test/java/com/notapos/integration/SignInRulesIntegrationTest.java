@@ -1,6 +1,6 @@
 package com.notapos.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.notapos.dto.StaffCreateRequest;
 import com.notapos.entity.MenuItem;
 import com.notapos.entity.RestaurantTable;
@@ -117,7 +117,7 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
                 .content("{\"pin\":\"" + pin + "\"}"))
                 .andExpect(status().isOk())
                 .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asString();
     }
 
     // ------------------------------------------------------------------

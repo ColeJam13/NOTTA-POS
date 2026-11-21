@@ -1,7 +1,7 @@
 package com.notapos.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.notapos.entity.MenuItem;
 import com.notapos.entity.Order;
 import com.notapos.entity.Payment;
@@ -180,7 +180,7 @@ class TipsOnClosedChecksIntegrationTest extends BaseIntegrationTest {
     private static void assertTipShown(JsonNode check, String tip, String method) {
         assertTrue(check.has("tipAmount"), "the tip should be in the answer");
         assertEquals(0, new BigDecimal(tip).compareTo(check.get("tipAmount").decimalValue()));
-        assertEquals(method, check.get("paymentMethod").asText());
+        assertEquals(method, check.get("paymentMethod").asString());
     }
 
     private static void assertTipLeftOut(JsonNode check) {
@@ -213,12 +213,12 @@ class TipsOnClosedChecksIntegrationTest extends BaseIntegrationTest {
 
         JsonNode check = closedCheckAsSeenBy(sarah, dansCheck);
 
-        assertEquals("W2", check.get("tableNumber").asText());
-        assertEquals("Dan", check.get("serverName").asText());
+        assertEquals("W2", check.get("tableNumber").asString());
+        assertEquals("Dan", check.get("serverName").asString());
         assertEquals(0, new BigDecimal("20.00").compareTo(check.get("subtotal").decimalValue()));
         assertEquals(0, new BigDecimal("0.60").compareTo(check.get("tax").decimalValue()));
         assertEquals(0, new BigDecimal("20.60").compareTo(check.get("total").decimalValue()));
-        assertEquals("Burger", check.get("items").get(0).get("name").asText());
+        assertEquals("Burger", check.get("items").get(0).get("name").asString());
         assertFalse(check.get("closedAt").isNull());
     }
 

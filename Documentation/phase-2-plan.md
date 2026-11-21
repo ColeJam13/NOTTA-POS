@@ -38,8 +38,8 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 7 | P1. Replace Create React App with Vite | Done (#285) |
 | 8 | P2. One thing to start, and the home test host | Done (#286) |
 | 8a | A6. Two follow-ups from the review: tips on closed checks, and releasing a paused terminal | Done (#288) |
-| 8b | **U1. Spring Boot 3.5 to 4.1 (the 3.5 line no longer gets security fixes)** | Next |
-| 9 | B4a. Design tokens: every screen reads its look from named values | |
+| 8b | U1. Spring Boot 3.5 to 4.1 (the 3.5 line no longer gets security fixes) | Done (#289) |
+| 9 | **B4a. Design tokens: every screen reads its look from named values** | Next |
 | 10 | B4b and B4c. Template system, then the new templates | D9 (default decided) |
 | 11 | P3. Phone-sized screens | |
 | 12 | P4. HTTPS on a private network, and the installable app | D8 |
@@ -286,6 +286,17 @@ Added 2026-11-21. The owner wants the application as current and as close to ind
 
 ### U1. Spring Boot 3.5 to 4.1
 
+**Done 2026-11-21 (#289).** The backend is on Spring Boot 4.1.3, with Spring Framework 7.0, Spring Security 7.1, Hibernate 7.4, Jackson 3.1, Flyway 12.4, Tomcat 11, and Testcontainers 2.0. What happened, and what was decided along the way:
+
+- **The JSON tests earned their keep.** `JsonShapeIntegrationTest` (30 tests, recorded on 3.5 the same day) was the only thing that failed after the version change: Jackson 3 would have sent `xPosition` and `yPosition` where the Floor Map reads `xposition` and `yposition`. The other 777 tests passed with that defect in place. The two names are now written down with `@JsonProperty` on `RestaurantTable`.
+- **Jackson 3's own defaults are kept, not the "behave like Jackson 2" switch** (`spring.jackson.use-jackson2-defaults`). With the two names written down, every recorded answer has the same fields, values, and formats as on 3.5. The one difference left is the order of fields inside an entity's JSON (alphabetical now), which no screen reads. The switch would have hidden the naming difference without recording it anywhere.
+- **Three changes to the application's code,** all small: the two names above; `RefusalResponder` and `SecurityConfig` take Jackson 3's `JsonMapper`; `@Valid` moved inside the list type in `TableLayoutRequest` (the old placement logs a deprecation warning now). `SecurityConfig`'s rules, the filter, and the method rules needed no change.
+- **No test's meaning changed.** Before the upgrade, `@MockBean` became `@MockitoBean` (the only deprecation the compiler reported on 3.5). After it: imports that moved, `JsonNode.asText()` renamed to `asString()`, and Testcontainers' `PostgreSQLContainer` at its new address.
+- **4.1.3, not 4.2.0.** 4.2.0 was released two days before this was done. The plan named 4.1, which is supported to 2027-07-31, and a release two days old is not what "nothing that works may break" asks for. The versions table in `CLAUDE.md` says when to move.
+- **The unused H2 test dependency was removed.** No test used it; every repository test runs on real PostgreSQL.
+- **The owner's data.** The new build was started against a database made and filled by the 3.5 build: Flyway recognised all six migrations (same checksums) and ran nothing, Hibernate's check of the tables passed, and no row in any table changed. Eighteen answers were read from it before and after, with identical content. A check opened before the upgrade was then paid, and another added to, on the new build.
+- **From U3, done here:** the versions table in `CLAUDE.md` and working rule 17 (check it before each step). Still to do from U3: the Maven Wrapper and Dependabot alerts.
+
 Why: version 3.5.16 (June 2026) was the last release of the 3.5 line, and its open-source support ended on June 30, 2026. Security fixes now land only in 4.x. Go to 4.1, not 4.0: 4.0's support ends on December 31, 2026, and 4.1's runs to July 31, 2027.
 
 This is a migration, not a version bump. Spring Boot 4 sits on Spring Framework 7 and Spring Security 7 and changes several things underneath this app. **Read the official Spring Boot 4.0 and 4.1 migration guides and release notes before changing anything, and follow them over this list.** The list below is what to look for, written from general knowledge on the date above; check every item against the guides.
@@ -336,7 +347,7 @@ Upgrades should stop arriving as surprises.
 - **A versions table in `CLAUDE.md`:** Spring Boot, Java, Node.js, PostgreSQL, and the main frontend tools, each with the version in use and the date its support ends. Update it in any pull request that changes a version.
 - **A check at the start of every plan step:** read the table, and if something is within three months of its support ending, or past it, tell the owner before starting the step.
 - **Owner action:** turn on GitHub's Dependabot alerts for the repository. It is a setting, free for a public repository, and it reports known security problems in the libraries the project uses. Alerts only, not automatic pull requests: those would break the one-pull-request-at-a-time rule.
-- Do this as part of U1's pull request (the table) and note the check in the process rules.
+- Do this as part of U1's pull request (the table) and note the check in the process rules. **Done in #289:** the table is "Versions in use" in `CLAUDE.md`, and the check is working rule 17. The Maven Wrapper and Dependabot alerts are not done.
 
 ### U4. Standards backlog (later, not scheduled)
 
@@ -414,7 +425,7 @@ Owner actions still open unless already done: turn on Dependabot alerts (U3), tu
 
 ## How to continue
 
-1. Start U1 (Spring Boot 4.1), then B4a. Neither needs a decision from the owner. U2 can go in at any gap: Node 24 is installed. Part A (A1 to A6), P1, and P2 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
+1. Start B4a. It needs no decision from the owner. U2 (Node 24 in CI and the frontend tool bumps) and the rest of U3 (the Maven Wrapper) can go in at any gap. Part A (A1 to A6), P1, P2, and U1 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
 2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 
 ## Completed

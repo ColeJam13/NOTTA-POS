@@ -1,7 +1,7 @@
 package com.notapos.security;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import com.notapos.enums.StaffRole;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,8 +29,9 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class RefusalResponderTest {
 
-    // findAndRegisterModules() adds date-and-time support, as the application's own ObjectMapper has
-    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+    // The JSON converter, built the plain way. Date-and-time support is part of it now
+    // (before Jackson 3 it had to be added with findAndRegisterModules()).
+    private final JsonMapper objectMapper = JsonMapper.builder().build();
 
     private RefusalResponder responder;
     private MockHttpServletRequest request;
@@ -62,8 +63,8 @@ class RefusalResponderTest {
 
         JsonNode body = objectMapper.readTree(response.getContentAsString());
         assertEquals(401, body.get("status").asInt());
-        assertEquals("Unauthorized", body.get("error").asText());
-        assertEquals("Sign in to do that.", body.get("message").asText());
+        assertEquals("Unauthorized", body.get("error").asString());
+        assertEquals("Sign in to do that.", body.get("message").asString());
         assertTrue(body.get("fieldErrors").isNull());
         assertTrue(body.get("code").isNull());
         assertFalse(body.get("timestamp").isNull());
@@ -93,8 +94,8 @@ class RefusalResponderTest {
         assertEquals(403, response.getStatus());
         JsonNode body = objectMapper.readTree(response.getContentAsString());
         assertEquals(403, body.get("status").asInt());
-        assertEquals("Forbidden", body.get("error").asText());
-        assertEquals("Your role (host) is not allowed to do that.", body.get("message").asText());
+        assertEquals("Forbidden", body.get("error").asString());
+        assertEquals("Your role (host) is not allowed to do that.", body.get("message").asString());
     }
 
     @Test
@@ -111,8 +112,8 @@ class RefusalResponderTest {
 
         assertEquals(403, response.getStatus());
         JsonNode body = objectMapper.readTree(response.getContentAsString());
-        assertEquals("PIN_CHANGE_REQUIRED", body.get("code").asText());
-        assertEquals("Choose a new PIN before doing anything else.", body.get("message").asText());
+        assertEquals("PIN_CHANGE_REQUIRED", body.get("code").asString());
+        assertEquals("Choose a new PIN before doing anything else.", body.get("message").asString());
     }
 
     @Test
@@ -124,6 +125,6 @@ class RefusalResponderTest {
         responder.handle(request, response, new AccessDeniedException("no"));
 
         assertEquals(401, response.getStatus());
-        assertEquals("Sign in to do that.", objectMapper.readTree(response.getContentAsString()).get("message").asText());
+        assertEquals("Sign in to do that.", objectMapper.readTree(response.getContentAsString()).get("message").asString());
     }
 }

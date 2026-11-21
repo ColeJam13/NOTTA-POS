@@ -2,7 +2,7 @@ package com.notapos.testsupport;
 
 import com.notapos.config.SecurityConfig;
 import com.notapos.config.TimeConfig;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.AliasFor;
 
@@ -25,7 +25,7 @@ import java.lang.annotation.Target;
  *
  * WHAT: It is @WebMvcTest (start only the web layer: the named controller,
  *       the error handler, the request checks; services are faked with
- *       @MockBean) plus the pieces sign-in needs, so every controller test
+ *       @MockitoBean) plus the pieces sign-in needs, so every controller test
  *       runs with the real "who may do this" check and can say who is asking.
  *
  * WHY:  @WebMvcTest on its own does not load the app's security setup

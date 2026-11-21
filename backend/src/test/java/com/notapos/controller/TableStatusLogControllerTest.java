@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.notapos.testsupport.ControllerTest;
 import com.notapos.testsupport.SignIn;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import java.util.Arrays;
@@ -37,7 +37,7 @@ class TableStatusLogControllerTest {
     @Autowired
     private SignIn signIn;              // Says who a request comes from: .with(signIn.asServer())
 
-    @MockBean
+    @MockitoBean
     private TableStatusLogService tableStatusLogService;
 
     private TableStatusLog testLog;

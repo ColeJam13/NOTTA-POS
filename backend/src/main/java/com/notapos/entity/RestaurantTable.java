@@ -1,5 +1,6 @@
 package com.notapos.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import com.notapos.enums.TableStatus;
 import java.time.LocalDateTime;                   // JPA annotations
@@ -46,6 +47,18 @@ public class RestaurantTable {
     @Column(name = "status", nullable = false, length = 20)
     private String status = TableStatus.AVAILABLE.getValue();
 
+    // WHERE THE TABLE SITS ON THE FLOOR MAP. In JSON these two are "xposition" and
+    // "yposition", all lower case, and @JsonProperty (further down) is what says so.
+    //
+    // The spelling started as an accident. The JSON library (Jackson) worked the name
+    // out from the getter, getXPosition(), and its old rule turned a run of capitals at
+    // the front into lower case: "XPosition" became "xposition". The Floor Map was
+    // written against that. Jackson 3 (which came with Spring Boot 4) fixed the rule and
+    // would have sent "xPosition", and every table would have been drawn in the corner.
+    // JsonShapeIntegrationTest caught it during the upgrade. The name is now written
+    // down, on the four getters and setters below, so no library rule decides it again.
+    // (On the getters and setters, not on these fields: with the note on a field, the
+    // library sent the field under one name and the getter under another.)
     @Column(name = "x_position")
     private Integer xPosition;
 
@@ -115,18 +128,22 @@ public class RestaurantTable {
         this.status = status;
     }
 
+    @JsonProperty("xposition")                       // The name in JSON: see the note on the field
     public Integer getXPosition() {
         return xPosition;
     }
 
+    @JsonProperty("xposition")
     public void setXPosition(Integer xPosition) {
         this.xPosition = xPosition;
     }
 
+    @JsonProperty("yposition")
     public Integer getYPosition() {
         return yPosition;
     }
 
+    @JsonProperty("yposition")
     public void setYPosition(Integer yPosition) {
         this.yPosition = yPosition;
     }

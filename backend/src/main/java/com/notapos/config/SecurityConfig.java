@@ -1,6 +1,6 @@
 package com.notapos.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.notapos.security.RefusalResponder;
 import com.notapos.security.StaffSession;
 import com.notapos.security.StaffSessionStore;
@@ -138,8 +138,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, StaffSessionStore sessions,
-                                                   ObjectMapper objectMapper) throws Exception {
-        RefusalResponder refusalResponder = new RefusalResponder(objectMapper);
+                                                   JsonMapper jsonMapper) throws Exception {
+        RefusalResponder refusalResponder = new RefusalResponder(jsonMapper);
 
         http
                 // Request-level rules, checked in the order written; the first that matches decides.

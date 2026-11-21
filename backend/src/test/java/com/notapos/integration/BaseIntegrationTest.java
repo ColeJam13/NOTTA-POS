@@ -3,14 +3,14 @@ package com.notapos.integration;
 import com.notapos.security.SignInGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import com.notapos.testsupport.SignIn;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
  * Base class for integration tests: the WHOLE backend, started for real,
@@ -62,11 +62,11 @@ import org.testcontainers.containers.PostgreSQLContainer;
 @Import(SignIn.class)                   // The test helper is not part of the app, so it is added here
 public abstract class BaseIntegrationTest {
 
-    private static final PostgreSQLContainer<?> postgres;
+    private static final PostgreSQLContainer postgres;
 
     // Static initializer block - runs once when the class is loaded
     static {
-        postgres = new PostgreSQLContainer<>("postgres:16-alpine")
+        postgres = new PostgreSQLContainer("postgres:16-alpine")
                 .withDatabaseName("notta_pos_integration")
                 .withUsername("test")
                 .withPassword("test");

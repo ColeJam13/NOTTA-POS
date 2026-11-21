@@ -1,7 +1,7 @@
 package com.notapos.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.notapos.dto.StaffCreateRequest;
 import com.notapos.dto.StaffUpdateRequest;
 import com.notapos.repository.StaffRepository;
@@ -122,7 +122,7 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
         }
 
         // Then - the patio terminal carries on as if nothing happened
-        assertEquals("Sarah", signIn("1111", PATIO_TERMINAL).get("staff").get("name").asText());
+        assertEquals("Sarah", signIn("1111", PATIO_TERMINAL).get("staff").get("name").asString());
 
         // And - the bar terminal is paused, even for a right PIN, and is told for how long
         mockMvc.perform(signInWith("1111").with(from(BAR_TERMINAL)))
@@ -144,7 +144,7 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
         //      a token but cannot be turned back into one.
 
         // When
-        String token = signIn("2222", BAR_TERMINAL).get("token").asText();
+        String token = signIn("2222", BAR_TERMINAL).get("token").asString();
 
         // Then - one row, for Morgan
         List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT * FROM staff_sessions");
@@ -170,7 +170,7 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
         //      signed the whole floor out mid-shift.
 
         // Given
-        String token = signIn("1111", PATIO_TERMINAL).get("token").asText();
+        String token = signIn("1111", PATIO_TERMINAL).get("token").asString();
 
         // When - "the backend restarts": a store that has never seen this sign-in
         StaffSessionStore afterRestart = new DatabaseStaffSessionStore(storedSessionRepository, clock);
@@ -186,8 +186,8 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
         //      the same person's other device signed in
 
         // Given
-        String bar = signIn("1111", BAR_TERMINAL).get("token").asText();
-        String patio = signIn("1111", PATIO_TERMINAL).get("token").asText();
+        String bar = signIn("1111", BAR_TERMINAL).get("token").asString();
+        String patio = signIn("1111", PATIO_TERMINAL).get("token").asString();
         assertEquals(2, storedSessionRepository.count());
 
         // When
@@ -208,7 +208,7 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
         //      "Last used" is only written down when the note is more than a few minutes old.
 
         // Given
-        String token = signIn("2222", BAR_TERMINAL).get("token").asText();
+        String token = signIn("2222", BAR_TERMINAL).get("token").asString();
         Map<String, Object> before = jdbcTemplate.queryForMap("SELECT * FROM staff_sessions");
 
         // When
@@ -228,7 +228,7 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
         //      old spelling until they next signed out.
 
         // Given
-        String sarah = signIn("1111", PATIO_TERMINAL).get("token").asText();
+        String sarah = signIn("1111", PATIO_TERMINAL).get("token").asString();
         Long sarahId = staffRepository.findAll().stream()
                 .filter(staff -> staff.getName().equals("Sarah")).findFirst().orElseThrow().getStaffId();
 
@@ -248,9 +248,9 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
         //      database this is a delete of her rows, in the same transaction as the PIN.
 
         // Given
-        String bar = signIn("1111", BAR_TERMINAL).get("token").asText();
-        String patio = signIn("1111", PATIO_TERMINAL).get("token").asText();
-        String morgan = signIn("2222", BAR_TERMINAL).get("token").asText();
+        String bar = signIn("1111", BAR_TERMINAL).get("token").asString();
+        String patio = signIn("1111", PATIO_TERMINAL).get("token").asString();
+        String morgan = signIn("2222", BAR_TERMINAL).get("token").asString();
         Long sarahId = staffRepository.findAll().stream()
                 .filter(staff -> staff.getName().equals("Sarah")).findFirst().orElseThrow().getStaffId();
 
@@ -278,8 +278,8 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
         //      device was signed in with a PIN that no longer exists.
 
         // Given
-        String bar = signIn("1111", BAR_TERMINAL).get("token").asText();
-        String patio = signIn("1111", PATIO_TERMINAL).get("token").asText();
+        String bar = signIn("1111", BAR_TERMINAL).get("token").asString();
+        String patio = signIn("1111", PATIO_TERMINAL).get("token").asString();
 
         // When
         mockMvc.perform(put("/api/staff/me/pin").header(TOKEN_HEADER, bar).with(from(BAR_TERMINAL))
@@ -292,7 +292,7 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, bar)).andExpect(status().isOk());
         mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, patio)).andExpect(status().isUnauthorized());
         mockMvc.perform(signInWith("1111").with(from(PATIO_TERMINAL))).andExpect(status().isUnauthorized());
-        assertEquals("Sarah", signIn("4821", PATIO_TERMINAL).get("staff").get("name").asText());
+        assertEquals("Sarah", signIn("4821", PATIO_TERMINAL).get("staff").get("name").asString());
     }
 
     @Test
@@ -302,7 +302,7 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
         //      sign-in, a signed-in terminal would give ten thousand free guesses at its owner's PIN.
 
         // Given
-        String token = signIn("1111", BAR_TERMINAL).get("token").asText();
+        String token = signIn("1111", BAR_TERMINAL).get("token").asString();
 
         // When - five wrong guesses at the current PIN
         for (int guess = 0; guess < 5; guess++) {
@@ -322,7 +322,7 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
 
         // And - Sarah's PIN is unchanged, and she is still signed in (a pause stops sign-in, not work)
         mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, token)).andExpect(status().isOk());
-        assertEquals("Sarah", signIn("1111", PATIO_TERMINAL).get("staff").get("name").asText());
+        assertEquals("Sarah", signIn("1111", PATIO_TERMINAL).get("staff").get("name").asString());
     }
 
     // ------------------------------------------------------------------
@@ -335,7 +335,7 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
         // WHY: 1234 is the PIN every new database starts with, so it is the first one
         //      anybody would guess. Nobody may hold it.
 
-        String morgan = signIn("2222", BAR_TERMINAL).get("token").asText();
+        String morgan = signIn("2222", BAR_TERMINAL).get("token").asString();
         Long sarahId = staffRepository.findAll().stream()
                 .filter(staff -> staff.getName().equals("Sarah")).findFirst().orElseThrow().getStaffId();
 
@@ -355,7 +355,7 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
 
         // Sarah's PIN is what it was
         mockMvc.perform(signInWith("1234").with(from(PATIO_TERMINAL))).andExpect(status().isUnauthorized());
-        assertEquals("Sarah", signIn("1111", PATIO_TERMINAL).get("staff").get("name").asText());
+        assertEquals("Sarah", signIn("1111", PATIO_TERMINAL).get("staff").get("name").asString());
     }
 
     @Test
@@ -371,7 +371,7 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
 
         // When - the first manager signs in with the starter PIN
         JsonNode answer = signIn("1234", BAR_TERMINAL);
-        String token = answer.get("token").asText();
+        String token = answer.get("token").asString();
 
         // Then - the answer says a new PIN is needed
         assertTrue(answer.get("staff").get("mustChangePin").asBoolean());
@@ -416,7 +416,7 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
         staffRepository.deleteAll();
         staffService.ensureFirstManager();
         jdbcTemplate.update("UPDATE staff SET must_change_pin = false");
-        String token = signIn("1234", BAR_TERMINAL).get("token").asText();
+        String token = signIn("1234", BAR_TERMINAL).get("token").asString();
         mockMvc.perform(get("/api/staff").header(TOKEN_HEADER, token)).andExpect(status().isOk());
 
         // When - what FirstManagerSetup does at every start
