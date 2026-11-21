@@ -45,6 +45,10 @@ import org.springframework.security.web.authentication.logout.LogoutFilter;
  *        one exception is signing in itself. This is "default deny": a new
  *        endpoint is closed to outsiders without anyone remembering to close it.
  *
+ *        (Since step P2 the frontend's own files can also be read without a
+ *        sign-in, so that the sign-in screen can be shown at all. They are an
+ *        exact list, FRONTEND_FILES below, not a loosening of the rule.)
+ *
  *        One more rule lives here, since step A4: a person who signed in with
  *        the starter PIN may only choose a new one (and ask who they are, and
  *        sign out). It is in the chain, not on each controller method, for the
@@ -103,6 +107,35 @@ public class SecurityConfig {
                             && authentication.get().getPrincipal() instanceof StaffSession staff
                             && !staff.mustChangePin());
 
+    /**
+     * The frontend's own files, which anyone may read (GET) without signing in.
+     *
+     * WHY ANYTHING IS PUBLIC: in the packaged build the backend also serves the
+     * frontend (see WebConfig). The sign-in screen is one of those files. It cannot
+     * need a sign-in.
+     *
+     * WHY A LIST, and not "everything outside /api": a list keeps default deny
+     * intact. Whatever is added to this backend later, at whatever address, starts
+     * closed, exactly as before. Only what is named here is open, and only for
+     * reading. These files hold no data: they are the same code and pictures for
+     * everyone, and every number on every screen still comes from /api, which
+     * needs a sign-in.
+     *
+     *   /              what a phone asks for when the address is typed in
+     *   /index.html    the page itself (Spring Boot passes "/" on to it)
+     *   /assets/**     the built JavaScript, CSS, fonts, and pictures (Vite puts
+     *                  everything it builds in this one folder)
+     *   the rest       the few files in frontend/public, which are copied as they are
+     *
+     * A file added to frontend/public must be added here, or it is answered 401.
+     * In development none of these files are in the backend at all (the frontend
+     * runs on its own port), and these addresses simply answer 404.
+     */
+    static final String[] FRONTEND_FILES = {
+            "/", "/index.html", "/assets/**",
+            "/favicon.ico", "/manifest.json", "/logo192.png", "/logo512.png", "/robots.txt"
+    };
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, StaffSessionStore sessions,
                                                    ObjectMapper objectMapper) throws Exception {
@@ -121,6 +154,11 @@ public class SecurityConfig {
 
                         // Signing in is the one thing a person who is not signed in may do
                         .requestMatchers(HttpMethod.POST, "/api/staff/sign-in").permitAll()
+
+                        // ...and, in the packaged build, reading the frontend's own files: the page
+                        // that shows the PIN pad has to reach someone who is not signed in yet.
+                        // See FRONTEND_FILES for exactly which addresses, and why it is a list.
+                        .requestMatchers(HttpMethod.GET, FRONTEND_FILES).permitAll()
 
                         // What a signed-in person may do even while they still hold the starter
                         // PIN: choose a new one, ask who they are (a reloaded page needs that to
