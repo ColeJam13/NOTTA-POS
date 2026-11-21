@@ -174,7 +174,8 @@ Everything through pull request #286 is merged, and `main` passes CI (740 backen
 - Part A fixes defects and open doors in what is built, in order: A1 one server-side ring-in path (done), A2 two terminals on one check (done), A3 lock the API (done: Spring Security in A3a, default deny and the role matrix in A3b), A4 sign-in hardening and sessions in the database (done), A5 one tax rate, ticket order, and the clock (done). Part A is finished.
 - Part P is platform work: Vite in place of Create React App (P1, done), a packaged build and a home test host (P2, done), phone-sized screens, an installable app, and later store apps with Square.
 - Part B is features: notifications, host view with waitlist, challenges on real data, UI templates (Plain, Coffee Shop, Nightclub, 8-Bit), check handling. A6 (two small follow-ups: tips on closed checks, and releasing a paused terminal) is next, then B4a (design tokens, the groundwork for templates and phone layouts). Of the features, check handling comes first.
-- It lists decisions that are the owner's (D5 to D8 are open; D4, D9, D10, and D11 were decided on 2026-11-21). Ask each one when it is needed. Do not guess and build.
+- Part U is keeping current: U1 moves Spring Boot from 3.5 (no longer supported) to 4.1 and goes right after A6; U2 moves to Node 24 and bumps the frontend tools once the owner has upgraded Node; U3 is a versions table and a check before each step. The owner's condition for all of it: nothing that works may break.
+- It lists decisions that are the owner's (D5 to D8 and D12 are open; D4, D9, D10, and D11 were decided on 2026-11-21). Ask each one when it is needed. Do not guess and build.
 
 Known gaps left open on purpose:
 

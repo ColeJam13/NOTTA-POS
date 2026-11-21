@@ -2,7 +2,7 @@
 
 Revision 2, 2026-11-20. Revision 1 was written after an independent review of pull requests #263 to #274. This revision follows a check of #275 to #279 and adds four things the owner asked for: a home test host, an app on staff phones, bringing the build and sign-in onto standard tools, and switchable UI templates.
 
-Revision 3 notes, 2026-11-21: a check of #281 to #286 found the work sound (`main` at `83ad70e`, CI green). The owner answered four questions, recorded as D4, D9, D10, and D11 below. They add one small step, A6, which is next, and they change the feature order.
+Revision 3 notes, 2026-11-21 (a second note follows this one): a check of #281 to #286 found the work sound (`main` at `83ad70e`, CI green). The owner answered four questions, recorded as D4, D9, D10, and D11 below. They add one small step, A6, which is next, and they change the feature order. Later the same day a check of the project's versions found Spring Boot 3.5 and Node.js 20 past the end of their support; the owner asked for the project to be kept current provided nothing breaks, which is the new Part U.
 
 This is the work order. Read `CLAUDE.md` first; its working rules and process rules apply to everything here.
 
@@ -38,12 +38,15 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 7 | P1. Replace Create React App with Vite | Done (#285) |
 | 8 | P2. One thing to start, and the home test host | Done (#286) |
 | 8a | **A6. Two follow-ups from the review: tips on closed checks, and releasing a paused terminal** | Next. D10, D11 (decided) |
+| 8b | U1. Spring Boot 3.5 to 4.1 (the 3.5 line no longer gets security fixes) | |
 | 9 | B4a. Design tokens: every screen reads its look from named values | |
 | 10 | B4b and B4c. Template system, then the new templates | D9 (default decided) |
 | 11 | P3. Phone-sized screens | |
 | 12 | P4. HTTPS on a private network, and the installable app | D8 |
 | 13 | B5, then B1, B2, B3 (features, in that order) | D4 (decided), D5, D6 |
+| Any gap | U2. Node 24 and the frontend tools held back by Node 20. Fits between any two steps, once the owner has upgraded Node | Owner upgrades Node |
 | Later | P5. Store apps and card payments through Square | D7 |
+| Later | U4. Standards backlog | D12 |
 
 Why this order: security first, because the test host and phones put the backend on a network other devices can reach. The build tool moves next, while the frontend is not mid-feature. Tokens come before phone layouts because both touch every stylesheet, and doing tokens first means the phone work is written once, against the named values.
 
@@ -263,6 +266,77 @@ An installable web app (a PWA) is the existing site with an icon on the phone's 
 
 Screens ask the backend for changes every few seconds. That is fine at this size. Before real service volume, the kitchen display and the order screen should be sent changes as they happen (server-sent events or WebSockets). Not scheduled; listed so new screens do not make polling harder to replace. Keep each screen's data loading in one place.
 
+## Part U: keeping current
+
+Added 2026-11-21. The owner wants the application as current and as close to industry standard as it can be, on one condition: an upgrade must not break what works. Every step here is judged by that condition first.
+
+**The rule for every upgrade in this part.** The existing tests must pass with their meaning unchanged. A test is changed only when the thing it tests was renamed or moved by the upgrade, never to make a failure go away. If an upgrade cannot be finished cleanly in one pull request, stop, leave `main` as it is, and report what is in the way. A half-finished upgrade is worse than an old version.
+
+### U1. Spring Boot 3.5 to 4.1
+
+Why: version 3.5.16 (June 2026) was the last release of the 3.5 line, and its open-source support ended on June 30, 2026. Security fixes now land only in 4.x. Go to 4.1, not 4.0: 4.0's support ends on December 31, 2026, and 4.1's runs to July 31, 2027.
+
+This is a migration, not a version bump. Spring Boot 4 sits on Spring Framework 7 and Spring Security 7 and changes several things underneath this app. **Read the official Spring Boot 4.0 and 4.1 migration guides and release notes before changing anything, and follow them over this list.** The list below is what to look for, written from general knowledge on the date above; check every item against the guides.
+
+Before the upgrade, on 3.5 (first commits of the pull request, or a small pull request of their own):
+
+- Build with deprecation warnings shown and clear every one. What 3.x marks as deprecated, 4.0 removes, so this is the cheapest way to find most of the work.
+- **Pin down the JSON the screens depend on.** Add tests that record the exact JSON of the main answers from a seeded database: the menu, tables overview, active orders, a check, the sign-in answer, the settings, and an `ApiError`. A new major version of the JSON library could change a field name, a date format, or a number format and leave every other test green, and the screens would be the first to notice. These tests must pass unchanged after the upgrade. Known oddities to capture on purpose: `xposition` / `yposition`, `isQuickOrder`, `is86d`, and how dates and money are written.
+
+Areas to check during the upgrade:
+
+- **Security.** `SecurityConfig`, `StaffTokenFilter`, `RefusalResponder`, method rules (`@PreAuthorize`), and the test helper `@ControllerTest` / `SignIn`. `RoleMatrixIntegrationTest` is the proof: every endpoint, every role, before and after.
+- **JSON.** Whatever the migration guide says about the JSON library's new major version: imports, configuration, records, dates.
+- **Database layer.** The JPA provider's new major version: the entities, `@Version` on `Order`, the two locking finders, ID generation on the older `bigserial` tables, and `ddl-auto=validate` against the Flyway schema. `TwoTerminalsIntegrationTest` and `DatabaseMigrationTest` are the proof.
+- **Flyway.** That migrations V1 onward are still recognised as already run on an existing database, with unchanged checksums. No migration file may be edited.
+- **Tests.** Test annotations and helpers that moved or were removed, and whether Testcontainers needs a newer version.
+- **The packaged build.** `./package.sh`, the "packaged" Maven profile, static file serving and its cache headers, and `deploy/smoke-test.sh`.
+- **Start-up and settings.** Any renamed property in `application.properties`, and the scheduled tasks.
+
+Protecting the owner's data:
+
+- Before asking the owner to run the new build, start it against a copy of a database created by the current build with data in it, and confirm it starts, changes nothing, and reads everything.
+- The pull request tells the owner to take a backup before the first start, and how.
+
+Done when: all backend tests pass with unchanged meaning, the JSON tests pass unchanged, CI's three jobs are green, a full service is clicked through (sign in as each role, seat, ring in with modifiers, send, the edit window, kitchen start and complete, pay, the 86 board, Financials), and `CLAUDE.md` names the new versions and anything that now works differently.
+
+### U2. Node 24 and the frontend tools
+
+Waits on the owner upgrading Node.js on the development machine from 20 to 24. Recommended to the owner: install a version manager (nvm) and add Node 24 through it, leaving the system-wide Node 20 in place, so nothing else on the machine is affected.
+
+One pull request, once Node 24 is there:
+
+- CI moves from Node 22 to Node 24, so CI tests what the owner runs. Add an `.nvmrc` file naming the version, and say so in `CLAUDE.md` and the README.
+- Bump the tools Node 20 was holding back: Vitest, jsdom, and `@testing-library/jest-dom`.
+- Bump `@testing-library/user-event` from 13 to 14. Its API changed between those versions, so expect to touch the tests that use it; they must still test the same thing.
+- Bump `lucide-react` (the icons) to its 1.x line, and look at every screen for a missing or changed icon.
+- Remove the unused leftovers: the `web-vitals` package, `src/reportWebVitals.js`, and `src/logo.svg`.
+- Fix the one `case` in `Financials.jsx` and switch `no-case-declarations` back on.
+- Check whether `eslint-plugin-react` and `eslint-plugin-jsx-a11y` now support the ESLint version in use. If they do, bring them back; if not, leave the known gap in `CLAUDE.md` as it is.
+
+Done when: lint, build, tests, and the packaged-build check pass on Node 24 locally and in CI, and the app is clicked through.
+
+### U3. Staying current from here on
+
+Upgrades should stop arriving as surprises.
+
+- **A versions table in `CLAUDE.md`:** Spring Boot, Java, Node.js, PostgreSQL, and the main frontend tools, each with the version in use and the date its support ends. Update it in any pull request that changes a version.
+- **A check at the start of every plan step:** read the table, and if something is within three months of its support ending, or past it, tell the owner before starting the step.
+- **Owner action:** turn on GitHub's Dependabot alerts for the repository. It is a setting, free for a public repository, and it reports known security problems in the libraries the project uses. Alerts only, not automatic pull requests: those would break the one-pull-request-at-a-time rule.
+- Do this as part of U1's pull request (the table) and note the check in the process rules.
+
+### U4. Standards backlog (later, not scheduled)
+
+Things that would bring the project closer to common practice but are not urgent. None is started without the owner's say.
+
+- **TypeScript on the frontend, a file at a time.** It is the norm for new React work and catches a class of mistakes before the app runs. It is also the largest item here. **Decision D12.**
+- **Request shapes of their own.** The create endpoints a manager can reach still take the database entity as the request body (a known gap in `CLAUDE.md`). Standard practice is a small request class per endpoint, as `OrderItemRequest` already is.
+- **Enum-typed status fields** on the entities, in place of text columns read through enums.
+- **Times with a zone** on the older tables (`timestamptz`), as the new tables already use.
+- **Pushed updates** in place of polling (P6).
+- **Java 25**, the newer long-term-support release. Java 21 is supported for years yet, so this is a nice-to-have. It needs the owner to install it on the development machine and the test host.
+- **A newer PostgreSQL** than 16. Version 16 is supported until late 2028.
+
 ## Part B: features
 
 ### B1. Working notifications
@@ -319,14 +393,15 @@ The owner wants a list of default templates a manager can switch between: **Plai
 | D9 | Default template: **decided 2026-11-21, 8-Bit (today's look).** Still open: any direction the owner wants to give for Coffee Shop and Nightclub; ask when proposing each | B4c |
 | D10 | Who sees tips on closed checks. **Decided 2026-11-21: each person sees tips on checks they opened; managers see all.** | A6 |
 | D11 | A terminal paused for wrong PINs. **Decided 2026-11-21: a manager can release it, and no pause is longer than 5 minutes.** | A6 |
+| D12 | TypeScript on the frontend: adopt it gradually, or stay with JavaScript | U4 |
 
 Ask these at the point they are needed. Do not guess and build.
 
-Owner actions still open unless already done: turn on branch protection for `main` (require both CI checks and an up-to-date branch), change the local database password, which is still readable in this public repository's history, and upgrade Node.js on the development machine from 20 to 22 or 24 (Node 20 is past its end of support; it needs the machine's password, so Claude cannot do it).
+Owner actions still open unless already done: upgrade Node.js on the development machine to 24 (see U2 for the safe way), turn on Dependabot alerts (U3), turn on branch protection for `main` (require both CI checks and an up-to-date branch), change the local database password, which is still readable in this public repository's history, and upgrade Node.js on the development machine from 20 to 22 or 24 (Node 20 is past its end of support; it needs the machine's password, so Claude cannot do it).
 
 ## How to continue
 
-1. Start A6, then B4a. Neither needs a decision from the owner. Part A (A1 to A5), P1, and P2 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
+1. Start A6, then U1 (Spring Boot 4.1), then B4a. None needs a decision from the owner. U2 goes in whenever the owner reports Node 24 is installed. Part A (A1 to A5), P1, and P2 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
 2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 
 ## Completed
