@@ -36,7 +36,7 @@ Challenges is a mock-up with sample data. See `CLAUDE.md` for the build plan and
 
 ## Running it
 
-You need Java 21, Maven, Node.js, and PostgreSQL.
+You need Java 21, Maven, Node.js 22 or 24 (20.19 is the oldest that works), and PostgreSQL.
 
 Once the first-time setup below is done, one command starts everything:
 
@@ -100,7 +100,7 @@ The backend is on port 8080 and the frontend on port 3000. Open http://localhost
 
 To open the app from a tablet on the same network, two settings need the address of the computer running it (for example `192.168.1.50`):
 
-- `frontend/.env.local`: `REACT_APP_API_URL=http://192.168.1.50:8080` (where the frontend finds the backend)
+- `frontend/.env.local`: `VITE_API_URL=http://192.168.1.50:8080` (where the frontend finds the backend)
 - `backend/src/main/resources/application.properties`: add `http://192.168.1.50:3000` to `notta.cors.allowed-origins` (which addresses the backend answers)
 
 ## Tests
@@ -110,7 +110,11 @@ cd backend && mvn test
 ```
 
 ```bash
-cd frontend && npm test -- --watchAll=false
+cd frontend && npm test
 ```
 
-The backend's repository tests start a PostgreSQL container, so Docker must be running. Both suites run on every pull request (`.github/workflows/ci.yml`).
+```bash
+cd frontend && npm run lint
+```
+
+The backend's repository tests start a PostgreSQL container, so Docker must be running. All of these run on every pull request (`.github/workflows/ci.yml`), along with the frontend build.
