@@ -204,9 +204,13 @@ class SignInGuardTest {
     void testEachPauseOnADevice_ShouldBeLongerThanTheLast() {
         // WHAT: Test five wrong PINs, wait out the pause, five more, and so on
         // WHY: The old pause was always 30 seconds and the count started fresh after it:
-        //      about ten guesses a minute for ever. Now it ends up at five an hour.
+        //      about ten guesses a minute for ever. Now it ends up at five every five minutes.
+        //
+        // NO PAUSE IS LONGER THAN FIVE MINUTES (the owner's decision D11, step A6 of the
+        // plan). The pauses used to carry on to 15 minutes and then an hour. A terminal
+        // dead for an hour on a Friday night is worse than the guessing it guards against.
 
-        String[] expected = {"30 seconds", "1 minute", "5 minutes", "15 minutes", "1 hour", "1 hour", "1 hour"};
+        String[] expected = {"30 seconds", "1 minute", "5 minutes", "5 minutes", "5 minutes", "5 minutes", "5 minutes"};
 
         for (int pause = 0; pause < expected.length; pause++) {
             // When - five more wrong PINs

@@ -134,6 +134,67 @@ test.each(SCREENS)('%s: a check with no payment on record shows an unknown metho
   expect(within(card).getByText('UNKNOWN')).toBeInTheDocument();
 });
 
+// ----------------------------------------------------------------------------
+// Somebody else's check: the backend leaves the tip and the payment method out
+// ----------------------------------------------------------------------------
+// A person sees the tip on checks they opened; a manager sees every tip (the
+// owner's decision D10). The BACKEND decides: for a check the person may not
+// see the tip on, "tipAmount" and "paymentMethod" are not in the answer at all.
+// The screen draws what it was given and shows nothing in those spots.
+
+// The paid check as it arrives for someone who did not open it
+const withTheTipLeftOut = (check) => {
+  const { tipAmount, paymentMethod, ...everythingElse } = check;
+  return everythingElse;
+};
+
+test.each(SCREENS)('%s: a check opened by someone else shows its total and no tip or payment method', async (name, Screen, tableNumber) => {
+  const key = name === 'Quick Orders';
+  overviews[key].closedChecks = [withTheTipLeftOut(overviews[key].closedChecks[0])];
+
+  render(<Screen setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
+  await userEvent.click(screen.getByRole('button', { name: 'CLOSED' }));
+
+  // The card: the check's own total (33.00 + 0.99 tax), with no tip added to it
+  const card = (await screen.findByRole('heading', { name: tableNumber })).closest('.table-card');
+  expect(within(card).getByText('$33.99')).toBeInTheDocument();
+  expect(within(card).getByText('2 items')).toBeInTheDocument();
+  expect(within(card).getByText('Server: CJ')).toBeInTheDocument();
+  // Nothing where the payment method goes: not a blank label, and not "UNKNOWN"
+  expect(card.querySelector('.table-card-payment')).toBeNull();
+  expect(within(card).queryByText('UNKNOWN')).not.toBeInTheDocument();
+
+  // The pop-up: subtotal, tax, and total, with no Tip row and no Payment Method line
+  await userEvent.click(card);
+  const totals = document.querySelector('.modal-totals');
+  const row = (label) => within(totals).getByText(label).closest('.modal-total-row');
+  expect(within(row('Subtotal:')).getByText('$33.00')).toBeInTheDocument();
+  expect(within(row('Tax:')).getByText('$0.99')).toBeInTheDocument();
+  expect(within(row('Total:')).getByText('$33.99')).toBeInTheDocument();
+  expect(within(totals).queryByText('Tip:')).not.toBeInTheDocument();
+  expect(screen.queryByText('Payment Method:')).not.toBeInTheDocument();
+  // No stray zero or "NaN" anywhere in the pop-up
+  expect(document.querySelector('.modal-content')).not.toHaveTextContent('$0.00');
+  expect(document.querySelector('.modal-content')).not.toHaveTextContent('NaN');
+});
+
+test.each(SCREENS)('%s: your own check and somebody else\'s sit side by side, each drawn from what was sent', async (name, Screen) => {
+  const key = name === 'Quick Orders';
+  const mine = overviews[key].closedChecks[0];
+  const theirs = withTheTipLeftOut({ ...mine, orderId: 99, tableNumber: 'X9' });
+  overviews[key].closedChecks = [mine, theirs];
+
+  render(<Screen setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
+  await userEvent.click(screen.getByRole('button', { name: 'CLOSED' }));
+
+  const myCard = (await screen.findByRole('heading', { name: mine.tableNumber })).closest('.table-card');
+  const theirCard = screen.getByRole('heading', { name: 'X9' }).closest('.table-card');
+  expect(within(myCard).getByText('$40.79')).toBeInTheDocument();                 // Check + my tip
+  expect(within(myCard).getByText('CREDIT CARD')).toBeInTheDocument();
+  expect(within(theirCard).getByText('$33.99')).toBeInTheDocument();              // The check alone
+  expect(within(theirCard).queryByText('CREDIT CARD')).not.toBeInTheDocument();
+});
+
 // ============================================================================
 // ACTIVE view
 // ============================================================================

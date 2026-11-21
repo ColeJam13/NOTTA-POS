@@ -310,6 +310,10 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
         endpoint("POST /api/staff", managerOnly, () -> json(post("/api/staff"),
                 "{\"name\":\"New Person\",\"role\":\"server\",\"pin\":\"" + (nextPin++) + "\"}"));
         endpoint("PUT /api/staff/{id}", managerOnly, () -> json(put("/api/staff/" + someoneElseId), "{\"name\":\"Renamed\"}"));
+        // Terminals paused for wrong PINs: seeing them and releasing one (step A6, decision D11)
+        endpoint("GET /api/staff/paused-devices", managerOnly, () -> get("/api/staff/paused-devices"));
+        endpoint("POST /api/staff/paused-devices/release", managerOnly, () -> json(post("/api/staff/paused-devices/release"),
+                "{\"device\":\"192.168.1.21\"}"));
         endpoint("GET /api/reports/financials", managerOnly, () -> get("/api/reports/financials")
                 .param("from", "2026-11-18T00:00:00").param("to", "2026-11-19T00:00:00"));
         endpoint("PUT /api/tables/layout", managerOnly, () -> json(put("/api/tables/layout"),
