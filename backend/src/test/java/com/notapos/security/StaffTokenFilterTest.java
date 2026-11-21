@@ -1,6 +1,7 @@
 package com.notapos.security;
 
 import com.notapos.enums.StaffRole;
+import com.notapos.testsupport.InMemoryStaffSessionStore;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,7 +46,7 @@ class StaffTokenFilterTest {
 
     @BeforeEach
     void setUp() {
-        sessions = new StaffSessionStore();
+        sessions = new InMemoryStaffSessionStore();          // The filter only asks the store; which kind makes no difference to it
         filter = new StaffTokenFilter(sessions);
         SecurityContextHolder.clearContext();
     }

@@ -76,9 +76,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildResponse(HttpStatus.UNAUTHORIZED, RefusalResponder.NOT_SIGNED_IN, null);
     }
 
-    @ExceptionHandler(TooManyAttemptsException.class)                           // Too many wrong PINs in a row -> 429
+    // Too many wrong PINs -> 429. The message says how long to wait, in words for the person at
+    // the PIN pad. Retry-After is the standard header that says the same in seconds, for a program.
+    @ExceptionHandler(TooManyAttemptsException.class)
     public ResponseEntity<ApiError> handleTooManyAttempts(TooManyAttemptsException ex) {
-        return buildResponse(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), null);
+        ResponseEntity<ApiError> answer = buildResponse(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), null);
+        return ResponseEntity.status(answer.getStatusCode())
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+                .body(answer.getBody());
     }
 
     @ExceptionHandler(StaffRuleException.class)                                 // Change breaks a rule about staff (PIN in use, last manager) -> 409

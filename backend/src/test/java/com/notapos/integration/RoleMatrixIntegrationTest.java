@@ -96,6 +96,7 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
     // The one endpoint that needs no sign-in: it is how a person signs in
     private static final String SIGN_IN = "POST /api/staff/sign-in";
     private static final String SIGN_OUT = "POST /api/staff/sign-out";
+    private static final String CHANGE_OWN_PIN = "PUT /api/staff/me/pin";
 
     @Autowired private StaffService staffService;
     @Autowired private OrderCheckService orderCheckService;
@@ -120,6 +121,8 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
     private final Map<StaffRole, String> pins = new EnumMap<>(StaffRole.class);
     private Long someoneElseId;         // A staff member the tests change (so nobody's own session is touched)
     private int nextPin = 5000;         // PINs for staff created during a test: each must be unused
+    private StaffRole asking;           // Whose turn it is in the "allowed roles" test (a PIN change needs that person's own PIN)
+    private String newPin;              // The PIN the last PIN-change request asked for
     private int nextName = 1;           // Names that must be unique (prep stations, table numbers)
 
     // The restaurant the requests act on. Rebuilt by buildRestaurant().
@@ -220,6 +223,12 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
         // Who am I, and signing out: anyone who is signed in
         endpoint("GET /api/staff/me", anyoneSignedIn, () -> get("/api/staff/me"));
         endpoint(SIGN_OUT, anyoneSignedIn, () -> post("/api/staff/sign-out"));
+        // Choosing a new PIN for yourself: the request must carry the asker's own current PIN
+        endpoint(CHANGE_OWN_PIN, anyoneSignedIn, () -> {
+            newPin = String.valueOf(nextPin++);
+            return json(put("/api/staff/me/pin"),
+                    "{\"currentPin\":\"" + pins.getOrDefault(asking, "0000") + "\",\"newPin\":\"" + newPin + "\"}");
+        });
 
         // ------------------------------------------------------------------
         // "Open orders, ring in, send, take payment": server, bartender, host, manager
@@ -626,12 +635,16 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
                 buildRestaurant();                                   // Put back whatever the last request used up
 
                 String who = endpoint.key() + " as " + role.getValue();
+                asking = role;
                 mockMvc.perform(endpoint.request().get().header(TOKEN_HEADER, tokens.get(role)))
                         .andExpect(result -> assertEquals(2, result.getResponse().getStatus() / 100,
                                 who + " answered " + result.getResponse().getStatus() + " " + result.getResponse().getContentAsString()));
 
                 if (endpoint.key().equals(SIGN_OUT)) {
                     tokens.put(role, signIn(pins.get(role)));        // That really signed them out: sign back in for the rest of the test
+                }
+                if (endpoint.key().equals(CHANGE_OWN_PIN)) {
+                    pins.put(role, newPin);                          // That really changed their PIN: remember it for the next sign-in
                 }
             }
         }
@@ -735,7 +748,9 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
         // WHAT: Check that every POST, PUT, and DELETE endpoint has @PreAuthorize on it
         // WHY: Without a rule, an endpoint is open to anyone who is signed in. That is
         //      right for reading the menu and wrong for changing it. Signing in and out
-        //      are the two that change nothing in the database and need no role.
+        //      are the two that need no role and carry no rule. An endpoint that changes
+        //      something and IS meant for every role says so with Permissions.ANYONE_SIGNED_IN
+        //      (choosing your own PIN), so a missing rule still means "someone forgot".
 
         List<String> missing = new ArrayList<>();
         mappedEndpoints().forEach((key, handler) -> {

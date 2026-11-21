@@ -39,6 +39,11 @@ public class Staff {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
+    // True = this person holds the starter PIN and must choose their own before doing
+    // anything else. Set on the first manager of a new database (StaffService.ensureFirstManager).
+    @Column(name = "must_change_pin", nullable = false)
+    private Boolean mustChangePin = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -87,6 +92,14 @@ public class Staff {
 
     public void setIsActive(Boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public Boolean getMustChangePin() {
+        return mustChangePin;
+    }
+
+    public void setMustChangePin(Boolean mustChangePin) {
+        this.mustChangePin = mustChangePin;
     }
 
     public LocalDateTime getCreatedAt() {

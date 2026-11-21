@@ -51,6 +51,11 @@ public final class Permissions {
     // the matrix does not name and no screen uses yet: closed until a feature needs it.
     public static final String MANAGER_ONLY = "hasRole('MANAGER')";
 
+    // Any role at all. Not needed to let people in (a method with no rule is already open to
+    // everyone signed in); it is written on the few endpoints that change something and are
+    // meant for every role, to say that the missing role list is on purpose.
+    public static final String ANYONE_SIGNED_IN = "isAuthenticated()";
+
     private Permissions() {
         // Constants only; never created
     }

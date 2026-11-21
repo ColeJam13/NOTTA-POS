@@ -263,7 +263,8 @@ class DatabaseMigrationTest {
 
         // Then - V1 actually ran here (type SQL, not BASELINE) and created the tables
         assertEquals("SQL", value(jdbcUrl, "SELECT type FROM flyway_schema_history WHERE version = '1'"));
-        assertEquals("12", value(jdbcUrl, "SELECT count(*) FROM information_schema.tables "
+        // (the twelve from V1, and staff_sessions from V4)
+        assertEquals("13", value(jdbcUrl, "SELECT count(*) FROM information_schema.tables "
                 + "WHERE table_schema = 'public' AND table_name <> 'flyway_schema_history'"));
     }
 
@@ -363,5 +364,59 @@ class DatabaseMigrationTest {
         assertEquals("0", value(jdbcUrl, "SELECT version FROM orders WHERE order_id = 1"));
         assertEquals("NO", value(jdbcUrl, "SELECT is_nullable FROM information_schema.columns "
                 + "WHERE table_name = 'orders' AND column_name = 'version'"));
+    }
+
+    // ------------------------------------------------------------------
+    // V4 and V5: sessions in the database, and "must change PIN"
+    // ------------------------------------------------------------------
+
+    @Test
+    void testV4_ShouldCreateAnEmptySessionsTableThatAllowsOneRowPerTokenHash() throws Exception {
+        // WHAT: Test the table V4 adds to a database that already has staff and orders
+        // WHY: Nobody is signed in after the upgrade (sessions used to live in memory, and
+        //      the backend has just restarted), so the table starts empty. Two sessions with
+        //      the same token hash would make "whose request is this?" have two answers, so
+        //      the database refuses the second.
+
+        // Given
+        String jdbcUrl = databaseFromBeforeFlyway("v4_sessions");
+
+        // When
+        migrate(jdbcUrl);
+
+        // Then
+        assertEquals("0", value(jdbcUrl, "SELECT count(*) FROM staff_sessions"));
+
+        String insert = "INSERT INTO staff_sessions (token_hash, staff_id, name, role, created_at, last_used_at) "
+                + "VALUES ('abc123', 1, 'Morgan', 'manager', now(), now())";
+        run(jdbcUrl, insert);
+        SQLException refused = assertThrows(SQLException.class, () -> run(jdbcUrl, insert));
+        assertTrue(refused.getMessage().contains("staff_sessions_token_hash"));
+
+        // And - a row added without saying so does not have to change a PIN
+        assertEquals("false", value(jdbcUrl, "SELECT must_change_pin::text FROM staff_sessions"));
+    }
+
+    @Test
+    void testV5_ShouldMarkNobodyAndDefaultToNoChangeNeeded() throws Exception {
+        // WHAT: Test the must_change_pin column V5 adds to staff
+        // WHY: Existing staff must not all be told to change their PINs by the upgrade.
+        //      (Whoever still holds the starter PIN is found when the backend starts, by
+        //      StaffService.requireChangeOfStarterPin: SQL cannot tell, because only a hash
+        //      of each PIN is stored.) The default matters for rows added with plain SQL.
+
+        // Given - Morgan, added before the column existed
+        String jdbcUrl = databaseFromBeforeFlyway("v5_must_change_pin");
+
+        // When
+        migrate(jdbcUrl);
+
+        // Then
+        assertEquals("false", value(jdbcUrl, "SELECT must_change_pin::text FROM staff WHERE name = 'Morgan'"));
+
+        run(jdbcUrl, "INSERT INTO staff (name, role, pin_hash, is_active, created_at) VALUES ('Sarah', 'server', 'a-hash', true, now())");
+        assertEquals("false", value(jdbcUrl, "SELECT must_change_pin::text FROM staff WHERE name = 'Sarah'"));
+        assertEquals("NO", value(jdbcUrl, "SELECT is_nullable FROM information_schema.columns "
+                + "WHERE table_name = 'staff' AND column_name = 'must_change_pin'"));
     }
 }

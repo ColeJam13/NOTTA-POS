@@ -3,7 +3,11 @@ package com.notapos.integration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.notapos.dto.StaffCreateRequest;
+import com.notapos.dto.StaffUpdateRequest;
 import com.notapos.repository.StaffRepository;
+import com.notapos.repository.StoredSessionRepository;
+import com.notapos.security.DatabaseStaffSessionStore;
+import com.notapos.security.StaffSessionStore;
 import com.notapos.service.StaffService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +19,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Clock;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *           whole floor out
  *         - every new database had a manager with PIN 1234, and nothing made
  *           anyone change it
- *       The first three tests were written before the fix and failed.
+ *       The first four tests (one for each, and one for the PIN 1234 being
+ *       refused as a new PIN) were written before the fix and failed.
  *
  * "A DEVICE" here is the address a request comes from. MockMvc lets a test say
  * what that address is (see from()).
@@ -55,9 +61,13 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
     @Autowired private StaffRepository staffRepository;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private StoredSessionRepository storedSessionRepository;
+    @Autowired private StaffSessionStore sessions;
+    @Autowired private Clock clock;
 
     @BeforeEach
     void setUp() {
+        storedSessionRepository.deleteAll();
         staffRepository.deleteAll();
         staffService.createStaff(new StaffCreateRequest("Morgan", "manager", "2222"));
         staffService.createStaff(new StaffCreateRequest("Sarah", "server", "1111"));
@@ -152,6 +162,169 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.name").value("Morgan"));
     }
 
+    @Test
+    void testASession_ShouldStillWorkAfterTheBackendForgetsEverythingInMemory() throws Exception {
+        // WHAT: Sign in, then look the token up with a newly built session store
+        // WHY: A restart throws away every object and builds them again; only the
+        //      database is left. The old store kept its list in a field, so a restart
+        //      signed the whole floor out mid-shift.
+
+        // Given
+        String token = signIn("1111", PATIO_TERMINAL).get("token").asText();
+
+        // When - "the backend restarts": a store that has never seen this sign-in
+        StaffSessionStore afterRestart = new DatabaseStaffSessionStore(storedSessionRepository, clock);
+
+        // Then
+        assertEquals("Sarah", afterRestart.sessionFor(token).orElseThrow().name());
+    }
+
+    @Test
+    void testSignOut_ShouldRemoveTheRow() throws Exception {
+        // WHAT: Sign in twice as the same person, sign one of them out
+        // WHY: Signing out must end that session for good, in the database, and leave
+        //      the same person's other device signed in
+
+        // Given
+        String bar = signIn("1111", BAR_TERMINAL).get("token").asText();
+        String patio = signIn("1111", PATIO_TERMINAL).get("token").asText();
+        assertEquals(2, storedSessionRepository.count());
+
+        // When
+        mockMvc.perform(post("/api/staff/sign-out").header(TOKEN_HEADER, bar))
+                .andExpect(status().isNoContent());
+
+        // Then
+        assertEquals(1, storedSessionRepository.count());
+        mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, bar)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, patio)).andExpect(status().isOk());
+    }
+
+    @Test
+    void testARequest_ShouldNotWriteToTheDatabaseJustToBeIdentified() throws Exception {
+        // WHAT: Send several requests with a good token and compare the session row before and after
+        // WHY: Every request looks its session up. The screens ask something every few
+        //      seconds, so a write per request would be thousands of writes an hour.
+        //      "Last used" is only written down when the note is more than a few minutes old.
+
+        // Given
+        String token = signIn("2222", BAR_TERMINAL).get("token").asText();
+        Map<String, Object> before = jdbcTemplate.queryForMap("SELECT * FROM staff_sessions");
+
+        // When
+        for (int request = 0; request < 5; request++) {
+            mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, token)).andExpect(status().isOk());
+        }
+
+        // Then
+        assertEquals(before, jdbcTemplate.queryForMap("SELECT * FROM staff_sessions"));
+    }
+
+    @Test
+    void testCorrectingSomeonesName_ShouldKeepThemSignedInUnderTheNewName() throws Exception {
+        // WHAT: A manager fixes the spelling of a name while that person is signed in
+        // WHY: The session keeps a copy of the name, and a session can now last for days.
+        //      Without updating the copy, the orders that person opens would carry the
+        //      old spelling until they next signed out.
+
+        // Given
+        String sarah = signIn("1111", PATIO_TERMINAL).get("token").asText();
+        Long sarahId = staffRepository.findAll().stream()
+                .filter(staff -> staff.getName().equals("Sarah")).findFirst().orElseThrow().getStaffId();
+
+        // When
+        staffService.updateStaff(sarahId, new StaffUpdateRequest("Sarah Miller", null, null, null));
+
+        // Then
+        mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, sarah))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Sarah Miller"));
+    }
+
+    @Test
+    void testAManagerChangingSomeonesPin_ShouldEndTheirSessionsInTheDatabase() throws Exception {
+        // WHAT: Sarah is signed in on two devices; a manager gives her a new PIN
+        // WHY: The change must take effect on every device at once. With sessions in the
+        //      database this is a delete of her rows, in the same transaction as the PIN.
+
+        // Given
+        String bar = signIn("1111", BAR_TERMINAL).get("token").asText();
+        String patio = signIn("1111", PATIO_TERMINAL).get("token").asText();
+        String morgan = signIn("2222", BAR_TERMINAL).get("token").asText();
+        Long sarahId = staffRepository.findAll().stream()
+                .filter(staff -> staff.getName().equals("Sarah")).findFirst().orElseThrow().getStaffId();
+
+        // When
+        mockMvc.perform(put("/api/staff/" + sarahId).header(TOKEN_HEADER, morgan)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pin\":\"4444\"}"))
+                .andExpect(status().isOk());
+
+        // Then - both of Sarah's sessions are gone; the manager's is not
+        mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, bar)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, patio)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, morgan)).andExpect(status().isOk());
+        assertEquals(1, storedSessionRepository.count());
+    }
+
+    // ------------------------------------------------------------------
+    // Choosing a new PIN for yourself
+    // ------------------------------------------------------------------
+
+    @Test
+    void testChangeOwnPin_ShouldSignThePersonOutEverywhereElseAndKeepThisDevice() throws Exception {
+        // WHAT: Sarah, signed in at the bar and the patio, chooses a new PIN at the bar
+        // WHY: The device she did it on just proved who she is and carries on. The other
+        //      device was signed in with a PIN that no longer exists.
+
+        // Given
+        String bar = signIn("1111", BAR_TERMINAL).get("token").asText();
+        String patio = signIn("1111", PATIO_TERMINAL).get("token").asText();
+
+        // When
+        mockMvc.perform(put("/api/staff/me/pin").header(TOKEN_HEADER, bar).with(from(BAR_TERMINAL))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"currentPin\":\"1111\",\"newPin\":\"4821\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Sarah"));
+
+        // Then
+        mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, bar)).andExpect(status().isOk());
+        mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, patio)).andExpect(status().isUnauthorized());
+        mockMvc.perform(signInWith("1111").with(from(PATIO_TERMINAL))).andExpect(status().isUnauthorized());
+        assertEquals("Sarah", signIn("4821", PATIO_TERMINAL).get("staff").get("name").asText());
+    }
+
+    @Test
+    void testChangeOwnPin_GuessingTheCurrentPin_ShouldPauseTheDeviceLikeThePinPadDoes() throws Exception {
+        // WHAT: Someone at a terminal Sarah left signed in tries PINs on the change-PIN request
+        // WHY: It checks a PIN, so it is a place to guess one. Without the same limit as
+        //      sign-in, a signed-in terminal would give ten thousand free guesses at its owner's PIN.
+
+        // Given
+        String token = signIn("1111", BAR_TERMINAL).get("token").asText();
+
+        // When - five wrong guesses at the current PIN
+        for (int guess = 0; guess < 5; guess++) {
+            mockMvc.perform(put("/api/staff/me/pin").header(TOKEN_HEADER, token).with(from(BAR_TERMINAL))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"currentPin\":\"900" + guess + "\",\"newPin\":\"4821\"}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.message").value("That is not your current PIN."));
+        }
+
+        // Then - the sixth is refused without being looked at, even though it is right
+        mockMvc.perform(put("/api/staff/me/pin").header(TOKEN_HEADER, token).with(from(BAR_TERMINAL))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"currentPin\":\"1111\",\"newPin\":\"4821\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "30"));
+
+        // And - Sarah's PIN is unchanged, and she is still signed in (a pause stops sign-in, not work)
+        mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, token)).andExpect(status().isOk());
+        assertEquals("Sarah", signIn("1111", PATIO_TERMINAL).get("staff").get("name").asText());
+    }
+
     // ------------------------------------------------------------------
     // The starter PIN
     // ------------------------------------------------------------------
@@ -230,5 +403,30 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
         // And - 1234 no longer signs anyone in; the new PIN does, with nothing left to change
         mockMvc.perform(signInWith("1234").with(from(PATIO_TERMINAL))).andExpect(status().isUnauthorized());
         assertFalse(signIn("4821", PATIO_TERMINAL).get("staff").get("mustChangePin").asBoolean());
+    }
+
+    @Test
+    void testAManagerStillOnTheStarterPin_ShouldBeFoundAtStartUpAndMadeToChangeIt() throws Exception {
+        // WHAT: A database from before this change: its manager signs in with 1234 and
+        //       nothing marks them. Then the backend starts again.
+        // WHY: This is the owner's own database. The migration cannot tell who holds
+        //      1234 (only hashes are stored); the start-up check can.
+
+        // Given - the first manager as older versions created them: PIN 1234, not marked
+        staffRepository.deleteAll();
+        staffService.ensureFirstManager();
+        jdbcTemplate.update("UPDATE staff SET must_change_pin = false");
+        String token = signIn("1234", BAR_TERMINAL).get("token").asText();
+        mockMvc.perform(get("/api/staff").header(TOKEN_HEADER, token)).andExpect(status().isOk());
+
+        // When - what FirstManagerSetup does at every start
+        assertEquals(1, staffService.requireChangeOfStarterPin());
+
+        // Then - the old session is ended, and the next sign-in must choose a new PIN
+        mockMvc.perform(get("/api/staff").header(TOKEN_HEADER, token)).andExpect(status().isUnauthorized());
+        assertTrue(signIn("1234", BAR_TERMINAL).get("staff").get("mustChangePin").asBoolean());
+
+        // And - the next start finds nothing more to do
+        assertEquals(0, staffService.requireChangeOfStarterPin());
     }
 }
