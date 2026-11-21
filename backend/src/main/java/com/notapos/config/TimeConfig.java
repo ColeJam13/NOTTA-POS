@@ -17,7 +17,8 @@ import java.time.Clock;
  *       could not be tested at all.
  *
  * The real clock is the system's, read in UTC. Only moments (Instant) are read
- * from it, and a moment is the same in every time zone.
+ * from it, and a moment is the same in every time zone. (ServerTimeFilter reads
+ * a moment from it too, and then writes it in the backend's own time zone.)
  *
  * @author CJ
  */

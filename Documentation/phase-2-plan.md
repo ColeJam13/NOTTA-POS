@@ -19,7 +19,7 @@ This is the work order. Read `CLAUDE.md` first; its working rules and process ru
 - Done since revision 1: process rules in `CLAUDE.md` (#276), one server-side ring-in path (#277), Flyway migrations (#278), and row locks, an order version, and one open order per table enforced by the database (#279).
 - Checked in this revision: migrations `V1` to `V3` exist and `ddl-auto` is `validate`; repository and integration tests build their schema from the real migrations, not from Hibernate; `Order` has `@Version`; the lock queries are in `OrderRepository` and `TableRepository`.
 - Worth the owner knowing: `V3` changes existing data once. If a table had more than one open order, it moves their items and payments onto the oldest and deletes the extras. That is the right fix, and it is one more reason to take a database backup before the first start on a new build.
-- Leftover to remove in the next housekeeping touch: `backend/src/test/resources/application-test.properties` still describes SQLite.
+- Removed in #284: `backend/src/test/resources/application-test.properties`, which still described SQLite. Nothing read it (no test switches on a "test" profile).
 
 ## Order of work
 
@@ -32,8 +32,8 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 3 | A3a. Move sign-in onto Spring Security, same rules as today | Done (#281) |
 | 4 | A3b. Default deny, the role matrix, remove unused endpoints | Done (#282) |
 | 5 | A4. Sign-in hardening and sessions in the database | Done (#283) |
-| 6 | **A5. Small consistency fixes** | Next |
-| 7 | P1. Replace Create React App with Vite | |
+| 6 | A5. Small consistency fixes | Done (#284) |
+| 7 | **P1. Replace Create React App with Vite** | Next |
 | 8 | P2. One thing to start, and the home test host | |
 | 9 | B4a. Design tokens: every screen reads its look from named values | |
 | 10 | B4b and B4c. Template system, then the new templates | D9 |
@@ -138,6 +138,15 @@ Build:
 - **Sessions in the database** (a Flyway migration and a database-backed session store behind the class introduced in A3a). Today a backend restart signs the whole floor out, which is tolerable on fixed terminals and not on staff phones mid-shift. Store a hash of the token, not the token itself, so a copy of the database cannot be used to act as someone.
 
 ### A5. Small consistency fixes (one pull request)
+
+**Done 2026-11-21 (#284).** The order screen asks `GET /api/settings` for the tax rate and holds none of its own; every order item carries `ring_in_position` (migration V6) and every list of an order's items is sorted by it; every answer carries the backend's time in `X-Server-Time`, and the screens measure backend times against that (`services/serverClock.js`), not the device's clock. What was decided along the way, beyond the text below:
+
+- **Position, not a ring-in timestamp.** A timestamp set by the backend has the same defect as an ID (it records arrival), and one set by the screen would depend on the tablet's clock, which is the third item on this list. The screen sends each item's place on the order.
+- **The screen hands the positions out**, as one after the highest a saved item holds. The backend cannot: the saves of one round arrive together, in any order, and only the screen knows what was tapped first. A request with no position is placed after everything on the order. Existing items all hold position 0 and tie on ID, so old orders list as they did.
+- **The backend's time goes on every answer as a header, not into each response body.** One mechanism then covers the countdown, the "5m ago" labels, the kitchen display's waiting time, and the Financials "today", and a new screen gets it without anyone remembering. The header is in the same form as the timestamps (local time, no zone), so a tablet in another time zone is covered as well as one with a wrong clock.
+- **With no tax rate the screen shows `--` for tax and total**, never a number from a guessed rate. Taking orders does not depend on the rate arriving.
+- **Not changed:** the timestamps themselves still have no time zone (`CLAUDE.md`, known gaps). That is a data-model change across every table and belongs with P2, when the backend first runs on a machine that is not the developer's.
+- **Found on the way:** `OrderItemRepository.findByOrderId` had no `ORDER BY`, so the order screen's list of a reopened check had no defined order at all. It is sorted now.
 
 - **One tax rate.** The order screen should get the rate from the backend rather than hold its own `TAX_RATE`. The two can disagree today, and the guest would see one total while being charged another.
 - **Ticket order.** Items should print in the order the server rang them in. Parallel saves hand out IDs out of sequence and Active Orders sorts by ID. Add an explicit position or ring-in timestamp and sort on that.
@@ -269,7 +278,7 @@ Owner actions still open unless already done: turn on branch protection for `mai
 
 ## How to continue
 
-1. Start A5. It needs no decision from the owner.
+1. Start P1. It needs no decision from the owner. Part A is finished.
 2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 
 ## Completed

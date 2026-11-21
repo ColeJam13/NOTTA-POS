@@ -55,18 +55,37 @@ const STATIONS = [
 ];
 
 let activeOrders;     // what GET /api/orders/active returns (a test can replace it)
+let backendClockAheadMs;    // how far the fake backend's clock is ahead of this device's (negative = behind)
+
+// What time the fake backend thinks it is. A test moves it away from this device's
+// clock to stand for a kitchen tablet whose own clock is wrong.
+const backendNow = () => Date.now() + backendClockAheadMs;
+
+// A moment written the way the real backend writes one: local date and time with no
+// time zone, e.g. "2026-11-21T19:15:31.250"
+const asBackendTime = (ms) => {
+  const date = new Date(ms);
+  const pad = (number, length = 2) => String(number).padStart(length, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}`;
+};
+
+// Like the real backend, every answer carries the backend's own time in a header
+const answer = (data) => ({
+  ok: true,
+  status: 200,
+  headers: { get: (name) => (name.toLowerCase() === 'x-server-time' ? asBackendTime(backendNow()) : null) },
+  json: async () => data
+});
 
 beforeEach(() => {
   activeOrders = ACTIVE_ORDERS;
+  backendClockAheadMs = 0;
 
   global.fetch = jest.fn(async (url) => {
     const path = url.replace('http://localhost:8080', '');
-    if (path === '/api/orders/active') {
-      return { ok: true, status: 200, json: async () => activeOrders };
-    }
-    if (path === '/api/prep-stations') {
-      return { ok: true, status: 200, json: async () => STATIONS };
-    }
+    if (path === '/api/orders/active') return answer(activeOrders);
+    if (path === '/api/prep-stations') return answer(STATIONS);
     throw new Error(`Unexpected request in test: ${path}`);
   });
 });
@@ -174,6 +193,54 @@ test('BOH view lists tickets longest wait first and shows how long each has wait
   expect(within(card('W1')).getByText('4 MIN')).not.toHaveClass('warning');
   expect(within(card('W2')).getByText('12 MIN')).toHaveClass('warning');
   expect(within(card('W3')).getByText('20 MIN')).toHaveClass('late');
+});
+
+test('the kitchen\'s waiting time is measured on the backend\'s clock, not this tablet\'s', async () => {
+  // The kitchen tablet thinks it is three hours earlier than the backend does (a wrong
+  // clock, or a time zone that was never set). "Sent at 7:02" compared with the tablet's
+  // own 4:14 used to read as 0 minutes: a ticket twelve minutes old looked brand new and
+  // never turned yellow.
+  backendClockAheadMs = 3 * 60 * 60 * 1000;
+  const sentMinutesAgoOnTheBackend = (minutes) => asBackendTime(backendNow() - minutes * 60 * 1000);
+  activeOrders = [
+    { orderId: 2, tableId: 2, tableNumber: 'W2', isQuickOrder: false, serverName: 'Sarah', items: [
+      { ...ticketItem(21, 'Garden Toast', 'fired', 1, 0), sentAt: sentMinutesAgoOnTheBackend(12) }
+    ] },
+    { orderId: 3, tableId: 3, tableNumber: 'W3', isQuickOrder: false, serverName: 'Sarah', items: [
+      { ...ticketItem(32, 'Shrimp & Grits', 'pending', 1, 0), sentAt: sentMinutesAgoOnTheBackend(20) }
+    ] }
+  ];
+  render(<ActiveOrders setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  await screen.findByText(/Table W2 - Order #2/);
+  await userEvent.click(screen.getByRole('button', { name: 'BOH VIEW' }));
+  await screen.findByRole('button', { name: 'KITCHEN' });
+
+  expect(within(card('W2')).getByText('12 MIN')).toHaveClass('warning');
+  expect(within(card('W3')).getByText('20 MIN')).toHaveClass('late');
+});
+
+test('a ticket lists its items in the order they were rung in, which is not always ID order', async () => {
+  // The server tapped Soup, Steak, Pie. The three saves reached the backend as Steak,
+  // Pie, Soup, so Soup got the highest ID. The backend sends the items in ring-in order
+  // (ringInPosition); the screen used to re-sort them by ID and put the starter last.
+  activeOrders = [
+    { orderId: 5, tableId: 5, tableNumber: 'W5', isQuickOrder: false, serverName: 'Sarah', items: [
+      { ...ticketItem(43, 'Soup', 'pending', 1, 2), ringInPosition: 0 },
+      { ...ticketItem(41, 'Steak', 'pending', 1, 2), ringInPosition: 1 },
+      { ...ticketItem(42, 'Pie', 'pending', 1, 2), ringInPosition: 2 }
+    ] }
+  ];
+  render(<ActiveOrders setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  await screen.findByText(/Table W5 - Order #5/);
+
+  const namesOnTheTicket = () =>
+    [...card('W5').querySelectorAll('.order-item-ticket')].map(line => line.textContent.match(/Soup|Steak|Pie/)[0]);
+
+  // Front of house and the kitchen read the same order
+  expect(namesOnTheTicket()).toEqual(['Soup', 'Steak', 'Pie']);
+  await userEvent.click(screen.getByRole('button', { name: 'BOH VIEW' }));
+  await screen.findByRole('button', { name: 'KITCHEN' });
+  expect(namesOnTheTicket()).toEqual(['Soup', 'Steak', 'Pie']);
 });
 
 test('FOH view shows no waiting times and no station buttons', async () => {

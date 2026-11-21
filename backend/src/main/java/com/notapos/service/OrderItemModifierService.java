@@ -172,6 +172,9 @@ public class OrderItemModifierService {
      *   4. the price is the menu price plus the modifiers' upcharges - worked out here,
      *      never taken from the request
      *
+     * One thing IS taken from the request: where the item sits on the order
+     * (ringInPosition). It decides the order items are listed in and nothing else.
+     *
      * (There used to be a second, "plain" path for items without modifiers. It saved the
      * price the browser sent and checked none of the above.)
      *
@@ -216,6 +219,13 @@ public class OrderItemModifierService {
         orderItem.setSpecialInstructions(cleanNote(request.specialInstructions()));
         orderItem.setStatus(OrderItemStatus.DRAFT.getValue());                  // Every item starts as a draft with no timer; Send starts the edit window
         orderItem.setIsLocked(false);
+
+        // Where the item sits on the order. The order screen says (it is the only one who
+        // knows what the server tapped first: see OrderItem.IN_RING_IN_ORDER). A request
+        // that does not say is placed after everything already on the order.
+        orderItem.setRingInPosition(request.ringInPosition() != null
+                ? request.ringInPosition()
+                : orderItemRepository.findHighestRingInPosition(request.orderId()) + 1);
 
         OrderItem saved = orderItemRepository.save(orderItem);
         saveModifierRows(saved.getOrderItemId(), chosen);

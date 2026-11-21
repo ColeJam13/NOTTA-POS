@@ -147,7 +147,7 @@ const refusalFrom = async (response, fallbackMessage) => {
  * sent from here.)
  *
  * @param {number} orderId - Order to add the item to
- * @param {Object} item - Item with menuItemId and quantity; optionally
+ * @param {Object} item - Item with menuItemId, quantity, and ringInPosition; optionally
  *                        modifiers (array) and specialInstructions (kitchen note)
  * @returns {Promise<Object>} - The saved order item, including its new orderItemId and its price
  * @throws {Error} - If the backend refuses the item (so a failed save is never mistaken
@@ -164,7 +164,8 @@ export const createDraftItem = async (orderId, item) => {
       menuItemId: item.menuItemId,
       quantity: item.quantity,
       specialInstructions: item.specialInstructions || '',
-      modifierIds: modifiers.map(modifier => modifier.modifierId)   // No price: the backend adds up menu price + upcharges
+      modifierIds: modifiers.map(modifier => modifier.modifierId),  // No price: the backend adds up menu price + upcharges
+      ringInPosition: item.ringInPosition                           // Where the item sits on the order (see nextRingInPosition)
     })
   });
 
@@ -208,6 +209,33 @@ export const updateItemModifiers = async (orderItemId, selection) => {
 };
 
 /**
+ * The next free place on an order: one after the highest position a saved item holds.
+ *
+ * WHY POSITIONS EXIST: a round of items is saved with several requests at the same
+ * moment (see saveNewDraftItems). They reach the backend in whatever order the network
+ * delivers them, and each item's ID is handed out on arrival, so the backend cannot
+ * tell which item the server tapped first. This screen can: it is the order of the
+ * list. Each item is therefore saved with its place, and the kitchen ticket, the check,
+ * and this screen (when the table is reopened) all list items by it.
+ *
+ * WHY "HIGHEST + 1" AND NOT "HOW MANY ITEMS": positions can have gaps. Take an order
+ * holding places 0, 1, 2, 3 and remove the first two: two items are left, but place 2
+ * is still in use. Counting would hand out 2 again and put the new item ahead of an
+ * older one.
+ *
+ * Only saved items count (they have an orderItemId). An unsaved item has no place yet.
+ *
+ * @param {Array} items - The on-screen item list
+ * @returns {number} - 0 for an order with nothing saved on it
+ */
+export const nextRingInPosition = (items) => {
+  const placesInUse = items
+    .filter(item => item.orderItemId && item.ringInPosition !== undefined && item.ringInPosition !== null)
+    .map(item => item.ringInPosition);
+  return placesInUse.length === 0 ? 0 : Math.max(...placesInUse) + 1;
+};
+
+/**
  * Save every draft item that is not in the database yet.
  *
  * All saves run in parallel and we wait for ALL of them to finish, so a Send
@@ -215,27 +243,40 @@ export const updateItemModifiers = async (orderItemId, selection) => {
  *
  * @param {number} orderId - Order the items belong to
  * @param {Array} items - The full on-screen item list
- * @returns {Promise<{newIds: Array, failure: Error|null}>}
+ * Because the saves can arrive in any order, each item is sent with its place on
+ * the order (ringInPosition). The places are handed out here, down the list, before
+ * any request leaves: the list order is the order the server tapped the items in.
+ *
+ * @returns {Promise<{newIds: Array, newPositions: Array, failure: Error|null}>}
  *          newIds: one entry per item, in the same order: the new orderItemId
  *                  for items that were just saved, or null for items that did
  *                  not need saving. (Matching by position, not by menu item,
  *                  keeps two of the same dish from sharing one ID.) An item
  *                  whose save FAILED also gets null, so the caller can spot
  *                  it: it needed saving but has no ID.
+ *          newPositions: lined up the same way: the ringInPosition each newly
+ *                  saved item was given, or null. The caller keeps it on the
+ *                  item, so the next round carries on from the right place.
  *          failure: why the first refused item was refused (the backend's
  *                   message and code), or null if every save worked.
  */
 export const saveNewDraftItems = async (orderId, items) => {
   let failure = null;
 
-  const newIds = await Promise.all(
-    items.map(async (item) => {
-      const needsSaving = item.status === 'draft' && !item.orderItemId;
-      if (!needsSaving) return null;
+  // Hand out the places first, in list order: the first unsaved item gets the next
+  // free place, the one after it the place after that. Items that do not need saving get null.
+  let nextPosition = nextRingInPosition(items);
+  const positions = items.map(item => {
+    const needsSaving = item.status === 'draft' && !item.orderItemId;
+    return needsSaving ? nextPosition++ : null;
+  });
+
+  const saved = await Promise.all(
+    items.map(async (item, index) => {
+      if (positions[index] === null) return null;       // Does not need saving
 
       try {
-        const created = await createDraftItem(orderId, item);
-        return created.orderItemId;
+        return await createDraftItem(orderId, { ...item, ringInPosition: positions[index] });
       } catch (error) {
         // Do not let one failed item hide the IDs of the items that did save
         console.error('Error saving draft item:', error);
@@ -245,7 +286,11 @@ export const saveNewDraftItems = async (orderId, items) => {
     })
   );
 
-  return { newIds, failure };
+  return {
+    newIds: saved.map(created => (created ? created.orderItemId : null)),
+    newPositions: saved.map((created, index) => (created ? positions[index] : null)),
+    failure
+  };
 };
 
 // Send ALL draft items for this order (backend starts the edit timer and answers with the sent items).
@@ -364,7 +409,8 @@ export const loadOpenOrderForTable = async (tableId) => {
     price: item.price,                                                  // Already includes any modifier upcharges
     quantity: item.quantity,
     status: item.status,
-    delayExpiresAt: item.delayExpiresAt,                                // When this item's edit window closes (only meaningful while status is 'limbo')
+    ringInPosition: item.ringInPosition,                                // The item's place on the order. The backend sends the list sorted by it.
+    delayExpiresAt: item.delayExpiresAt,                                // When this item's edit window closes, by the backend's clock (only meaningful while status is 'limbo')
     modifiers: modifiersByOrderItemId[item.orderItemId] || [],
     specialInstructions: item.specialInstructions || ''
   }));

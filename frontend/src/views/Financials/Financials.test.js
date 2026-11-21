@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Financials from './Financials';
+import { apiFetch } from '../../services/api';
 
 /**
  * Behavior tests for the Financials screen.
@@ -24,6 +25,35 @@ const dateBoxValue = (date) =>
 
 let closedChecks;     // the checks the fake backend "has": [{ ..., closedAt: Date }]
 let requests;         // every request path, in order
+let backendClockAheadMs;    // how far the fake backend's clock is ahead of this device's (negative = behind)
+
+// What time the fake backend thinks it is
+const backendNow = () => Date.now() + backendClockAheadMs;
+
+// A moment written the way the real backend writes one: local date and time with no
+// time zone, e.g. "2026-11-21T19:15:31.250"
+const asBackendTime = (ms) => {
+  const date = new Date(ms);
+  const pad = (number, length = 2) => String(number).padStart(length, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}`;
+};
+
+// Like the real backend, every answer carries the backend's own time in a header
+const answer = (data) => ({
+  ok: true,
+  status: 200,
+  headers: { get: (name) => (name.toLowerCase() === 'x-server-time' ? asBackendTime(backendNow()) : null) },
+  json: async () => data
+});
+
+// In the running app nobody reaches this screen without signing in first, so the app
+// has already had an answer from the backend (and with it, the backend's time) before
+// the screen works out what "today" is. This stands for that earlier answer.
+const someoneSignedInEarlier = async () => {
+  await apiFetch('/api/staff/me');
+  requests = [];
+};
 
 // Build the report the way the real backend does, for the checks closed between from and to
 const reportFor = (from, to) => {
@@ -54,9 +84,10 @@ const reportFor = (from, to) => {
   };
 };
 
-beforeEach(() => {
+beforeEach(async () => {
   const now = new Date();
   requests = [];
+  backendClockAheadMs = 0;
   closedChecks = [
     // Paid a moment ago: 33.00 + 0.99 tax, with a 6.80 tip, by credit card
     { orderId: 10, subtotal: 33.0, tax: 0.99, total: 33.99, tip: 6.8, paymentMethod: 'credit_card', closedAt: now },
@@ -68,13 +99,17 @@ beforeEach(() => {
     const path = url.replace('http://localhost:8080', '');
     requests.push(path);
 
+    if (path === '/api/staff/me') return answer({ staffId: 1, name: 'CJ', role: 'manager' });
+
     const match = path.match(/^\/api\/reports\/financials\?from=([^&]+)&to=(.+)$/);
     if (match) {
       // The screen sends local date-times with no zone ("2026-11-18T00:00:00"); new Date() reads those as local time
-      return { ok: true, status: 200, json: async () => reportFor(new Date(match[1]), new Date(match[2])) };
+      return answer(reportFor(new Date(match[1]), new Date(match[2])));
     }
     throw new Error(`Unexpected request in test: ${path}`);
   });
+
+  await someoneSignedInEarlier();
 });
 
 afterEach(() => {
@@ -111,6 +146,21 @@ test('today asks the backend for midnight to the last second of today, in local 
 
   const today = dateBoxValue(new Date());
   expect(requests).toEqual([`/api/reports/financials?from=${today}T00:00:00&to=${today}T23:59:59`]);
+});
+
+test('today is the backend\'s today, even on a device whose own date is wrong', async () => {
+  // The office laptop's clock is two days behind. Checks are stamped with the backend's
+  // clock, so "today" has to mean the backend's date: the laptop's own date would ask
+  // for a day whose checks are not the ones closed this shift.
+  backendClockAheadMs = 2 * 24 * 60 * 60 * 1000;
+  await someoneSignedInEarlier();
+
+  render(<Financials setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+
+  const backendToday = dateBoxValue(new Date(backendNow()));
+  await waitFor(() =>
+    expect(requests).toEqual([`/api/reports/financials?from=${backendToday}T00:00:00&to=${backendToday}T23:59:59`])
+  );
 });
 
 test('custom period: picking today as both dates includes checks closed today', async () => {

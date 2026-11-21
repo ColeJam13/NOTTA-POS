@@ -1,0 +1,22 @@
+-- V6: every order item records where it sits on its order.
+--
+-- The order screen saves a round of items with several requests at the same
+-- moment. They reach the backend in whatever order the network delivers them,
+-- and each item's ID is handed out on arrival, so "sorted by ID" is not "the
+-- order the server rang them in". The kitchen ticket could list the main
+-- before the starter.
+--
+-- ring_in_position is the item's place on the order as the server entered it:
+-- 0 for the first item, 1 for the next, and so on. The order screen sends it
+-- with each item. Every list of an order's items is sorted by this column, and
+-- then by ID where two items hold the same position.
+--
+-- NOT NULL with DEFAULT 0, which also fills in every row that already exists.
+-- All of an old order's items then share position 0, the tie is settled by ID,
+-- and old orders list exactly as they did before. Rows added by plain SQL (the
+-- seed file names only some columns) get 0 the same way.
+--
+-- The numbers on one order may have gaps (an item was removed) and may repeat
+-- (two terminals each rang in "the next item"). Only their order matters.
+
+ALTER TABLE order_items ADD COLUMN ring_in_position integer NOT NULL DEFAULT 0;

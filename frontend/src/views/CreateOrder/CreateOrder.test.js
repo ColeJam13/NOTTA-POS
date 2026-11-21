@@ -65,6 +65,9 @@ let menuNow;          // what GET /api/menu-items returns right now (a test can 
 let orderCheck;       // what GET /api/orders/77/check returns (the check as the backend works it out)
 let paymentRefusal;   // a message = the fake backend answers 409 with that message to a payment
 let holdPayments;     // a promise = the fake backend does not answer a payment until it resolves (a slow network)
+let taxRate;          // what GET /api/settings says the tax rate is (0.03 = 3%)
+let settingsFail;     // true = the fake backend answers 500 to GET /api/settings
+let backendClockAheadMs;    // how far the fake backend's clock is ahead of this device's (negative = behind)
 
 // What the real backend does when it saves modifiers: menu price + the chosen upcharges
 const priceWithUpcharges = (menuItemId, modifierIds) => {
@@ -76,9 +79,24 @@ const priceWithUpcharges = (menuItemId, modifierIds) => {
   );
 };
 
+// What time the fake backend thinks it is. A test moves it away from this device's
+// clock with backendClockAheadMs, to stand for a tablet whose own clock is wrong.
+const backendNow = () => Date.now() + backendClockAheadMs;
+
+// A moment written the way the real backend writes one: local date and time with no
+// time zone, e.g. "2026-11-21T19:15:31.250"
+const asBackendTime = (ms) => {
+  const date = new Date(ms);
+  const pad = (number, length = 2) => String(number).padStart(length, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}`;
+};
+
+// Like the real backend, every answer carries the backend's own time in a header
 const jsonResponse = (data, status = 200) => ({
   ok: status >= 200 && status < 300,
   status,
+  headers: { get: (name) => (name.toLowerCase() === 'x-server-time' ? asBackendTime(backendNow()) : null) },
   json: async () => data
 });
 
@@ -98,6 +116,9 @@ beforeEach(() => {
   orderCheck = { orderId: 77, status: 'open', itemCount: 1, unsentItemCount: 0, subtotal: 17.0, tax: 0.51, total: 17.51, taxRate: 0.03 };
   paymentRefusal = null;
   holdPayments = null;
+  taxRate = 0.03;
+  settingsFail = false;
+  backendClockAheadMs = 0;
 
   global.fetch = jest.fn(async (url, options = {}) => {
     const method = options.method || 'GET';
@@ -107,6 +128,9 @@ beforeEach(() => {
     requests.push({ method, path, body });
 
     if (method === 'GET' && path === '/api/menu-items') return jsonResponse(menuNow);
+    if (method === 'GET' && path === '/api/settings') {
+      return settingsFail ? jsonResponse({ message: 'Something went wrong' }, 500) : jsonResponse({ taxRate });
+    }
     if (method === 'GET' && path === '/api/menu-items/modifier-groups') return jsonResponse(MODIFIER_GROUPS);
     if (method === 'GET' && path === '/api/tables') return jsonResponse([]);
     if (method === 'POST' && path === '/api/tables') {
@@ -147,6 +171,7 @@ beforeEach(() => {
         quantity: body.quantity,
         specialInstructions: body.specialInstructions,
         price: priceWithUpcharges(body.menuItemId, body.modifierIds),
+        ringInPosition: body.ringInPosition,
         status: 'draft'
       }, 201);
     }
@@ -160,8 +185,9 @@ beforeEach(() => {
       });
     }
     if (method === 'POST' && path === '/api/order-items/order/77/send') {
-      // Backend answers with the items it moved to limbo and when the edit window closes
-      const expires = new Date(Date.now() + editWindowMs).toISOString();
+      // Backend answers with the items it moved to limbo and when the edit window closes,
+      // by its own clock
+      const expires = asBackendTime(backendNow() + editWindowMs);
       return jsonResponse([{ orderItemId: 100, menuItemId: 1, status: 'limbo', delayExpiresAt: expires }]);
     }
     if (method === 'POST' && path === '/api/order-items/order/77/send-now') return jsonResponse([]);
@@ -226,8 +252,8 @@ test('tapping a menu item adds it to the order as a draft and updates the totals
   expect(within(totals).getByText('$23.69')).toBeInTheDocument();
 
   // Nothing is saved to the backend until Send or Save Draft
-  // (the screen loads the menu and its modifier groups when it opens, and that is all)
-  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups']);
+  // (the screen loads the menu, its modifier groups, and the tax rate when it opens, and that is all)
+  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups', 'GET /api/settings']);
 });
 
 test('category tabs filter the menu and the selected tab is highlighted', async () => {
@@ -264,11 +290,12 @@ test('SEND ORDER with no table creates a Quick Order, saves items, and starts th
   expect(screen.getByRole('button', { name: 'SEND NOW?' })).toBeInTheDocument();
   expect(screen.getByText('Current Order - Quick Order QO1')).toBeInTheDocument();
 
-  // Requests, in order: load menu + modifiers, find next QO number, create table, open order, save item, send
+  // Requests, in order: load menu + modifiers + tax rate, find next QO number, create table, open order, save item, send
   // (the backend marks the table occupied when it opens the order - there is no separate "seat table" request)
   expect(calls).toEqual([
     'GET /api/menu-items',
     'GET /api/menu-items/modifier-groups',
+    'GET /api/settings',
     'GET /api/tables',
     'POST /api/tables',
     'POST /api/orders',
@@ -445,7 +472,7 @@ test('tapping an item with modifiers opens the picker, and a required group must
   expect(within(totals).getByText('$17.51')).toBeInTheDocument();
 
   // Still nothing saved to the backend until Send or Save Draft
-  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups']);
+  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups', 'GET /api/settings']);
 });
 
 test('a "choose 1" group swaps to the new choice, and an "up to N" group stops at N', async () => {
@@ -511,7 +538,8 @@ test('SEND ORDER saves an item together with its modifiers and kitchen note', as
     menuItemId: 4,
     quantity: 1,
     specialInstructions: 'no butter',
-    modifierIds: [14, 24]
+    modifierIds: [14, 24],
+    ringInPosition: 0           // The first item on the order
   });
   expect(saves[0].body).not.toHaveProperty('price');
   expect(calls).toContain('POST /api/order-items/order/77/send');
@@ -530,7 +558,7 @@ test('the pencil adds a kitchen note to an item that has no modifiers', async ()
 
   // The note shows on the line; the item is not saved yet, so the backend has not been told
   expect(within(orderList(container)).getByText('NOTE: extra crispy')).toBeInTheDocument();
-  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups']);
+  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups', 'GET /api/settings']);
 
   // Saving the draft sends the note along
   await userEvent.click(screen.getByRole('button', { name: 'SAVE DRAFT' }));
@@ -541,7 +569,8 @@ test('the pencil adds a kitchen note to an item that has no modifiers', async ()
     menuItemId: 2,
     quantity: 1,
     specialInstructions: 'extra crispy',
-    modifierIds: []
+    modifierIds: [],
+    ringInPosition: 0           // The first item on the order
   });
 });
 
@@ -670,7 +699,7 @@ test('SEND ORDER and SAVE DRAFT are disabled when there is nothing to send, so n
   expect(screen.getByRole('button', { name: 'SEND ORDER' })).toBeEnabled();
   expect(screen.getByRole('button', { name: 'SAVE DRAFT' })).toBeEnabled();
   // Still nothing but the two menu requests: no table and no order were created
-  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups']);
+  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups', 'GET /api/settings']);
 });
 
 test('opening a table asks the backend for its open order even when the table looked available', async () => {
@@ -956,7 +985,8 @@ test('a plain item is rung in through the same request as every other item, with
 
   // The backend works out the price from the menu. A price sent from here used to be saved as-is.
   const save = requests.find(r => r.method === 'POST' && r.path === '/api/order-items');
-  expect(save.body).toEqual({ orderId: 77, menuItemId: 1, quantity: 1, specialInstructions: '', modifierIds: [] });
+  // (ringInPosition is the item's place on the order: the one thing besides the item itself the screen does say)
+  expect(save.body).toEqual({ orderId: 77, menuItemId: 1, quantity: 1, specialInstructions: '', modifierIds: [], ringInPosition: 0 });
   expect(save.body).not.toHaveProperty('price');
   expect(save.body).not.toHaveProperty('status');
 });
@@ -1120,4 +1150,164 @@ test('PROCESS PAYMENT cannot be pressed a second time while the payment is on it
   letThePaymentThrough();
   await screen.findByText('Payment Processed Successfully!');
   expect(requests.filter(r => r.method === 'POST' && r.path === '/api/payments')).toHaveLength(1);
+});
+
+// ============================================================================
+// One tax rate: the running total uses the rate the backend charges
+// ============================================================================
+
+test('the running total is worked out with the tax rate the backend gives, not a copy kept on the screen', async () => {
+  // The owner changed notta.tax-rate to 8.25%. The screen used to hold its own 3%,
+  // so the guest was shown $23.69 and then charged $24.90.
+  taxRate = 0.0825;
+  const { container } = await renderScreen();
+
+  await userEvent.click(menuCard('Chicken Cutty'));
+  await userEvent.click(menuCard('Fries'));
+
+  // 17.00 + 6.00 = 23.00, 8.25% tax = 1.8975 -> 1.90, total = 24.90
+  const totals = container.querySelector('.order-totals');
+  expect(await within(totals).findByText('Tax (8.25%):')).toBeInTheDocument();
+  expect(within(totals).getByText('$23.00')).toBeInTheDocument();
+  expect(within(totals).getByText('$1.90')).toBeInTheDocument();
+  expect(within(totals).getByText('$24.90')).toBeInTheDocument();
+});
+
+test('when the tax rate cannot be loaded, the screen shows no tax or total rather than a guess', async () => {
+  settingsFail = true;
+  jest.spyOn(console, 'error').mockImplementation(() => {});      // The failed load is logged; keep the test output quiet
+  const { container } = await renderScreen();
+
+  await userEvent.click(menuCard('Chicken Cutty'));
+  await userEvent.click(menuCard('Fries'));
+
+  // The subtotal needs no rate, so it is still shown. Tax and total are left blank:
+  // a number worked out from a rate the screen made up could differ from the check.
+  const totals = container.querySelector('.order-totals');
+  expect(within(totals).getByText('$23.00')).toBeInTheDocument();
+  expect(within(totals).getByText('Tax:')).toBeInTheDocument();
+  expect(within(totals).getAllByText('--')).toHaveLength(2);
+  expect(within(totals).queryByText('$0.69')).not.toBeInTheDocument();
+
+  // Taking orders does not depend on it: the item can still be sent
+  await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
+  expect(await screen.findByText('15 seconds to edit')).toBeInTheDocument();
+});
+
+// ============================================================================
+// One clock: the countdown is measured on the backend's clock
+// ============================================================================
+
+const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+
+test('the edit window still closes on time on a tablet whose clock is hours behind the backend\'s', async () => {
+  // The backend says "the window closes at 10:00:01" by its own clock. A tablet that
+  // thinks it is 7:00 used to count down three hours, with items that looked editable
+  // long after the kitchen had them.
+  backendClockAheadMs = THREE_HOURS_MS;
+  editWindowMs = 1200;  // Shrink the window so the test does not wait 15 real seconds
+  const { container } = await renderScreen();
+  await userEvent.click(menuCard('Chicken Cutty'));
+
+  await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
+
+  expect(
+    await screen.findByText('Items locked and sent to prep station', {}, { timeout: 4000 })
+  ).toBeInTheDocument();
+  expect(orderList(container).querySelectorAll('.order-item.locked')).toHaveLength(1);
+});
+
+test('the edit window stays open for its full time on a tablet whose clock is hours ahead of the backend\'s', async () => {
+  // The other direction: a tablet that thinks it is 1:00 when the backend says 10:00
+  // used to see the closing time as long past, and locked the items after one second
+  // while the backend still allowed changes.
+  backendClockAheadMs = -THREE_HOURS_MS;
+  const { container } = await renderScreen();
+  await userEvent.click(menuCard('Chicken Cutty'));
+
+  await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
+  await screen.findByText('15 seconds to edit');
+
+  // A little over a second later the countdown is still running, and the item can still be removed
+  expect(await screen.findByText(/^1[34] seconds to edit$/, {}, { timeout: 3000 })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'SEND NOW?' })).toBeInTheDocument();
+  expect(within(orderList(container)).getByRole('button', { name: 'x' })).toBeInTheDocument();
+});
+
+test('reopening a table during its edit window shows the seconds really left, whatever this tablet\'s clock says', async () => {
+  backendClockAheadMs = THREE_HOURS_MS;
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [{
+    orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'limbo', ringInPosition: 0,
+    delayExpiresAt: asBackendTime(backendNow() + 9500)                    // 9 and a half seconds left, by the backend's clock
+  }];
+
+  await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
+
+  expect(await screen.findByText(/^[89] seconds to edit$/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'SEND NOW?' })).toBeInTheDocument();
+});
+
+// ============================================================================
+// Ticket order: every item says where it sits on the order
+// ============================================================================
+
+// The ringInPosition of every item the screen asked the backend to save, in the order asked
+const positionsRungIn = () =>
+  requests.filter(r => r.method === 'POST' && r.path === '/api/order-items').map(r => r.body.ringInPosition);
+
+test('each item is rung in with its place on the order, so the ticket can list them as they were entered', async () => {
+  // The saves go out together and can reach the backend in any order. The place each
+  // item holds on this screen is the only record of what the server tapped first.
+  await renderScreen();
+  await userEvent.click(menuCard('Chicken Cutty'));
+  await userEvent.click(menuCard('Fries'));
+  await userEvent.click(menuCard('Chicken Cutty'));
+
+  await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
+  await screen.findByText('15 seconds to edit');
+
+  expect(positionsRungIn()).toEqual([0, 1, 2]);
+
+  // An item added during the edit window takes the next place
+  await userEvent.click(menuCard('Fries'));
+  await waitFor(() => expect(positionsRungIn()).toEqual([0, 1, 2, 3]));
+});
+
+test('an item added to a reopened table goes after everything already on the check', async () => {
+  // Positions 0 and 4: an earlier item was removed, so the numbers have a gap. The next
+  // item goes after the highest one in use, not at "number of items on screen".
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [
+    { orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired', ringInPosition: 0 },
+    { orderItemId: 51, menuItemId: 2, price: 6.0, quantity: 1, status: 'fired', ringInPosition: 4 }
+  ];
+  const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
+  await within(orderList(container)).findByText('Fries');
+
+  await userEvent.click(menuCard('Chicken Cutty'));
+  await userEvent.click(menuCard('Fries'));
+  await userEvent.click(screen.getByRole('button', { name: 'SAVE DRAFT' }));
+  await screen.findByText('Draft saved! Items remain editable');
+
+  expect(positionsRungIn()).toEqual([5, 6]);
+
+  // A second round saved afterwards carries on from there
+  await userEvent.click(menuCard('Chicken Cutty'));
+  await userEvent.click(screen.getByRole('button', { name: 'SAVE DRAFT' }));
+  await waitFor(() => expect(positionsRungIn()).toEqual([5, 6, 7]));
+});
+
+test('an item that was removed before it was saved leaves no hole in the positions sent', async () => {
+  const { container } = await renderScreen();
+  await userEvent.click(menuCard('Chicken Cutty'));
+  await userEvent.click(menuCard('Fries'));
+  await userEvent.click(menuCard('Chicken Cutty'));
+  // Take the Fries back off before anything is saved
+  await userEvent.click(within(orderList(container)).getAllByRole('button', { name: 'x' })[1]);
+
+  await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
+  await screen.findByText('15 seconds to edit');
+
+  expect(positionsRungIn()).toEqual([0, 1]);
 });

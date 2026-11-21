@@ -419,4 +419,32 @@ class DatabaseMigrationTest {
         assertEquals("NO", value(jdbcUrl, "SELECT is_nullable FROM information_schema.columns "
                 + "WHERE table_name = 'staff' AND column_name = 'must_change_pin'"));
     }
+
+    // ------------------------------------------------------------------
+    // V6: an order item's place on its order
+    // ------------------------------------------------------------------
+
+    @Test
+    void testV6_ShouldGiveExistingItemsPositionZeroAndDefaultNewRowsToZero() throws Exception {
+        // WHAT: Test the ring_in_position column V6 adds to order_items
+        // WHY: Items that existed before the column must end up with a position (the column
+        //      does not allow "no value"), and all the same one, so that the tie-break on ID
+        //      lists old orders exactly as they were listed before. The default matters for
+        //      rows added with plain SQL, which name only some columns.
+
+        // Given - an order item added before the column existed
+        String jdbcUrl = databaseFromBeforeFlyway("v6_ring_in_position");
+
+        // When
+        migrate(jdbcUrl);
+
+        // Then
+        assertEquals("0", value(jdbcUrl, "SELECT ring_in_position FROM order_items"));
+
+        run(jdbcUrl, "INSERT INTO order_items (order_id, menu_item_id, quantity, price, status, delay_seconds, is_locked, created_at) "
+                + "VALUES (1, 1, 1, 17.00, 'draft', 15, false, now())");
+        assertEquals("0", value(jdbcUrl, "SELECT max(ring_in_position) FROM order_items"));
+        assertEquals("NO", value(jdbcUrl, "SELECT is_nullable FROM information_schema.columns "
+                + "WHERE table_name = 'order_items' AND column_name = 'ring_in_position'"));
+    }
 }

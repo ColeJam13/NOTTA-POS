@@ -20,7 +20,18 @@ import java.util.List;
 @Repository
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
-    List<OrderItem> findByOrderId(Long orderId);            // Find all items for specific order
+    // Find all items for specific order, in the order the server rang them in.
+    // (A list with no ORDER BY comes back however the database likes, and that changes
+    // as rows are updated. The sort is written here once so no caller can forget it:
+    // it is the same rule as OrderItem.IN_RING_IN_ORDER.)
+    @Query("SELECT oi FROM OrderItem oi WHERE oi.orderId = :orderId ORDER BY oi.ringInPosition, oi.orderItemId")
+    List<OrderItem> findByOrderId(Long orderId);
+
+    // The highest position in use on an order, or -1 if the order has no items yet.
+    // An item rung in without a position of its own goes one after this.
+    // COALESCE(a, b) means "a, or b when a is missing": MAX of no rows is missing.
+    @Query("SELECT COALESCE(MAX(oi.ringInPosition), -1) FROM OrderItem oi WHERE oi.orderId = :orderId")
+    int findHighestRingInPosition(Long orderId);
 
     List<OrderItem> findByStatus(String status);            // Find items by status
 

@@ -47,7 +47,8 @@ class ActiveOrderControllerTest {
         ActiveOrderItemView item = new ActiveOrderItemView(
                 5L, 2L, "Chicken Cutty", 1, new BigDecimal("17.00"), "pending", "no onions",
                 List.of(new OrderItemModifierView(5L, 16L, "Hashbrowns", new BigDecimal("0.00"))),
-                1L, LocalDateTime.of(2026, 1, 1, 12, 5));          // Made at station 1 (the kitchen), sent at 12:05
+                1L, LocalDateTime.of(2026, 1, 1, 12, 5),           // Made at station 1 (the kitchen), sent at 12:05
+                0);                                                 // The first item rung in on its order
         ActiveOrderView order = new ActiveOrderView(
                 1L, 3L, "W3", false, "Sarah", LocalDateTime.of(2026, 1, 1, 12, 0), List.of(item));
         when(activeOrderService.getActiveOrders()).thenReturn(List.of(order));

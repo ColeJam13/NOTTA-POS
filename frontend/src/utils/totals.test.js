@@ -1,4 +1,4 @@
-import { calculateOrderTotals, modifierUpcharge, priceWithModifiers } from './totals';
+import { calculateOrderTotals, formatTaxRate, modifierUpcharge, priceWithModifiers } from './totals';
 
 /**
  * Tests for the shared money math.
@@ -37,16 +37,38 @@ test('order totals include upcharges because they are already part of each item 
   const fries = { price: 6.0, quantity: 1 };
 
   // 23.00 subtotal, 3% tax = 0.69, total = 23.69
-  expect(calculateOrderTotals([comboPlate, fries])).toEqual({ subtotal: 23, tax: 0.69, total: 23.69 });
+  expect(calculateOrderTotals([comboPlate, fries], 0.03)).toEqual({ subtotal: 23, tax: 0.69, total: 23.69 });
 });
 
 test('tax that lands on exactly half a cent rounds up, the same as the backend', () => {
   // 16.50 x 3% = 0.495. JavaScript stores that as 0.49499999..., which would round DOWN to 0.49
   // while the backend rounds half a cent up to 0.50 - a one cent difference between the order
   // screen and the check.
-  expect(calculateOrderTotals([{ price: 16.5, quantity: 1 }])).toEqual({ subtotal: 16.5, tax: 0.5, total: 17 });
+  expect(calculateOrderTotals([{ price: 16.5, quantity: 1 }], 0.03)).toEqual({ subtotal: 16.5, tax: 0.5, total: 17 });
 });
 
 test('order totals multiply price by quantity and treat a missing quantity as one', () => {
-  expect(calculateOrderTotals([{ price: 3.5, quantity: 3 }, { price: 6 }]).subtotal).toBe(16.5);
+  expect(calculateOrderTotals([{ price: 3.5, quantity: 3 }, { price: 6 }], 0.03).subtotal).toBe(16.5);
+});
+
+test('order totals use whatever tax rate they are given', () => {
+  // The rate comes from the backend (GET /api/settings). Nothing in this file holds one.
+  // 23.00 x 8.25% = 1.8975 -> 1.90
+  expect(calculateOrderTotals([{ price: 23, quantity: 1 }], 0.0825)).toEqual({ subtotal: 23, tax: 1.9, total: 24.9 });
+  // A rate of zero is a real rate (a tax-free item or place), not "no rate"
+  expect(calculateOrderTotals([{ price: 23, quantity: 1 }], 0)).toEqual({ subtotal: 23, tax: 0, total: 23 });
+});
+
+test('with no tax rate there is a subtotal but no tax or total, rather than a guess', () => {
+  // Before the rate has arrived, or if it could not be loaded. A total worked out from a
+  // made-up rate could differ from what the guest is charged.
+  expect(calculateOrderTotals([{ price: 23, quantity: 1 }], null)).toEqual({ subtotal: 23, tax: null, total: null });
+  expect(calculateOrderTotals([{ price: 23, quantity: 1 }])).toEqual({ subtotal: 23, tax: null, total: null });
+});
+
+test('formatTaxRate shows a rate as a percentage with no trailing zeros', () => {
+  expect(formatTaxRate(0.03)).toBe('3%');
+  expect(formatTaxRate(0.0825)).toBe('8.25%');
+  expect(formatTaxRate(0.1)).toBe('10%');
+  expect(formatTaxRate(0)).toBe('0%');
 });

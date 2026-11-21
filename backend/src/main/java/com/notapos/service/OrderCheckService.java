@@ -24,7 +24,9 @@ import java.util.List;
  *       screen needs the same numbers to show the guest. Both ask here, so
  *       the number on screen and the number charged can never differ.
  *
- * The tax rate comes from notta.tax-rate in application.properties.
+ * The tax rate comes from notta.tax-rate in application.properties. This class
+ * is the only one that reads that setting. Anything else that needs the rate
+ * asks here (getTaxRate), so there is one number in the whole app.
  *
  * @author CJ
  */
@@ -43,6 +45,12 @@ public class OrderCheckService {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.taxRate = taxRate;
+    }
+
+    // The tax rate every check is worked out with. The order screen asks for it (through
+    // GET /api/settings) to show a running total that matches what will be charged.
+    public BigDecimal getTaxRate() {
+        return taxRate;
     }
 
     public OrderCheckView getCheck(Long orderId) {                      // Get the check for an order (404 if the order does not exist)

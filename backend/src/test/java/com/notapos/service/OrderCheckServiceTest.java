@@ -213,4 +213,22 @@ class OrderCheckServiceTest {
         assertEquals(new BigDecimal("33.99"), check.total());
         verifyNoInteractions(orderItemRepository);
     }
+
+    @Test
+    void testGetTaxRate_ShouldBeTheRateChecksAreWorkedOutWith() {
+        // WHAT: Test the rate this service hands to anything that asks (GET /api/settings)
+        // WHY: The order screen's running total and the check must use one number. The
+        //      screen is given this value; the check below is worked out with it.
+
+        // Given - a service set to 8.25%, and a $100.00 item
+        OrderCheckService service = new OrderCheckService(orderRepository, orderItemRepository, new BigDecimal("0.0825"));
+
+        // When
+        OrderCheckView check = service.buildCheck(testOrder, List.of(item("pending", "100.00", 1)));
+
+        // Then - the rate handed out is the rate on the check, and the tax is that rate applied
+        assertEquals(new BigDecimal("0.0825"), service.getTaxRate());
+        assertEquals(service.getTaxRate(), check.taxRate());
+        assertEquals(new BigDecimal("8.25"), check.tax());
+    }
 }

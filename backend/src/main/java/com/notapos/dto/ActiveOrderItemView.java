@@ -27,5 +27,6 @@ public record ActiveOrderItemView(
         String specialInstructions,     // Free-text kitchen note, e.g. "no onions" (null when there is none)
         List<OrderItemModifierView> modifiers,      // Chosen modifiers with names, e.g. "French Toast" (empty when there are none)
         Long prepStationId,             // Which station makes it (Kitchen, Bar, ...). Null if the menu item has no station.
-        LocalDateTime sentAt) {         // When the server pressed Send. The kitchen view shows how long a ticket has been waiting. Null for drafts.
+        LocalDateTime sentAt,           // When the server pressed Send. The kitchen view shows how long a ticket has been waiting. Null for drafts.
+        Integer ringInPosition) {       // The item's place on the order as the server entered it. Items arrive sorted by this; the screen keeps that order when it filters.
 }

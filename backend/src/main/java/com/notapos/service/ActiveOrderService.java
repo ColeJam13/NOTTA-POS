@@ -109,9 +109,11 @@ public class ActiveOrderService {
                                    List<OrderItem> items,
                                    Map<Long, MenuItem> menuItemsById,
                                    Map<Long, List<OrderItemModifierView>> modifiersByOrderItemId) {
-        // Items sorted by ID so a line keeps its position when its status changes
+        // Items in the order the server rang them in, so the ticket reads the way the order
+        // was taken and a line keeps its position when its status changes. (This was "by ID",
+        // which is the order the saves happened to arrive in: see OrderItem.IN_RING_IN_ORDER.)
         List<ActiveOrderItemView> itemViews = items.stream()
-                .sorted(Comparator.comparing(OrderItem::getOrderItemId))
+                .sorted(OrderItem.IN_RING_IN_ORDER)
                 .map(item -> {
                     MenuItem menuItem = menuItemsById.get(item.getMenuItemId());
                     return new ActiveOrderItemView(
@@ -124,7 +126,8 @@ public class ActiveOrderService {
                             item.getSpecialInstructions(),
                             modifiersByOrderItemId.getOrDefault(item.getOrderItemId(), List.of()),
                             menuItem != null ? menuItem.getPrepStationId() : null,
-                            item.getSentAt());
+                            item.getSentAt(),
+                            item.getRingInPosition());
                 })
                 .toList();
 

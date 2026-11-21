@@ -4,7 +4,8 @@ import PaymentModal from '../../components/PaymentModal';
 import { formatTableName } from '../../utils/formatters';
 import './CreateOrder.css';
 import { getJson } from '../../services/api';
-import { calculateOrderTotals, modifierUpcharge, priceWithModifiers, TAX_RATE_LABEL } from '../../utils/totals';
+import { onThisDevice } from '../../services/serverClock';
+import { calculateOrderTotals, formatTaxRate, modifierUpcharge, priceWithModifiers } from '../../utils/totals';
 import MenuPanel from './MenuPanel';
 import ModifierPicker from './ModifierPicker';
 import OrderItemsList from './OrderItemsList';
@@ -21,8 +22,13 @@ import {
   loadModifierGroupsByMenuItem,
   updateItemModifiers,
   clearEmptyOrder,
+  nextRingInPosition,
   ORDER_NOT_OPEN
 } from './orderActions';
+
+// What a dollar amount looks like on screen. An amount that cannot be worked out yet
+// (tax and total, before the tax rate has arrived) is shown as "--", never as a guess.
+const money = (amount) => (amount === null ? '--' : `$${amount.toFixed(2)}`);
 
 // How often the order screen re-checks which items are 86'd, in milliseconds
 const MENU_REFRESH_MS = 5000;
@@ -57,8 +63,15 @@ function CreateOrder({ setCurrentView, selectedTable, setSelectedTable }) {
   //   { mode: 'edit', menuItem, groups, item, index }  - an item already on the order
   const [picker, setPicker] = useState(null);
 
-  // Subtotal, tax, and total for the items on screen (shared math with the Payment modal)
-  const totals = calculateOrderTotals(orderItems);
+  // The sales tax rate, as the backend gave it (0.03 = 3%). null until it arrives.
+  // The backend charges with this number; the screen used to keep a copy of its own,
+  // and the two could disagree.
+  const [taxRate, setTaxRate] = useState(null);
+
+  // Subtotal, tax, and total for the items on screen. This is the RUNNING total: it
+  // includes items not saved yet, which the backend has never seen, so it has to be
+  // added up here. The check that is charged is worked out by the backend (Payment modal).
+  const totals = calculateOrderTotals(orderItems, taxRate);
 
   // When the edit window closes, every item still in limbo becomes locked ("pending") on screen.
   // The backend locks them on its own schedule; this keeps the screen in step with it.
@@ -125,9 +138,13 @@ useEffect(() => {
       // If the table was reopened during its edit window, pick the countdown back up.
       // Without this the items looked editable forever, with no countdown and a
       // SEND ORDER button that did nothing.
+      //
+      // delayExpiresAt is a time on the BACKEND's clock. onThisDevice() moves it onto
+      // this device's clock, so it can be compared with new Date() below and counted
+      // down to by the timer, even when this device's own clock is wrong.
       const expiryTimes = openOrder.items
         .filter(item => item.status === 'limbo' && item.delayExpiresAt)
-        .map(item => new Date(item.delayExpiresAt).getTime());
+        .map(item => onThisDevice(item.delayExpiresAt).getTime());
 
       if (expiryTimes.length === 0) {
         showItems(openOrder.items);
@@ -164,6 +181,16 @@ useEffect(() => {
       setMenuItems(data);
     })
     .catch(error => console.error('Error fetching menu items:', error));
+  }, []);
+
+  // Ask the backend for the tax rate. On its own, not together with the menu above: if
+  // this one request fails the menu must still appear, because taking orders does not
+  // depend on it. Until it arrives (or if it never does) the screen shows the subtotal
+  // and leaves tax and total blank.
+  useEffect(() => {
+    getJson('/api/settings')
+      .then(settings => setTaxRate(settings.taxRate))
+      .catch(error => console.error('Error fetching settings:', error));
   }, []);
 
   // Keep the menu in step with the 86 board: every few seconds, ask again which
@@ -208,13 +235,15 @@ useEffect(() => {
 
   // Save any drafts that are not in the database yet and record their new IDs on screen.
   // newIds lines up with orderItems by position: an ID for each item just saved, null otherwise.
+  // newPositions lines up the same way: the place on the order each saved item was given.
+  // It is kept on the item so the next round carries on after it (see nextRingInPosition).
   const saveDrafts = async (orderId) => {
-    const { newIds, failure } = await saveNewDraftItems(orderId, orderItems);
+    const { newIds, newPositions, failure } = await saveNewDraftItems(orderId, orderItems);
 
     setOrderItems(prevItems => prevItems.map((item, index) => {
       const newId = newIds[index];
       if (newId && !item.orderItemId) {
-        return { ...item, orderItemId: newId };
+        return { ...item, orderItemId: newId, ringInPosition: newPositions[index] };
       }
       return item;
     }));
@@ -296,7 +325,11 @@ useEffect(() => {
       console.log('Sent items response:', sentItems);
 
       if (sentItems && sentItems.length > 0) {
-        const expiresAt = new Date(sentItems[0].delayExpiresAt);
+        // The backend says when the window closes, by ITS clock. onThisDevice() moves
+        // that moment onto this device's clock, which is the one the timer counts with.
+        // (Reading it straight into new Date() trusted this device to agree with the
+        // backend about what time it is.)
+        const expiresAt = onThisDevice(sentItems[0].delayExpiresAt);
         console.log('Timer expires at:', expiresAt);
         console.log('Current time:', new Date());
         timer.start(expiresAt);
@@ -427,13 +460,17 @@ useEffect(() => {
     // If timer is active and we have an order, create and send immediately
     if (timer.isRunning && currentOrderId) {
       try {
+        // The new item takes the next free place on the order
+        const ringInPosition = nextRingInPosition(orderItems);
+
         // Create item
         const created = await createDraftItem(currentOrderId, {
           menuItemId: item.menuItemId,
           quantity: 1,
           price: price,
           modifiers: modifiers,
-          specialInstructions: specialInstructions
+          specialInstructions: specialInstructions,
+          ringInPosition: ringInPosition
         });
         console.log('Created item response:', created);
 
@@ -446,6 +483,7 @@ useEffect(() => {
           menuItemId: item.menuItemId,
           name: item.name,
           price: created.price ?? price,                      // Prefer the price the backend worked out
+          ringInPosition: ringInPosition,
           quantity: 1,
           status: 'limbo',
           modifiers: modifiers,
@@ -649,15 +687,15 @@ useEffect(() => {
             <div className="order-totals">
                 <div className="total-row">
                 <span>Subtotal:</span>
-                <span>${totals.subtotal.toFixed(2)}</span>
+                <span>{money(totals.subtotal)}</span>
                 </div>
                 <div className="total-row">
-                <span>Tax ({TAX_RATE_LABEL}):</span>
-                <span>${totals.tax.toFixed(2)}</span>
+                <span>{taxRate === null ? 'Tax:' : `Tax (${formatTaxRate(taxRate)}):`}</span>
+                <span>{money(totals.tax)}</span>
                 </div>
                 <div className="total-row total">
                 <span>TOTAL:</span>
-                <span>${totals.total.toFixed(2)}</span>
+                <span>{money(totals.total)}</span>
                 </div>
             </div>
                 <div className="order-actions">

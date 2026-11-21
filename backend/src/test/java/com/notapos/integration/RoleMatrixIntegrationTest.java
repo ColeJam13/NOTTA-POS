@@ -220,6 +220,9 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
         endpoint("GET /api/table-status-logs/{id}", anyoneSignedIn, () -> get("/api/table-status-logs/" + statusLog.getLogId()));
         endpoint("GET /api/table-status-logs/table/{tableId}", anyoneSignedIn, () -> get("/api/table-status-logs/table/" + busyTable.getTableId()));
 
+        // The settings a screen needs (the tax rate for the running total): anyone who is signed in
+        endpoint("GET /api/settings", anyoneSignedIn, () -> get("/api/settings"));
+
         // Who am I, and signing out: anyone who is signed in
         endpoint("GET /api/staff/me", anyoneSignedIn, () -> get("/api/staff/me"));
         endpoint(SIGN_OUT, anyoneSignedIn, () -> post("/api/staff/sign-out"));

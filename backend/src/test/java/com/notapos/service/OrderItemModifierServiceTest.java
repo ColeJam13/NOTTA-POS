@@ -296,7 +296,7 @@ class OrderItemModifierServiceTest {
 
         // When
         OrderItem created = orderItemModifierService.ringInItem(
-                new OrderItemRequest(77L, COMBO_PLATE_ID, 1, "  no butter  ", Arrays.asList(24L, 14L)));
+                new OrderItemRequest(77L, COMBO_PLATE_ID, 1, "  no butter  ", Arrays.asList(24L, 14L), null));
 
         // Then - saved as an unlocked draft; 15.00 + 2.00 + 4.00 = 21.00
         assertEquals(100L, created.getOrderItemId());
@@ -334,7 +334,7 @@ class OrderItemModifierServiceTest {
 
         // When - quantity left out, no modifier list at all
         OrderItem created = orderItemModifierService.ringInItem(
-                new OrderItemRequest(77L, 40L, null, "no ice", null));
+                new OrderItemRequest(77L, 40L, null, "no ice", null, null));
 
         // Then
         assertEquals(new BigDecimal("3.00"), created.getPrice());
@@ -355,7 +355,7 @@ class OrderItemModifierServiceTest {
 
         // When
         OrderItem created = orderItemModifierService.ringInItem(
-                new OrderItemRequest(77L, COMBO_PLATE_ID, 1, "   ", List.of(8L)));
+                new OrderItemRequest(77L, COMBO_PLATE_ID, 1, "   ", List.of(8L), null));
 
         // Then
         assertNull(created.getSpecialInstructions());
@@ -373,7 +373,7 @@ class OrderItemModifierServiceTest {
         // When & Then
         InvalidModifierSelectionException exception = assertThrows(InvalidModifierSelectionException.class, () ->
                 orderItemModifierService.ringInItem(
-                        new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(22L))));
+                        new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(22L), null)));
 
         assertTrue(exception.getMessage().contains("Bread Choice"));
         verify(orderItemRepository, never()).save(any());
@@ -392,13 +392,13 @@ class OrderItemModifierServiceTest {
         // When & Then - two breads
         InvalidModifierSelectionException twoBreads = assertThrows(InvalidModifierSelectionException.class, () ->
                 orderItemModifierService.ringInItem(
-                        new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L, 14L))));
+                        new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L, 14L), null)));
         assertTrue(twoBreads.getMessage().contains("Bread Choice"));
 
         // ...and three add-ons where two are allowed
         InvalidModifierSelectionException threeAddOns = assertThrows(InvalidModifierSelectionException.class, () ->
                 orderItemModifierService.ringInItem(
-                        new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L, 22L, 23L, 24L))));
+                        new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L, 22L, 23L, 24L), null)));
         assertTrue(threeAddOns.getMessage().contains("Add-Ons"));
 
         verify(orderItemRepository, never()).save(any());
@@ -416,7 +416,7 @@ class OrderItemModifierServiceTest {
         // When & Then
         InvalidModifierSelectionException exception = assertThrows(InvalidModifierSelectionException.class, () ->
                 orderItemModifierService.ringInItem(
-                        new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L, 30L))));
+                        new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L, 30L), null)));
 
         assertTrue(exception.getMessage().contains("30"));
         verify(orderItemRepository, never()).save(any());
@@ -434,7 +434,7 @@ class OrderItemModifierServiceTest {
 
         // When - French Toast (+$2) sent twice
         OrderItem created = orderItemModifierService.ringInItem(
-                new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, Arrays.asList(14L, 14L)));
+                new OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, Arrays.asList(14L, 14L), null));
 
         // Then - 15.00 + 2.00 once
         assertEquals(new BigDecimal("17.00"), created.getPrice());
@@ -449,7 +449,7 @@ class OrderItemModifierServiceTest {
         // When & Then
         assertThrows(ResourceNotFoundException.class, () ->
                 orderItemModifierService.ringInItem(
-                        new OrderItemRequest(77L, 999L, 1, null, List.of())));
+                        new OrderItemRequest(77L, 999L, 1, null, List.of(), null)));
 
         verify(orderItemRepository, never()).save(any());
     }
@@ -681,7 +681,7 @@ class OrderItemModifierServiceTest {
         com.notapos.exception.ItemUnavailableException exception = assertThrows(
                 com.notapos.exception.ItemUnavailableException.class,
                 () -> orderItemModifierService.ringInItem(
-                        new com.notapos.dto.OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L))));
+                        new com.notapos.dto.OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L), null)));
         assertTrue(exception.getMessage().contains("Combo Plate"));
         verify(orderItemRepository, never()).save(any());
     }
@@ -697,7 +697,7 @@ class OrderItemModifierServiceTest {
 
         // When & Then
         assertThrows(com.notapos.exception.OrderNotOpenException.class, () -> orderItemModifierService.ringInItem(
-                new com.notapos.dto.OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L))));
+                new com.notapos.dto.OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L), null)));
         verify(menuItemRepository, never()).findById(any());
         verify(orderItemRepository, never()).save(any());
     }
@@ -716,7 +716,7 @@ class OrderItemModifierServiceTest {
         com.notapos.exception.ItemUnavailableException exception = assertThrows(
                 com.notapos.exception.ItemUnavailableException.class,
                 () -> orderItemModifierService.ringInItem(
-                        new com.notapos.dto.OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L))));
+                        new com.notapos.dto.OrderItemRequest(77L, COMBO_PLATE_ID, 1, null, List.of(8L), null)));
         assertTrue(exception.getMessage().contains("no longer on the menu"));
         verify(orderItemRepository, never()).save(any());
     }
@@ -738,7 +738,7 @@ class OrderItemModifierServiceTest {
 
         // When - with no modifier list at all, as a plain item sends
         OrderItem saved = orderItemModifierService.ringInItem(
-                new com.notapos.dto.OrderItemRequest(77L, 2L, 1, null, null));
+                new com.notapos.dto.OrderItemRequest(77L, 2L, 1, null, null, null));
 
         // Then
         assertEquals(new BigDecimal("6.00"), saved.getPrice());
@@ -763,5 +763,74 @@ class OrderItemModifierServiceTest {
         verify(orderItemModifierRepository, never()).deleteByOrderItemId(any());
         verify(orderItemRepository, never()).save(any());
         assertEquals(new BigDecimal("15.00"), existing.getPrice());
+    }
+
+    // ------------------------------------------------------------------------
+    // Where a rung-in item sits on its order (ringInPosition)
+    // ------------------------------------------------------------------------
+
+    // A $6.00 item with no modifier groups, ready to be rung in
+    private void friesCanBeRungIn() {
+        MenuItem fries = new MenuItem();
+        fries.setMenuItemId(2L);
+        fries.setName("Fries");
+        fries.setPrice(new BigDecimal("6.00"));
+        when(menuItemRepository.findById(2L)).thenReturn(Optional.of(fries));
+        when(menuModifierService.getModifierGroupsForMenuItem(2L)).thenReturn(List.of());
+        when(orderItemRepository.save(any(OrderItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    @Test
+    void testRingInItem_ShouldSaveThePositionTheScreenSent() {
+        // WHAT: Test ringing in an item whose request says it is the fourth item on the order
+        // WHY: The screen saves a round of items with several requests at once, and they
+        //      arrive in any order. The position is the only record of what the server
+        //      tapped first, so it is saved exactly as sent.
+
+        // Given
+        friesCanBeRungIn();
+
+        // When
+        OrderItem saved = orderItemModifierService.ringInItem(
+                new OrderItemRequest(77L, 2L, 1, null, null, 3));
+
+        // Then - saved as sent, and the order's other items were not looked at to decide it
+        assertEquals(3, saved.getRingInPosition());
+        verify(orderItemRepository, never()).findHighestRingInPosition(any());
+    }
+
+    @Test
+    void testRingInItem_WithNoPosition_ShouldGoAfterTheHighestOnTheOrder() {
+        // WHAT: Test ringing in an item whose request says nothing about position
+        // WHY: An item that does not say where it belongs goes after everything already
+        //      on the order, never ahead of it
+
+        // Given - the order's items hold positions up to 4
+        friesCanBeRungIn();
+        when(orderItemRepository.findHighestRingInPosition(77L)).thenReturn(4);
+
+        // When
+        OrderItem saved = orderItemModifierService.ringInItem(
+                new OrderItemRequest(77L, 2L, 1, null, null, null));
+
+        // Then
+        assertEquals(5, saved.getRingInPosition());
+    }
+
+    @Test
+    void testRingInItem_WithNoPositionOntoAnEmptyOrder_ShouldBeFirst() {
+        // WHAT: Test the same request onto an order with nothing on it yet
+        // WHY: "No items" is reported as -1, so that one more than it is 0: the first place
+
+        // Given
+        friesCanBeRungIn();
+        when(orderItemRepository.findHighestRingInPosition(77L)).thenReturn(-1);
+
+        // When
+        OrderItem saved = orderItemModifierService.ringInItem(
+                new OrderItemRequest(77L, 2L, 1, null, null, null));
+
+        // Then
+        assertEquals(0, saved.getRingInPosition());
     }
 }
