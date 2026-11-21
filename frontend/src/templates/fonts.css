@@ -1,0 +1,34 @@
+/*
+ * THE FONTS THE TEMPLATES USE, shipped with the app.
+ *
+ * "@font-face" tells the browser: when a stylesheet asks for a font by this name, here
+ * is the file to draw it with. The files are in src/fonts and are built into the app,
+ * so they come from the same place as the rest of it.
+ *
+ * WHY THEY SHIP WITH THE APP: the pixel font used to be fetched from Google Fonts by a
+ * line in index.html. A restaurant whose internet is down, or a tablet on a network
+ * that only reaches the backend, then drew every screen in a plain typewriter font.
+ * Nothing in the app is loaded from the internet now.
+ *
+ * A browser only downloads a font once something on screen uses it, so a font listed
+ * here costs nothing on a template that never names it.
+ *
+ * A NEW TEMPLATE THAT NEEDS A FONT: put the file in src/fonts (with its license, and
+ * check the license allows shipping it inside an app), add a block here, and name it
+ * in the template's --font-... tokens.
+ */
+
+/* The pixel font of the 8-Bit template. SIL Open Font License: src/fonts/PressStart2P-OFL.txt.
+   "swap" draws text in a fallback font for the moment before this one has loaded, in
+   place of drawing nothing; it is what the Google Fonts line asked for too. */
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('../fonts/PressStart2P-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+/* The gothic font of the NOTTA-POS logo in the top bar */
+@font-face {
+  font-family: 'GothicByte';
+  src: url('../fonts/GothicByte.ttf') format('truetype');
+}

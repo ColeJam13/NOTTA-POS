@@ -8,12 +8,24 @@
   <meta name="description" content="Notta-POS - Restaurant Point of Sale System" />
   <link rel="apple-touch-icon" href="/logo192.png" />
   <link rel="manifest" href="/manifest.json" />
-  
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  
+
+  <!-- No fonts are fetched from the internet: they ship with the app (src/templates/fonts.css). -->
+
+  <!-- THE TEMPLATE (the look of every screen), set before anything is drawn.
+       The app learns which template the restaurant uses from the backend, but only once
+       someone has signed in. This device remembers the last answer, and this line puts
+       it on the page straight away, so the PIN pad is already in the right look and the
+       screen does not flash from one look to another while the app starts.
+       src/templates/index.js writes the remembered name and explains the rest.
+       A name no stylesheet knows changes nothing: the page is drawn in the default. -->
+  <script>
+    try {
+      document.documentElement.setAttribute('data-template', window.localStorage.getItem('notta.template') || '8-bit');
+    } catch (error) {
+      document.documentElement.setAttribute('data-template', '8-bit');      // Storage is switched off in this browser
+    }
+  </script>
+
   <title>Notta-POS</title>
 </head>
 <body>

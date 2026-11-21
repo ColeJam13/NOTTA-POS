@@ -63,7 +63,27 @@
   font-size: var(--font-size-10);
   font-family: var(--font-body);
   padding: var(--space-3) var(--space-6);
-  border-radius: 50%
+  border-radius: var(--radius-round);
+}
+
+/* The gear that opens Settings (managers only). Drawn like the notifications button
+   beside it, and filled in while the Settings screen is open. */
+.settings-btn {
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: var(--border-width) solid var(--color-border);
+  color: var(--color-text);
+  padding: var(--space-10) var(--space-12);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.settings-btn:hover,
+.settings-btn.active {
+  background: var(--color-accent-fill);
+  color: var(--color-on-accent);
 }
 
 .user-info {

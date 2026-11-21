@@ -94,8 +94,13 @@ test('"5m ago" is measured from the backend\'s now', () => {
   // A check closed five minutes ago by the backend's clock, read on a device two hours behind.
   // By the device's own clock that moment is almost two hours in the FUTURE, which
   // used to be shown as "0m ago".
+  //
+  // Five and a HALF minutes, so the answer is "5m" with half a minute to spare either
+  // way. With exactly five minutes the test failed about one run in a few hundred: the
+  // two clock readings below are a millisecond or two apart, which was sometimes just
+  // enough to make it four minutes and 59.999 seconds.
   noteServerTime(answerFromABackend(TWO_HOURS_MS));
-  const closedAt = asBackendTime(Date.now() + TWO_HOURS_MS - 5 * 60 * 1000);
+  const closedAt = asBackendTime(Date.now() + TWO_HOURS_MS - 5.5 * 60 * 1000);
 
   expect(formatTimeAgo(closedAt)).toBe('5m ago');
 });

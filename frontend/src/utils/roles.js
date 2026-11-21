@@ -17,6 +17,7 @@
  *   start and complete items              kitchen, bartender, manager
  *   86 and un-86                          kitchen, bartender, manager
  *   menu, staff, Financials, floor layout manager
+ *   choose the template (Settings)        manager
  *
  * A role of null means "nobody is signed in". In the running app that never
  * reaches these functions, because the PIN screen comes first. It does happen
@@ -38,7 +39,7 @@ const FLOOR_SCREENS = ['floorMap', 'activeTables', 'quickOrders', 'activeOrders'
 
 // The screens each role may open (everyone may open 'home')
 const SCREENS_BY_ROLE = {
-  manager: [...FLOOR_SCREENS, 'financials', 'staff'],     // Managers see everything
+  manager: [...FLOOR_SCREENS, 'financials', 'staff', 'settings'],     // Managers see everything
   server: FLOOR_SCREENS,
   bartender: FLOOR_SCREENS,
   // Hosts seat guests, and may also open a check, ring in, and take payment (owner's
