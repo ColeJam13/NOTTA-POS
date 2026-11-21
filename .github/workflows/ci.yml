@@ -1,9 +1,9 @@
 # ============================================================================
 # NOTTA-POS Continuous Integration
 # ============================================================================
-# WHAT: Runs the backend test suite and a frontend build + test on GitHub's
-#       servers every time a pull request is opened or updated, and on every
-#       push to main.
+# WHAT: Runs the backend test suite, a frontend lint + build + test, and a
+#       check of the packaged jar on GitHub's servers every time a pull
+#       request is opened or updated, and on every push to main.
 # WHY:  A pull request shows a green check or a red X before it is merged, so
 #       broken code is caught without anyone having to run the tests by hand.
 # ============================================================================
@@ -90,3 +90,63 @@ jobs:
       # "npm test" runs every test once and exits (vitest run)
       - name: Run tests
         run: npm test
+
+  # --------------------------------------------------------------------------
+  # Packaged build: the one jar that is copied to another machine
+  # --------------------------------------------------------------------------
+  # The two jobs above test the code. This one tests the FILE: it makes the
+  # package the way ./package.sh always does, starts it as one program against
+  # an empty database, and checks from the outside that it serves the screens
+  # and still guards the API (deploy/smoke-test.sh says exactly what).
+  package:
+    name: Packaged build (one jar)
+    runs-on: ubuntu-latest
+
+    # A "service" is a container GitHub starts beside the job and removes after
+    # it: here, an empty PostgreSQL database for the jar to start against.
+    # The password is made up for this throwaway database and guards nothing.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: notta_pos
+          POSTGRES_USER: nottauser
+          POSTGRES_PASSWORD: only-for-this-ci-run
+        ports:
+          - 5432:5432
+        # Wait until the database answers before the steps below begin
+        options: >-
+          --health-cmd "pg_isready -U nottauser -d notta_pos"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Builds the frontend, puts it inside the backend's jar, and checks the jar
+      # has it. The tests are not run again here: the two jobs above run them.
+      - name: Make the package
+        run: ./package.sh
+
+      # The app reads the database password from NOTTA_DB_PASSWORD when there is
+      # no application-local.properties (see application.properties)
+      - name: Start the jar and check it works
+        env:
+          NOTTA_DB_PASSWORD: only-for-this-ci-run
+        run: ./deploy/smoke-test.sh

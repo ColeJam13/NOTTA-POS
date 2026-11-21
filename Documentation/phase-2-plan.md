@@ -34,8 +34,8 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 5 | A4. Sign-in hardening and sessions in the database | Done (#283) |
 | 6 | A5. Small consistency fixes | Done (#284) |
 | 7 | P1. Replace Create React App with Vite | Done (#285) |
-| 8 | **P2. One thing to start, and the home test host** | Next |
-| 9 | B4a. Design tokens: every screen reads its look from named values | |
+| 8 | P2. One thing to start, and the home test host | Done (#286) |
+| 9 | **B4a. Design tokens: every screen reads its look from named values** | Next |
 | 10 | B4b and B4c. Template system, then the new templates | D9 |
 | 11 | P3. Phone-sized screens | |
 | 12 | P4. HTTPS on a private network, and the installable app | D8 |
@@ -181,6 +181,16 @@ Done when: `npm run build`, the tests, and CI pass on the new tool, `./start.sh`
 
 ### P2. One thing to start, and the home test host
 
+**Done 2026-11-21 (#286), with the Windows steps still to be confirmed on the real machine.** `./package.sh` makes `release/notta-pos/notta-pos.jar`: the backend with the built frontend inside, serving both from one address. `deploy/windows` has the start and backup scripts. `Documentation/test-host.md` is the step-by-step, and ends with a checklist for the owner. What was decided along the way, beyond the text below:
+
+- **The frontend's files are readable without a sign-in, as an exact list** (`SecurityConfig.FRONTEND_FILES`). The sign-in screen is one of those files, so this could not be avoided; a list, and GET only, keeps "everything else is closed" true for whatever is added later. `CLAUDE.md` said not to add an open address without the owner's say: this step of the plan is taken as that say, and it is called out in the pull request for the owner to confirm.
+- **A built app with no address set calls the address it was loaded from.** That is the whole of "the CORS setting and the API address setting are only needed in development". Development is unchanged.
+- **The package is built on the development machine and copied over.** The test host needs Java and PostgreSQL only, not Node.js or Maven. The package script does not run the tests unless asked (`--with-tests`): package from a `main` that CI has passed.
+- **A third CI job makes the package and starts it** against an empty database (`deploy/smoke-test.sh`). The other tests run the code; this one runs the file that gets copied.
+- **Built assets are cached by the device for a year, `index.html` never**, so phones do not download the app on every visit and still get an update at once.
+- **The app runs in a window on the test host, started by a double-click.** Running it as a Windows service that starts with the machine was left out: it needs a third-party wrapper or a scheduled task, and a test host is better served by a window whose log can be read.
+- **What Claude could and could not check.** The jar: built, started from an empty folder, and clicked through on Linux at the machine's network address (not `localhost`), which is what a phone does. The PowerShell scripts: parsed by Windows PowerShell 5.1 and run as far as their first check ("Java is not installed"), which is as far as they go on a Windows without Java. Not checked: everything in the guide from step 1 onward on a real Windows 10 machine.
+
 The owner wants to run the app on a Windows 10 machine at home (it also runs a media server) and reach it from phones and tablets on the home Wi-Fi.
 
 Build:
@@ -288,7 +298,7 @@ Owner actions still open unless already done: turn on branch protection for `mai
 
 ## How to continue
 
-1. Start P2. It needs no decision from the owner. Part A and P1 are finished.
+1. Start B4a. It needs no decision from the owner. Part A, P1, and P2 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
 2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 
 ## Completed

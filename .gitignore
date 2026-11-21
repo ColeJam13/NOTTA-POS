@@ -136,6 +136,14 @@ HELP.md
 spring-shell.log
 
 # ============================================================================
+# The packaged build (made by ./package.sh)
+# ============================================================================
+# backend/target-packaged is where the "packaged" Maven profile builds.
+# release/ is the folder to copy to the machine the app will run on.
+target-packaged/
+release/
+
+# ============================================================================
 # Settings for one computer only (database password and the like)
 # ============================================================================
 application-local.properties

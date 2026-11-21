@@ -1,0 +1,5 @@
+# Windows command files must have Windows line endings (CR LF) to run reliably,
+# whichever system they were written or checked out on. "text eol=crlf" tells git
+# to check them out that way everywhere. (package.sh also converts the Windows
+# scripts when it copies them, so a package is right even from an old checkout.)
+*.cmd text eol=crlf

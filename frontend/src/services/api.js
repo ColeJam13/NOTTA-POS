@@ -7,10 +7,18 @@
  *       machine, a tablet on the restaurant network, a deployed backend) meant
  *       editing every one of them. Now it is one setting.
  *
+ * WHERE THE BACKEND IS (see backendAddressFrom below):
+ *   - While developing ("npm start"), the frontend and the backend are two
+ *     programs on two ports, and the backend is at http://localhost:8080.
+ *   - In the packaged build, the backend serves the frontend itself, so the
+ *     backend is wherever the page was loaded from. A phone that opened
+ *     http://192.168.1.50:8080 sends its requests to that same address, with
+ *     nothing to set.
+ *
  * HOW TO CHANGE THE BACKEND ADDRESS:
  *   Create a file named ".env.local" in the frontend folder containing:
  *       VITE_API_URL=http://192.168.1.50:8080
- *   then restart "npm start". With no setting, localhost:8080 is used.
+ *   then restart "npm start". The setting wins over both cases above.
  *   (Vite, the build tool, only shows the app environment variables whose
  *   names start with VITE_, and the app reads them from import.meta.env.
  *   The name was REACT_APP_API_URL, read from process.env, while the app
@@ -46,8 +54,27 @@ export const setOnSessionEnded = (handler) => {
 // request helpers, because both the order screen and the payment window need it.
 export const ORDER_NOT_OPEN = 'ORDER_NOT_OPEN';
 
+/**
+ * Work out the backend's address from the app's settings.
+ *
+ *   1. A VITE_API_URL setting, if there is one.
+ *   2. Otherwise, while developing (and in the tests): http://localhost:8080.
+ *   3. Otherwise (a built app with no setting): '' - nothing in front of the
+ *      path, so '/api/tables' goes to the address the page itself came from.
+ *      That is the packaged build, where the backend serves the frontend.
+ *
+ * It is a function of its own, and not one line below, so the three cases can
+ * be tested: the real settings are fixed when the app is built.
+ *
+ * @param {Object} env - import.meta.env: { VITE_API_URL, DEV, ... }. DEV is true
+ *                       under "npm start" and in the tests, false in a built app.
+ * @returns {string} - The address, with no trailing slash ('' means "same address")
+ */
+export const backendAddressFrom = ({ VITE_API_URL, DEV }) =>
+  VITE_API_URL || (DEV ? 'http://localhost:8080' : '');
+
 // Base address of the Spring Boot backend - no trailing slash
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+export const API_BASE_URL = backendAddressFrom(import.meta.env);
 
 /**
  * Drop-in replacement for fetch() that prefixes the backend address.

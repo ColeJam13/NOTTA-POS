@@ -143,4 +143,57 @@
             </plugin>
         </plugins>
     </build>
+
+    <!--
+        The packaged build: ONE runnable file with the frontend inside it.
+
+        A "profile" is a set of build settings that only applies when it is asked for by
+        name:  mvn -Ppackaged package.  Everyday commands (mvn test, mvn spring-boot:run)
+        do not ask for it and are not changed by it.
+
+        Use ../package.sh, not this profile directly. The script builds the frontend
+        first (this profile only copies what that build left in frontend/build) and
+        checks the result.
+
+        What the profile does:
+          1. Builds into backend/target-packaged, not backend/target, so making a package
+             never disturbs a backend that is running from target/ at the same time.
+          2. Copies the built frontend into the jar under static/. Spring Boot serves
+             whatever is in that folder, so the one program answers both the app's pages
+             and its API (see WebConfig and SecurityConfig.FRONTEND_FILES).
+          3. Names the result notta-pos.jar.
+    -->
+    <profiles>
+        <profile>
+            <id>packaged</id>
+            <build>
+                <directory>${project.basedir}/target-packaged</directory>
+                <finalName>notta-pos</finalName>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-built-frontend</id>
+                                <!-- "prepare-package" is the step just before the jar is made -->
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/../frontend/build</directory>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
