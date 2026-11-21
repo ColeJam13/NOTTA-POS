@@ -74,7 +74,7 @@ Git ignores `backend/application-local.properties`, so it stays on your computer
 
 **3. Start the app** with `./start.sh`. The first start creates the tables.
 
-**4. Sign in.** The app opens on a PIN pad. A new database starts with one person: a manager whose PIN is **1234**. Sign in with it, open STAFF, and give that manager a new PIN before anything else. Then add your staff there, each with a role and a PIN of their own.
+**4. Sign in.** The app opens on a PIN pad. A new database starts with one person: a manager whose PIN is **1234**. Sign in with it and the app asks you to choose a new PIN before it shows anything else. Then open STAFF and add your staff, each with a role and a PIN of their own.
 
 **5. Demo data.** With the app started once, load the demo restaurant's menu, modifiers, and tables:
 
@@ -102,6 +102,18 @@ To open the app from a tablet on the same network, two settings need the address
 
 - `frontend/.env.local`: `VITE_API_URL=http://192.168.1.50:8080` (where the frontend finds the backend)
 - `backend/src/main/resources/application.properties`: add `http://192.168.1.50:3000` to `notta.cors.allowed-origins` (which addresses the backend answers)
+
+## Running it on another machine (one file)
+
+For a machine that is only going to *use* the app (a home test host, and later a restaurant's back-office computer), the app is packaged as one file with the screens inside it. That machine needs Java and PostgreSQL, not Node.js or Maven, and there is one address to open.
+
+```bash
+./package.sh
+```
+
+This leaves `release/notta-pos/` (and the same folder zipped): `notta-pos.jar`, Windows start and backup scripts, the settings file to fill in, the seed data, and the guide. Started with `java -jar notta-pos.jar`, it serves the screens and the API together at `http://<that machine>:8080`.
+
+**`Documentation/test-host.md`** is the step-by-step for a Windows machine with nothing installed, including the firewall rule, backups, and updating.
 
 ## Tests
 

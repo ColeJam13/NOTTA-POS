@@ -16,13 +16,13 @@ You need Node.js 22 or 24 (20.19 is the oldest that works).
 | `npm run test:watch` | Runs the tests, then runs them again whenever a file changes. |
 | `npm run lint` | Checks the code against the rules in `eslint.config.js`. Any warning fails it. |
 | `npm run build` | Builds the files for a server into `build/`. |
-| `npm run preview` | Serves what `npm run build` made, to check a build before it is put anywhere. |
+| `npm run preview` | Serves what `npm run build` made, to check a build before it is put anywhere. A built app looks for the backend at the address it was loaded from, so build with `VITE_API_URL=http://localhost:8080 npm run build` first, or the screens will load and every request will fail. |
 
 CI runs `lint`, `build`, and `test` on every pull request.
 
 ## Settings
 
-- **Where the backend is.** With no setting, `http://localhost:8080`. To point somewhere else, create `.env.local` in this folder containing `VITE_API_URL=http://192.168.1.50:8080` and restart `npm start`. Only settings whose names start with `VITE_` reach the app, and the app reads them from `import.meta.env` (`src/services/api.js`).
+- **Where the backend is.** Under `npm start`, with no setting, `http://localhost:8080`. A built app with no setting uses the address it was loaded from, which is what the packaged build needs (`../package.sh`; the backend then serves these screens itself). To point somewhere else, create `.env.local` in this folder containing `VITE_API_URL=http://192.168.1.50:8080` and restart `npm start`. Only settings whose names start with `VITE_` reach the app, and the app reads them from `import.meta.env` (`src/services/api.js`).
 - **Another port.** `PORT=3001 npm start`. The backend must allow that address (`notta.cors.allowed-origins`).
 
 ## Things that differ from Create React App
