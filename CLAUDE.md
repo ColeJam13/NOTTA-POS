@@ -16,8 +16,8 @@ backend/    Spring Boot 3.5 (Java 21, Maven), PostgreSQL
     dto/         response shapes that combine several entities
     enums/       status values (OrderItemStatus, OrderStatus, TableStatus, PaymentStatus) and StaffRole
     exception/   one exception per kind of refusal, and GlobalExceptionHandler, which turns each into a status code
-    security/    StaffSessionInterceptor (sign-in sessions) and @RequiresRole
-    config/      WebConfig (CORS, registers the interceptor), FirstManagerSetup
+    security/    StaffSessionStore (who is signed in), StaffSession, StaffTokenFilter (reads the token on each request)
+    config/      SecurityConfig (Spring Security set-up), WebConfig (CORS), FirstManagerSetup
     scheduled/   TimerScheduledTask - locks items when the edit window expires
   src/main/resources/db/migration/   Flyway migrations: V1__baseline.sql, V2__..., one numbered SQL file per schema change
   peach-blossom-seed-data.sql   menu, modifiers, and tables for the demo restaurant
@@ -48,7 +48,7 @@ Documentation/            spec sheet, data model, UX mockups, and phase-2-plan.m
 4. **Preserve existing comments** when editing or moving code. Dropping them during a refactor has been a recurring problem.
 5. **Explain new or complex concepts** when introducing them (in comments and in the PR description).
 6. **Verify before handing over.** Run the backend tests and the frontend build and tests. For anything that touches a screen, run the app and click through it. Say plainly in the PR what was and was not verified.
-7. **Tests come with the code.** Each service method and endpoint gets tests in the existing style (Mockito for services, `@WebMvcTest` for controllers, Testcontainers for repositories). For frontend refactors, write behavior tests against the old code first.
+7. **Tests come with the code.** Each service method and endpoint gets tests in the existing style (Mockito for services, `@ControllerTest` for controllers, Testcontainers for repositories). For frontend refactors, write behavior tests against the old code first.
 8. **Refer to file and method names, not line numbers.** Line numbers go stale.
 9. Plain, direct communication. No emojis.
 
@@ -74,9 +74,13 @@ When pair-programming interactively instead of automating: ask before writing co
 - **Avoid N+1 queries:** when a screen needs several entities together, add one endpoint that returns a DTO built from batched `WHERE ... IN` queries (see `ActiveOrderService`, `TableOverviewService`, and `FinancialsReportService`). `JOIN FETCH` does not apply because entities are not linked by JPA relationships.
 - **Prefer a data-model change over a React workaround.** Example: Quick Orders were kept off the floor map with an `is_quick_order` column, not a frontend filter.
 - **Frontend requests** go through `apiFetch` / `getJson` / `sendJson` in `services/api.js`. Never hardcode the backend address. `apiFetch` also adds the signed-in person's token, so a request made with plain `fetch` would arrive as nobody.
-- **Permissions are decided twice.** `utils/roles.js` decides what a role is offered on screen; `@RequiresRole` on the controller method decides what the backend allows. Hiding a button is for a tidy screen, not for security: anything that must be restricted needs the annotation. A controller test for a restricted endpoint must sign in first (see `StaffControllerTest` for the pattern: autowire `StaffSessionInterceptor`, call `createSession`, send the token header).
+- **Sign-in and permissions run on Spring Security** (`config/SecurityConfig`). Three pieces: `StaffSessionStore` keeps who is signed in; `StaffTokenFilter` reads `X-Staff-Token` on every request and tells Spring Security who is asking and their role (authentication); a rule on the controller method says who may call it (authorization). Stateless, no cookie, no login page, no HTTP Basic, CSRF off because the token is a header and not a cookie. PINs are still checked by `StaffService`. Check the Spring Security documentation for the version in use before changing `SecurityConfig`; do not write its configuration from memory.
+- **A role rule is `@PreAuthorize` on the controller method:** `@PreAuthorize("hasRole('MANAGER')")` or `@PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN', 'BARTENDER')")`. The names are the `StaffRole` constants. A method with no rule is open to everyone (until A3b). A new rule must be added to the table in `SignInRulesIntegrationTest`, which calls every restricted endpoint as nobody and as each role; a test there fails until it is.
+- **A refusal is answered by `GlobalExceptionHandler.handleAccessDenied`:** 401 "Sign in to do that." when nobody is signed in, 403 naming the role otherwise. Do not remove that handler: without it a refused request falls into the catch-all and comes out as a 500.
+- **Permissions are decided twice.** `utils/roles.js` decides what a role is offered on screen; `@PreAuthorize` on the controller method decides what the backend allows. Hiding a button is for a tidy screen, not for security: anything that must be restricted needs the annotation.
+- **Controller tests use `@ControllerTest(TheController.class)`, not `@WebMvcTest`.** It is `@WebMvcTest` plus the security set-up. To act as someone, autowire `SignIn` and add `.with(signIn.asManager())` (or `asServer()`, `asKitchen()`, `as(7L, "Sarah", StaffRole.SERVER)`) to the request; leave it off to be nobody. Both are in `src/test/java/com/notapos/testsupport`. A plain `@WebMvcTest` does not load `SecurityConfig`, so Spring Boot's fallback refuses every request and the test fails with 401s and 403s that are not this app's rules.
 - **Never return the `Staff` entity from a controller.** It holds the PIN hash. Use `StaffView`.
-- **Reading who is signed in:** on the frontend `const { staff } = useStaff();` (null in a test that draws one screen on its own, which `utils/roles.js` treats as unrestricted). On the backend `@RequestAttribute(name = StaffSessionInterceptor.CURRENT_STAFF, required = false) StaffSession currentStaff`.
+- **Reading who is signed in:** on the frontend `const { staff } = useStaff();` (null in a test that draws one screen on its own, which `utils/roles.js` treats as unrestricted). On the backend a controller method takes `@AuthenticationPrincipal StaffSession currentStaff`, which is null when nobody is signed in.
 - **Money math** goes through `utils/totals.js`.
 - **Reports are added up on the backend.** `GET /api/reports/financials?from=...&to=...` returns the Financials screen's numbers for the checks closed in a period, using `BigDecimal`. The screen only picks the period and draws the answer. `from` and `to` are local date-times with no zone (`2026-11-18T00:00:00`), the same clock orders are stamped with.
 - **The backend works out the check.** `OrderCheckService` adds up an order's sent items, tax, and total; `GET /api/orders/{id}/check` returns it and the Payment modal shows it. `PaymentService.createPayment` charges that number and refuses (409) anything that does not match it. `utils/totals.js` is only for the running total on the order screen and for orders closed before totals were recorded. Draft items are not on the check.
@@ -114,11 +118,11 @@ When pair-programming interactively instead of automating: ask before writing co
 
 ## Current state (November 2026)
 
-Everything through pull request #279 is merged, and `main` passes CI (591 backend tests, 142 frontend tests). Built: CI and the first cleanup pass, modifiers and kitchen notes, the working-state pass over the core flow, the 86 board, the editable floor map, combined endpoints for Tables, Quick Orders, and Financials, the kitchen display, Spring Boot 3.5, the start script, and staff profiles with PIN sign-in and roles.
+Everything through pull request #281 is merged, and `main` passes CI (613 backend tests, 142 frontend tests). Built: CI and the first cleanup pass, modifiers and kitchen notes, the working-state pass over the core flow, the 86 board, the editable floor map, combined endpoints for Tables, Quick Orders, and Financials, the kitchen display, Spring Boot 3.5, the start script, and staff profiles with PIN sign-in and roles.
 
 **The work order from here is `Documentation/phase-2-plan.md`** (revision 2, which followed a check of #275 to #279). Read it before starting anything; its "Order of work" table says what is next. In short:
 
-- Part A fixes defects and open doors in what is built, in order: A1 one server-side ring-in path (done), A2 two terminals on one check (done), A3 lock the API (now on Spring Security, in two pull requests), A4 sign-in hardening and sessions in the database, A5 one tax rate, ticket order, and the clock.
+- Part A fixes defects and open doors in what is built, in order: A1 one server-side ring-in path (done), A2 two terminals on one check (done), A3 lock the API (A3a, the move onto Spring Security with the same rules, is done; A3b, default deny and the role matrix, is next), A4 sign-in hardening and sessions in the database, A5 one tax rate, ticket order, and the clock.
 - Part P is platform work: Vite in place of Create React App, a packaged build and a home test host, phone-sized screens, an installable app, and later store apps with Square.
 - Part B is features: notifications, host view with waitlist, challenges on real data, UI templates (Plain, Coffee Shop, Nightclub, 8-Bit), check handling.
 - It lists decisions that are the owner's (D3 to D9 are open). Ask each one when it is needed. Do not guess and build.
@@ -143,7 +147,8 @@ Known gaps left open on purpose:
 - Parallel draft saves give items IDs that do not follow ring-in order, and Active Orders sorts by ID, so a ticket can list items in a different order than the server entered them.
 - The nav bar shows a hardcoded notification count; the search box does nothing.
 - Sessions are kept in the backend's memory. Restarting the backend signs everyone out, and the app could not run as several backend copies without moving sessions to the database.
-- Only the endpoints marked `@RequiresRole` check who is asking. Ordering, sending, paying, and reading are open to any request that can reach the backend.
+- Only the endpoints marked `@PreAuthorize` check who is asking. Ordering, sending, paying, and reading are open to any request that can reach the backend.
+- A request that is both not allowed and badly formed is answered 400 (the validation message), not 401 or 403: Spring validates the request before the rule on the controller method runs. Nothing is let through. A3b puts the 401 back in front for requests with no sign-in.
 - A session does not end by itself while the screen is in use, and there is no sign-out after a period of no activity. On a shared terminal the next person acts as the last one until someone presses SIGN OUT.
 - The first manager's starting PIN (1234) is the same for every new database. It should be changed on first sign-in; nothing forces that yet.
 
@@ -181,7 +186,7 @@ The original four features, all built. What comes next is in `Documentation/phas
 
 - The owner's decisions: sign-in is a 4-digit PIN, like Toast. Managers see everything; other roles are limited to their own screens.
 - `Staff` (name, role, BCrypt PIN hash, active) and `StaffService`. A PIN belongs to one active person. After five wrong PINs in a minute sign-in pauses for 30 seconds. The last active manager cannot be deactivated or demoted. Bringing back a deactivated person needs a new PIN.
-- `POST /api/staff/sign-in` returns the person and a token. The frontend sends the token in the `X-Staff-Token` header (`services/api.js`). `StaffSessionInterceptor` holds the sessions in memory and enforces `@RequiresRole` on controller methods: 401 with no sign-in, 403 with the wrong role.
+- `POST /api/staff/sign-in` returns the person and a token. The frontend sends the token in the `X-Staff-Token` header (`services/api.js`). `StaffSessionStore` holds the sessions in memory, `StaffTokenFilter` identifies each request, and `@PreAuthorize` rules on controller methods are enforced by Spring Security: 401 with no sign-in, 403 with the wrong role.
 - Restricted on the backend: staff management, the Financials report, and the floor layout (manager); 86 and un-86 (manager, kitchen, bartender). Everything else is open to any request.
 - `utils/roles.js` is the one list of which role may open which screen. `App.js` shows the PIN pad (`views/SignIn`) until someone signs in, and provides who that is through `context/StaffContext.js` (`useStaff()`).
 - `views/Staff` (managers) adds people, changes names and roles, sets new PINs, and deactivates.

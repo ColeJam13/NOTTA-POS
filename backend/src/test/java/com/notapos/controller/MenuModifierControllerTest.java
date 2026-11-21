@@ -6,7 +6,7 @@ import com.notapos.dto.ModifierOptionView;
 import com.notapos.service.MenuModifierService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import com.notapos.testsupport.ControllerTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * @author CJ
  */
-@WebMvcTest(MenuModifierController.class)
+@ControllerTest(MenuModifierController.class)
 class MenuModifierControllerTest {
 
     @Autowired

@@ -4,13 +4,13 @@ import jakarta.validation.Valid;
 import com.notapos.dto.OrderCheckView;
 import com.notapos.entity.Order;
 import com.notapos.enums.OrderStatus;
-import com.notapos.security.StaffSessionInterceptor;
-import com.notapos.security.StaffSessionInterceptor.StaffSession;
+import com.notapos.security.StaffSession;
 import com.notapos.service.OrderCheckService;
 import com.notapos.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.List;
@@ -79,7 +79,7 @@ public ResponseEntity<List<Order>> getAllOrders(
     @PostMapping                                                                // Create new order
     public ResponseEntity<Order> createOrder(
             @Valid @RequestBody Order order,
-            @RequestAttribute(name = StaffSessionInterceptor.CURRENT_STAFF, required = false) StaffSession currentStaff) {
+            @AuthenticationPrincipal StaffSession currentStaff) {            // The signed-in person, or null if nobody is
         // The order belongs to whoever is signed in at the screen that opened it.
         // (The name a screen sends is only used when nobody is signed in.)
         if (currentStaff != null) {

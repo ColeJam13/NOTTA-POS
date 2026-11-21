@@ -1,8 +1,7 @@
 package com.notapos.controller;
 
 import com.notapos.dto.FinancialsReportView;
-import com.notapos.enums.StaffRole;
-import com.notapos.security.RequiresRole;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.notapos.service.FinancialsReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -37,7 +36,7 @@ public class FinancialsReportController {
     // from and to look like 2026-11-18T00:00:00 - a date and time with no time zone,
     // read as the restaurant's own clock (the same clock orders are stamped with).
     // A value Spring cannot read as a date and time becomes a 400.
-    @RequiresRole(StaffRole.MANAGER)                                    // Sales figures are for managers only
+    @PreAuthorize("hasRole('MANAGER')")                                 // Sales figures are for managers only
     @GetMapping                                                         // Get the report for checks closed between two moments
     public ResponseEntity<FinancialsReportView> getReport(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,

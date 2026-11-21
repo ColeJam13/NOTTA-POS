@@ -29,8 +29,8 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 |---|---|---|
 | 1 | A1. One ring-in path | Done |
 | 2 | A2. Two terminals, one check (with Flyway) | Done |
-| 3 | **A3a. Move sign-in onto Spring Security, same rules as today** | Next |
-| 4 | A3b. Default deny, the role matrix, remove unused endpoints | D2 (decided) |
+| 3 | A3a. Move sign-in onto Spring Security, same rules as today | Done (#281) |
+| 4 | **A3b. Default deny, the role matrix, remove unused endpoints** | Next. D2 (decided) |
 | 5 | A4. Sign-in hardening and sessions in the database | D3 |
 | 6 | A5. Small consistency fixes | |
 | 7 | P1. Replace Create React App with Vite | |
@@ -60,6 +60,13 @@ Why this order: security first, because the test host and phones put the backend
 Check the current Spring Security documentation for the version Spring Boot 3.5 brings before writing any of this. Do not write its configuration from memory.
 
 **A3a: move onto Spring Security with no change in behavior.** Its own pull request.
+
+**Done 2026-11-20 (#281).** Spring Security 6.5.11. `StaffSessionStore` holds the sessions, `StaffTokenFilter` identifies each request, the seven rules are `@PreAuthorize` on the same controller methods, and `StaffSessionInterceptor`, `@RequiresRole`, and `NotAllowedException` are deleted. Controller tests use `@ControllerTest` and `SignIn`. `SignInRulesIntegrationTest` was written against the old check first and then held against the new one. Two things to know:
+
+- **One answer changed.** A request that is both not allowed and badly formed (a bad body, a missing parameter) is now answered 400 where it was 401 or 403, because Spring validates a request before a method-level rule runs. Nothing is let through. A3b's "every request needs a session" check runs earlier and puts the 401 back in front for anyone not signed in; a signed-in person with the wrong role and a bad request will keep getting 400.
+- **Responses carry Spring Security's standard headers** (no caching, no framing, no content-type guessing). The frontend does not depend on any of them.
+
+The text below is kept as the record of what was asked for.
 
 - Add the Spring Security starter. No login page, no HTTP Basic, no server-side cookie session.
 - Move the session map out of `StaffSessionInterceptor` into its own class (a session store), so both the old and new code paths can read it during the move and A4 can later swap what is behind it.
@@ -241,7 +248,7 @@ Owner actions still open unless already done: turn on branch protection for `mai
 
 ## How to continue
 
-1. Start A3a.
+1. Start A3b.
 2. Ask D3 while A3b is in review, since A4 follows.
 3. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 

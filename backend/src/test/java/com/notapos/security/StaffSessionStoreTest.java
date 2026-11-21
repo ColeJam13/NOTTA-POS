@@ -1,27 +1,27 @@
 package com.notapos.security;
 
 import com.notapos.enums.StaffRole;
-import com.notapos.security.StaffSessionInterceptor.StaffSession;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit tests for the session-keeping half of StaffSessionInterceptor.
+ * Unit tests for StaffSessionStore, the list of who is signed in.
  *
- * (The half that refuses requests - 401 and 403 - is tested through real
- * requests in the controller tests, for example StaffControllerTest.)
+ * (Refusing requests - 401 and 403 - is tested through real requests in the
+ * controller tests, for example StaffControllerTest, and for every restricted
+ * endpoint at once in SignInRulesIntegrationTest.)
  *
  * @author CJ
  */
-class StaffSessionInterceptorTest {
+class StaffSessionStoreTest {
 
-    private StaffSessionInterceptor sessions;
+    private StaffSessionStore sessions;
 
     @BeforeEach
     void setUp() {
-        sessions = new StaffSessionInterceptor();
+        sessions = new StaffSessionStore();
     }
 
     @Test

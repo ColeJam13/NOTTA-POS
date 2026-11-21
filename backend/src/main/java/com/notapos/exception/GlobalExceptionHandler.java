@@ -1,5 +1,6 @@
 package com.notapos.exception;
 
+import com.notapos.security.StaffSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -8,6 +9,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -51,9 +55,24 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), null);
     }
 
-    @ExceptionHandler(NotAllowedException.class)                                // Signed in, but this role may not do it -> 403
-    public ResponseEntity<ApiError> handleNotAllowed(NotAllowedException ex) {
-        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage(), null);
+    // A "who may do this" rule (@PreAuthorize on a controller method) said no.
+    // Spring Security throws the same exception whether nobody is signed in or the wrong
+    // person is, so the difference is worked out here:
+    //   nobody signed in            -> 401 (the frontend shows the PIN pad)
+    //   signed in, role not allowed -> 403, naming the role
+    // The signed-in person is whoever StaffTokenFilter identified for this request.
+    //
+    // This handler has to exist. Without it the refusal would fall through to the
+    // catch-all at the bottom of this class and come out as a 500.
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex) {
+        Authentication whoIsAsking = SecurityContextHolder.getContext().getAuthentication();
+
+        if (whoIsAsking != null && whoIsAsking.getPrincipal() instanceof StaffSession staff) {
+            return buildResponse(HttpStatus.FORBIDDEN,
+                    "Your role (" + staff.role().getValue() + ") is not allowed to do that.", null);
+        }
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Sign in to do that.", null);
     }
 
     @ExceptionHandler(TooManyAttemptsException.class)                           // Too many wrong PINs in a row -> 429

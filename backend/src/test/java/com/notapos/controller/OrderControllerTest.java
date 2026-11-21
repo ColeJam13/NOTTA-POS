@@ -1,7 +1,6 @@
 package com.notapos.controller;
 
 import com.notapos.enums.StaffRole;
-import com.notapos.security.StaffSessionInterceptor;
 import com.notapos.dto.OrderCheckView;
 import com.notapos.entity.Order;
 import com.notapos.exception.OrderStateException;
@@ -11,7 +10,8 @@ import com.notapos.service.OrderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -34,15 +34,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @author CJ
  */
 
-@WebMvcTest(OrderController.class)
+@ControllerTest(OrderController.class)
 class OrderControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    // The real sign-in check runs in controller tests; this makes sessions for them
+    // The real sign-in check runs in controller tests; signIn makes a request come from a signed-in person (see SignIn)
     @Autowired
-    private StaffSessionInterceptor sessions;
+    private SignIn signIn;
 
     @MockBean
     private OrderService orderService;
@@ -290,10 +290,9 @@ class OrderControllerTest {
         // WHY: An order belongs to whoever rang it in. The name the screen sends is ignored
         //      in favor of the person the backend knows is signed in.
 
-        String token = sessions.createSession(7L, "Sarah", StaffRole.SERVER);
         when(orderService.createOrder(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        mockMvc.perform(post("/api/orders").header("X-Staff-Token", token)
+        mockMvc.perform(post("/api/orders").with(signIn.as(7L, "Sarah", StaffRole.SERVER))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tableId\":1,\"orderType\":\"dine_in\",\"serverName\":\"Somebody Else\"}"))
                 .andExpect(status().isCreated())

@@ -11,7 +11,7 @@ import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.exception.StaffRuleException;
 import com.notapos.exception.TooManyAttemptsException;
 import com.notapos.repository.StaffRepository;
-import com.notapos.security.StaffSessionInterceptor;
+import com.notapos.security.StaffSessionStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,7 +63,7 @@ public class StaffService {
     static final Duration LOCKOUT = Duration.ofSeconds(30);
 
     private final StaffRepository staffRepository;
-    private final StaffSessionInterceptor sessions;
+    private final StaffSessionStore sessions;
 
     // Strength 6 keeps one check to about a millisecond. Sign-in compares the PIN with
     // every active person's hash, so a slow setting would make the PIN pad feel stuck.
@@ -76,7 +76,7 @@ public class StaffService {
     private Instant lockedUntil = Instant.MIN;
 
     @Autowired
-    public StaffService(StaffRepository staffRepository, StaffSessionInterceptor sessions) {
+    public StaffService(StaffRepository staffRepository, StaffSessionStore sessions) {
         this.staffRepository = staffRepository;
         this.sessions = sessions;
     }

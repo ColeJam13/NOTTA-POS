@@ -11,7 +11,7 @@ import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.exception.StaffRuleException;
 import com.notapos.exception.TooManyAttemptsException;
 import com.notapos.repository.StaffRepository;
-import com.notapos.security.StaffSessionInterceptor;
+import com.notapos.security.StaffSessionStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +30,7 @@ import static org.mockito.Mockito.*;
  *
  * Tests PIN sign-in, the wrong-PIN limit, and the rules for managing staff.
  *
- * The session keeper (StaffSessionInterceptor) is the real one, not a mock:
+ * The session keeper (StaffSessionStore) is the real one, not a mock:
  * it has no dependencies, and using it lets a test check that a sign-in
  * really produced a working session.
  *
@@ -43,7 +43,7 @@ class StaffServiceTest {
     @Mock
     private StaffRepository staffRepository;
 
-    private StaffSessionInterceptor sessions;
+    private StaffSessionStore sessions;
     private StaffService staffService;
 
     // Makes PIN hashes for the test staff, the same way the service does
@@ -54,7 +54,7 @@ class StaffServiceTest {
 
     @BeforeEach
     void setUp() {
-        sessions = new StaffSessionInterceptor();
+        sessions = new StaffSessionStore();
         staffService = new StaffService(staffRepository, sessions);
 
         sarah = staff(1L, "Sarah", "server", "1111", true);

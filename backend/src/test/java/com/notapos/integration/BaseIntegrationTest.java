@@ -27,7 +27,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
  *
  * HOW IT WORKS:
  *   - @SpringBootTest starts the full application (all controllers, services,
- *     the interceptor, the scheduler).
+ *     the security filter chain, the scheduler).
  *   - @AutoConfigureMockMvc provides MockMvc, which sends requests to it
  *     without opening a network port.
  *   - The container is started once and shared by every integration test

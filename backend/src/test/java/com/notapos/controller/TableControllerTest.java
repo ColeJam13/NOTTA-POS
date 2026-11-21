@@ -1,14 +1,13 @@
 package com.notapos.controller;
 
-import com.notapos.enums.StaffRole;
-import com.notapos.security.StaffSessionInterceptor;
 import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.entity.RestaurantTable;
 import com.notapos.service.TableService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -30,25 +29,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @author CJ
  */
 
-@WebMvcTest(TableController.class)
+@ControllerTest(TableController.class)
 class TableControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    // The real sign-in check runs in controller tests. These tokens are sessions for a
-    // manager and for a server, made fresh before each test.
+    // The real sign-in check runs in controller tests. signIn makes a request come from a
+    // signed-in person: .with(signIn.asManager()), .with(signIn.asServer()), ... (see SignIn)
     @Autowired
-    private StaffSessionInterceptor sessions;
-
-    private String managerToken;
-    private String serverToken;
-
-    @BeforeEach
-    void signInTestStaff() {
-        managerToken = sessions.createSession(900L, "Test Manager", StaffRole.MANAGER);
-        serverToken = sessions.createSession(901L, "Test Server", StaffRole.SERVER);
-    }
+    private SignIn signIn;
 
     @MockBean
     private TableService tableService;
@@ -260,7 +250,7 @@ class TableControllerTest {
 
         when(tableService.updateLayout(any())).thenReturn(java.util.List.of(testTable));
 
-        mockMvc.perform(put("/api/tables/layout").header("X-Staff-Token", managerToken)
+        mockMvc.perform(put("/api/tables/layout").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tables\":[{\"tableId\":1,\"x\":320,\"y\":140,\"rotation\":90}]}"))
                 .andExpect(status().isOk())
@@ -274,7 +264,7 @@ class TableControllerTest {
         // WHAT: Test PUT /api/tables/layout with a negative position and an impossible rotation
         // WHY: A table saved off the edge of the map could not be dragged back
 
-        mockMvc.perform(put("/api/tables/layout").header("X-Staff-Token", managerToken)
+        mockMvc.perform(put("/api/tables/layout").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tables\":[{\"tableId\":1,\"x\":-5,\"y\":140,\"rotation\":400}]}"))
                 .andExpect(status().isBadRequest())
@@ -288,7 +278,7 @@ class TableControllerTest {
         // WHAT: Test PUT /api/tables/layout with an empty list
         // WHY: Nothing to save is a mistake on the screen's side, not a success
 
-        mockMvc.perform(put("/api/tables/layout").header("X-Staff-Token", managerToken)
+        mockMvc.perform(put("/api/tables/layout").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tables\":[]}"))
                 .andExpect(status().isBadRequest());
@@ -304,7 +294,7 @@ class TableControllerTest {
         when(tableService.updateLayout(any()))
                 .thenThrow(new com.notapos.exception.ResourceNotFoundException("Table not found with id: 99"));
 
-        mockMvc.perform(put("/api/tables/layout").header("X-Staff-Token", managerToken)
+        mockMvc.perform(put("/api/tables/layout").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tables\":[{\"tableId\":99,\"x\":10,\"y\":10,\"rotation\":0}]}"))
                 .andExpect(status().isNotFound());
@@ -328,7 +318,7 @@ class TableControllerTest {
         // WHAT: Test PUT /api/tables/layout signed in with a role that is not allowed
         // WHY: 403 means "we know who you are, and no" - the screen shows the message
 
-        mockMvc.perform(put("/api/tables/layout").header("X-Staff-Token", serverToken)
+        mockMvc.perform(put("/api/tables/layout").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tables\":[{\"tableId\":1,\"x\":320,\"y\":140,\"rotation\":0}]}"))
                 .andExpect(status().isForbidden())

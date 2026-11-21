@@ -8,12 +8,12 @@ import com.notapos.enums.StaffRole;
 import com.notapos.exception.NotSignedInException;
 import com.notapos.exception.StaffRuleException;
 import com.notapos.exception.TooManyAttemptsException;
-import com.notapos.security.StaffSessionInterceptor;
 import com.notapos.service.StaffService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -30,20 +30,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Tests PIN sign-in and the manager-only staff endpoints.
  * Uses MockMvc to simulate HTTP requests without starting full server.
  *
- * The permission check (StaffSessionInterceptor) is the real one here, so
- * these tests also prove who gets a 401, who gets a 403, and who gets in.
+ * The permission check is the real one here, so these tests also prove who
+ * gets a 401, who gets a 403, and who gets in. This test is about tokens, so
+ * it keeps two of its own (a manager's and a server's) instead of using
+ * signIn.asManager().
  *
  * @author CJ
  */
 
-@WebMvcTest(StaffController.class)
+@ControllerTest(StaffController.class)
 class StaffControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
+    // Makes a request come from a signed-in person, and hands out real tokens (see SignIn)
     @Autowired
-    private StaffSessionInterceptor sessions;
+    private SignIn signIn;
 
     @MockBean
     private StaffService staffService;
@@ -53,8 +56,8 @@ class StaffControllerTest {
 
     @BeforeEach
     void signInTestStaff() {
-        managerToken = sessions.createSession(2L, "Morgan", StaffRole.MANAGER);
-        serverToken = sessions.createSession(1L, "Sarah", StaffRole.SERVER);
+        managerToken = signIn.tokenFor(2L, "Morgan", StaffRole.MANAGER);
+        serverToken = signIn.tokenFor(1L, "Sarah", StaffRole.SERVER);
     }
 
     // ------------------------------------------------------------------
@@ -130,7 +133,7 @@ class StaffControllerTest {
         // WHAT: Test POST /api/staff/sign-out
         // WHY: Ends the session so the token stops working
 
-        mockMvc.perform(post("/api/staff/sign-out").header("X-Staff-Token", serverToken))
+        mockMvc.perform(post("/api/staff/sign-out").with(SignIn.withToken(serverToken)))
                 .andExpect(status().isNoContent());
 
         verify(staffService).signOut(serverToken);
@@ -141,7 +144,7 @@ class StaffControllerTest {
         // WHAT: Test GET /api/staff/me
         // WHY: After a page reload the screen asks "am I still signed in, and as whom?"
 
-        mockMvc.perform(get("/api/staff/me").header("X-Staff-Token", managerToken))
+        mockMvc.perform(get("/api/staff/me").with(SignIn.withToken(managerToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.staffId").value(2))
                 .andExpect(jsonPath("$.name").value("Morgan"))
@@ -157,8 +160,8 @@ class StaffControllerTest {
                 .andExpect(status().isUnauthorized());
 
         // A token whose session has ended is the same as no token
-        sessions.endSession(serverToken);
-        mockMvc.perform(get("/api/staff/me").header("X-Staff-Token", serverToken))
+        signIn.endSession(serverToken);
+        mockMvc.perform(get("/api/staff/me").with(SignIn.withToken(serverToken)))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -175,7 +178,7 @@ class StaffControllerTest {
                 new StaffView(2L, "Morgan", "manager", true),
                 new StaffView(1L, "Sarah", "server", true)));
 
-        mockMvc.perform(get("/api/staff").header("X-Staff-Token", managerToken))
+        mockMvc.perform(get("/api/staff").with(SignIn.withToken(managerToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].name").value("Morgan"));
@@ -190,7 +193,7 @@ class StaffControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Sign in to do that."));
 
-        mockMvc.perform(get("/api/staff").header("X-Staff-Token", serverToken))
+        mockMvc.perform(get("/api/staff").with(SignIn.withToken(serverToken)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("Your role (server) is not allowed to do that."));
 
@@ -205,7 +208,7 @@ class StaffControllerTest {
         when(staffService.createStaff(new StaffCreateRequest("Alex", "bartender", "3333")))
                 .thenReturn(new StaffView(3L, "Alex", "bartender", true));
 
-        mockMvc.perform(post("/api/staff").header("X-Staff-Token", managerToken)
+        mockMvc.perform(post("/api/staff").with(SignIn.withToken(managerToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Alex\",\"role\":\"bartender\",\"pin\":\"3333\"}"))
                 .andExpect(status().isCreated())
@@ -218,7 +221,7 @@ class StaffControllerTest {
         // WHAT: Test POST /api/staff with no name and a 3-digit PIN
         // WHY: The Staff screen shows the manager what to fix
 
-        mockMvc.perform(post("/api/staff").header("X-Staff-Token", managerToken)
+        mockMvc.perform(post("/api/staff").with(SignIn.withToken(managerToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"\",\"role\":\"server\",\"pin\":\"123\"}"))
                 .andExpect(status().isBadRequest())
@@ -233,7 +236,7 @@ class StaffControllerTest {
         // WHAT: Test POST /api/staff signed in as a server
         // WHY: Otherwise anyone could make themselves a manager
 
-        mockMvc.perform(post("/api/staff").header("X-Staff-Token", serverToken)
+        mockMvc.perform(post("/api/staff").with(SignIn.withToken(serverToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Me\",\"role\":\"manager\",\"pin\":\"0000\"}"))
                 .andExpect(status().isForbidden());
@@ -249,7 +252,7 @@ class StaffControllerTest {
         when(staffService.updateStaff(eq(1L), eq(new StaffUpdateRequest(null, "bartender", null, null))))
                 .thenReturn(new StaffView(1L, "Sarah", "bartender", true));
 
-        mockMvc.perform(put("/api/staff/1").header("X-Staff-Token", managerToken)
+        mockMvc.perform(put("/api/staff/1").with(SignIn.withToken(managerToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"role\":\"bartender\"}"))
                 .andExpect(status().isOk())
@@ -264,7 +267,7 @@ class StaffControllerTest {
         when(staffService.updateStaff(eq(2L), any()))
                 .thenThrow(new StaffRuleException("Morgan is the only manager. Make someone else a manager first."));
 
-        mockMvc.perform(put("/api/staff/2").header("X-Staff-Token", managerToken)
+        mockMvc.perform(put("/api/staff/2").with(SignIn.withToken(managerToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"isActive\":false}"))
                 .andExpect(status().isConflict())
