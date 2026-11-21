@@ -1,14 +1,13 @@
 package com.notapos.controller;
 
-import com.notapos.enums.StaffRole;
-import com.notapos.security.StaffSessionInterceptor;
 import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.entity.MenuItem;
 import com.notapos.service.MenuItemService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -32,25 +31,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @author CJ
  */
 
-@WebMvcTest(MenuItemController.class)
+@ControllerTest(MenuItemController.class)
 class MenuItemControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    // The real sign-in check runs in controller tests. These tokens are sessions for a
-    // manager and for a server, made fresh before each test.
+    // The real sign-in check runs in controller tests. signIn makes a request come from a
+    // signed-in person: .with(signIn.asManager()), .with(signIn.asServer()), ... (see SignIn)
     @Autowired
-    private StaffSessionInterceptor sessions;
-
-    private String managerToken;
-    private String serverToken;
-
-    @BeforeEach
-    void signInTestStaff() {
-        managerToken = sessions.createSession(900L, "Test Manager", StaffRole.MANAGER);
-        serverToken = sessions.createSession(901L, "Test Server", StaffRole.SERVER);
-    }
+    private SignIn signIn;
 
     @MockBean
     private MenuItemService menuItemService;
@@ -386,7 +376,7 @@ class MenuItemControllerTest {
         when(menuItemService.set86d(1L, true)).thenReturn(testItem);
 
         // When/Then
-        mockMvc.perform(put("/api/menu-items/1/86").header("X-Staff-Token", managerToken))
+        mockMvc.perform(put("/api/menu-items/1/86").with(signIn.asManager()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.is86d").value(true));
 
@@ -403,7 +393,7 @@ class MenuItemControllerTest {
         when(menuItemService.set86d(1L, false)).thenReturn(testItem);
 
         // When/Then
-        mockMvc.perform(put("/api/menu-items/1/un-86").header("X-Staff-Token", managerToken))
+        mockMvc.perform(put("/api/menu-items/1/un-86").with(signIn.asManager()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.is86d").value(false));
 
@@ -420,7 +410,7 @@ class MenuItemControllerTest {
                 .thenThrow(new com.notapos.exception.ResourceNotFoundException("Menu item not found with id: 99"));
 
         // When/Then
-        mockMvc.perform(put("/api/menu-items/99/86").header("X-Staff-Token", managerToken))
+        mockMvc.perform(put("/api/menu-items/99/86").with(signIn.asManager()))
                 .andExpect(status().isNotFound());
     }
 
@@ -444,7 +434,7 @@ class MenuItemControllerTest {
         // WHAT: Test PUT /api/menu-items/{id}/86 signed in as a server
         // WHY: The kitchen, the bar, and managers decide what is out - not the floor
 
-        mockMvc.perform(put("/api/menu-items/1/86").header("X-Staff-Token", serverToken))
+        mockMvc.perform(put("/api/menu-items/1/86").with(signIn.asServer()))
                 .andExpect(status().isForbidden());
 
         verify(menuItemService, never()).set86d(any(), anyBoolean());
@@ -455,11 +445,10 @@ class MenuItemControllerTest {
         // WHAT: Test PUT /api/menu-items/{id}/86 signed in as kitchen staff
         // WHY: The kitchen is who knows first that something has run out
 
-        String kitchenToken = sessions.createSession(902L, "Test Cook", StaffRole.KITCHEN);
         testItem.setIs86d(true);
         when(menuItemService.set86d(1L, true)).thenReturn(testItem);
 
-        mockMvc.perform(put("/api/menu-items/1/86").header("X-Staff-Token", kitchenToken))
+        mockMvc.perform(put("/api/menu-items/1/86").with(signIn.asKitchen()))
                 .andExpect(status().isOk());
     }
 

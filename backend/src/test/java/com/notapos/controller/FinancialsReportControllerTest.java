@@ -1,13 +1,11 @@
 package com.notapos.controller;
 
-import com.notapos.enums.StaffRole;
-import com.notapos.security.StaffSessionInterceptor;
 import com.notapos.dto.FinancialsReportView;
 import com.notapos.service.FinancialsReportService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
@@ -28,25 +26,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @author CJ
  */
 
-@WebMvcTest(FinancialsReportController.class)
+@ControllerTest(FinancialsReportController.class)
 class FinancialsReportControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    // The real sign-in check runs in controller tests. These tokens are sessions for a
-    // manager and for a server, made fresh before each test.
+    // The real sign-in check runs in controller tests. signIn makes a request come from a
+    // signed-in person: .with(signIn.asManager()), .with(signIn.asServer()), ... (see SignIn)
     @Autowired
-    private StaffSessionInterceptor sessions;
-
-    private String managerToken;
-    private String serverToken;
-
-    @BeforeEach
-    void signInTestStaff() {
-        managerToken = sessions.createSession(900L, "Test Manager", StaffRole.MANAGER);
-        serverToken = sessions.createSession(901L, "Test Server", StaffRole.SERVER);
-    }
+    private SignIn signIn;
 
     @MockBean
     private FinancialsReportService financialsReportService;
@@ -64,7 +53,7 @@ class FinancialsReportControllerTest {
                 List.of(new FinancialsReportView.PaymentMethodTotal("credit_card", new BigDecimal("33.99"), new BigDecimal("100.0"))),
                 List.of(new FinancialsReportView.Transaction(10L, "W1", false, "CJ", to, new BigDecimal("33.99"), new BigDecimal("6.80"), "credit_card"))));
 
-        mockMvc.perform(get("/api/reports/financials").header("X-Staff-Token", managerToken)
+        mockMvc.perform(get("/api/reports/financials").with(signIn.asManager())
                 .param("from", "2026-11-18T00:00:00")
                 .param("to", "2026-11-18T23:59:59"))
                 .andExpect(status().isOk())
@@ -86,7 +75,7 @@ class FinancialsReportControllerTest {
         // WHAT: Test the endpoint with a "from" that is not a date and time
         // WHY: A bad request should say so, not return a report for the wrong period
 
-        mockMvc.perform(get("/api/reports/financials").header("X-Staff-Token", managerToken)
+        mockMvc.perform(get("/api/reports/financials").with(signIn.asManager())
                 .param("from", "yesterday")
                 .param("to", "2026-11-18T23:59:59"))
                 .andExpect(status().isBadRequest());
@@ -99,7 +88,7 @@ class FinancialsReportControllerTest {
         // WHAT: Test the endpoint with no from/to
         // WHY: "Everything, ever" must be asked for on purpose, not by leaving the dates off
 
-        mockMvc.perform(get("/api/reports/financials").header("X-Staff-Token", managerToken))
+        mockMvc.perform(get("/api/reports/financials").with(signIn.asManager()))
                 .andExpect(status().isBadRequest());
 
         verify(financialsReportService, never()).getReport(any(), any());
@@ -110,7 +99,7 @@ class FinancialsReportControllerTest {
         // WHAT: Test the report signed in as a server
         // WHY: Sales figures are for managers only
 
-        mockMvc.perform(get("/api/reports/financials").header("X-Staff-Token", serverToken)
+        mockMvc.perform(get("/api/reports/financials").with(signIn.asServer())
                 .param("from", "2026-11-18T00:00:00")
                 .param("to", "2026-11-18T23:59:59"))
                 .andExpect(status().isForbidden());

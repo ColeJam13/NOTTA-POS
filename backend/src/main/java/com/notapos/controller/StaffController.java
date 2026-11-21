@@ -9,7 +9,7 @@ import com.notapos.enums.StaffRole;
 import com.notapos.exception.NotSignedInException;
 import com.notapos.security.RequiresRole;
 import com.notapos.security.StaffSessionInterceptor;
-import com.notapos.security.StaffSessionInterceptor.StaffSession;
+import com.notapos.security.StaffSession;
 import com.notapos.service.StaffService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

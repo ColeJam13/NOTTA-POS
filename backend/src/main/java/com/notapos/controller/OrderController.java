@@ -5,7 +5,7 @@ import com.notapos.dto.OrderCheckView;
 import com.notapos.entity.Order;
 import com.notapos.enums.OrderStatus;
 import com.notapos.security.StaffSessionInterceptor;
-import com.notapos.security.StaffSessionInterceptor.StaffSession;
+import com.notapos.security.StaffSession;
 import com.notapos.service.OrderCheckService;
 import com.notapos.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
