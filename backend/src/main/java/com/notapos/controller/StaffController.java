@@ -1,6 +1,8 @@
 package com.notapos.controller;
 
 import com.notapos.dto.ChangePinRequest;
+import com.notapos.dto.PausedDeviceView;
+import com.notapos.dto.ReleaseDeviceRequest;
 import com.notapos.dto.SignInRequest;
 import com.notapos.dto.SignInResponse;
 import com.notapos.dto.StaffCreateRequest;
@@ -27,7 +29,8 @@ import java.util.List;
  * Signing in is the one endpoint in the whole backend open to a request with
  * no sign-in (you cannot be asked to sign in before signing in; SecurityConfig
  * names it). Signing out, "who am I", and choosing a new PIN for yourself are
- * for anyone who is signed in. Listing and changing staff is for managers only
+ * for anyone who is signed in. Listing and changing staff, and seeing and
+ * releasing terminals paused for wrong PINs, are for managers only
  * (@PreAuthorize).
  *
  * "THE DEVICE": sign-in and the PIN change hand StaffService the address the
@@ -84,6 +87,28 @@ public class StaffController {
             HttpServletRequest httpRequest) {
         return ResponseEntity.ok(staffService.changeOwnPin(
                 currentStaff, token, request.currentPin(), request.newPin(), httpRequest.getRemoteAddr()));
+    }
+
+    // Terminals where sign-in is paused after too many wrong PINs (managers only). The
+    // manager's own address goes along so the list can mark the terminal they are at.
+    @PreAuthorize(Permissions.MANAGER_ONLY)
+    @GetMapping("/paused-devices")
+    public ResponseEntity<List<PausedDeviceView>> getPausedDevices(HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(staffService.getPausedDevices(httpRequest.getRemoteAddr()));
+    }
+
+    // Let a paused terminal sign people in again (managers only). It signs nobody in.
+    // Answers with the paused terminals as they now stand. A manager can do this from a
+    // terminal that is itself paused, if they were signed in there before the pause:
+    // a pause stops new sign-ins, not people already signed in.
+    @PreAuthorize(Permissions.MANAGER_ONLY)
+    @PostMapping("/paused-devices/release")
+    public ResponseEntity<List<PausedDeviceView>> releasePausedDevice(
+            @Valid @RequestBody ReleaseDeviceRequest request,
+            @AuthenticationPrincipal StaffSession currentStaff,              // Who is releasing it: written to the log
+            HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(staffService.releasePausedDevice(
+                request.device(), currentStaff, httpRequest.getRemoteAddr()));
     }
 
     @PreAuthorize(Permissions.MANAGER_ONLY)

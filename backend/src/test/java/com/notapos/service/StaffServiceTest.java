@@ -1,6 +1,7 @@
 package com.notapos.service;
 
 import com.notapos.dto.SignInResponse;
+import com.notapos.dto.PausedDeviceView;
 import com.notapos.dto.StaffCreateRequest;
 import com.notapos.dto.StaffUpdateRequest;
 import com.notapos.dto.StaffView;
@@ -151,7 +152,7 @@ class StaffServiceTest {
 
         // Then - the sixth try there is refused outright, even though the PIN is correct
         TooManyAttemptsException exception = assertThrows(TooManyAttemptsException.class, () -> staffService.signIn("2222", BAR));
-        assertEquals("Too many wrong PINs on this device. Try again in 30 seconds.", exception.getMessage());
+        assertEquals("Too many wrong PINs on this device. Try again in 30 seconds, or ask a manager to release this terminal.", exception.getMessage());
         assertEquals(30, exception.getRetryAfterSeconds());
     }
 
@@ -745,5 +746,67 @@ class StaffServiceTest {
         assertEquals(0, marked);
         verify(staffRepository, never()).save(any());
         assertTrue(sessions.sessionFor(token).isPresent());
+    }
+
+    // ------------------------------------------------------------------
+    // Terminals paused for wrong PINs (managers only)
+    // ------------------------------------------------------------------
+
+    private void pause(String device) {                             // Five wrong PINs there
+        when(staffRepository.findByIsActive(true)).thenReturn(List.of(sarah, morgan));
+        for (int attempt = 0; attempt < 5; attempt++) {
+            assertThrows(NotSignedInException.class, () -> staffService.signIn("9999", device));
+        }
+    }
+
+    @Test
+    void testGetPausedDevices_ShouldListThemAndMarkTheOneTheManagerIsAt() {
+        // WHAT: Test the manager's list, asked for from the bar terminal itself
+        // WHY: A manager signed in at a terminal before it was paused can release it
+        //      from there. The mark tells them which row is the terminal in front of them.
+
+        // Given
+        pause(BAR);
+        pause(PATIO);
+
+        // When
+        List<PausedDeviceView> paused = staffService.getPausedDevices(BAR);
+
+        // Then
+        assertEquals(List.of(
+                new PausedDeviceView(BAR, 30, true),
+                new PausedDeviceView(PATIO, 30, false)), paused);
+    }
+
+    @Test
+    void testReleasePausedDevice_ShouldLetSignInWorkThereAgainAndReturnWhatIsStillPaused() {
+        // WHAT: Test a manager releasing the bar while the patio is paused too
+        // WHY: The point of the feature, and the answer the screen redraws from
+
+        // Given
+        pause(BAR);
+        pause(PATIO);
+        StaffSession manager = new StaffSession(2L, "Morgan", StaffRole.MANAGER, clock.instant(), false);
+
+        // When
+        List<PausedDeviceView> stillPaused = staffService.releasePausedDevice(BAR, manager, "192.168.1.5");
+
+        // Then - only the patio is left on the list
+        assertEquals(List.of(new PausedDeviceView(PATIO, 30, false)), stillPaused);
+
+        // And - a right PIN at the bar signs in; releasing signed nobody in by itself
+        assertEquals("Sarah", staffService.signIn("1111", BAR).staff().name());
+        assertThrows(TooManyAttemptsException.class, () -> staffService.signIn("1111", PATIO));
+    }
+
+    @Test
+    void testReleasePausedDevice_ThatIsNotPaused_ShouldChangeNothingAndNotThrow() {
+        // WHAT: Test releasing a terminal with no pause running
+        // WHY: The manager's list can be a few seconds old; a pause that ended by itself
+        //      a moment ago is not an error
+
+        StaffSession manager = new StaffSession(2L, "Morgan", StaffRole.MANAGER, clock.instant(), false);
+
+        assertEquals(List.of(), staffService.releasePausedDevice(BAR, manager, "192.168.1.5"));
     }
 }

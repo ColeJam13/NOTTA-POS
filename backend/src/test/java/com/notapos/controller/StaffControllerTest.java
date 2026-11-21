@@ -1,6 +1,7 @@
 package com.notapos.controller;
 
 import com.notapos.dto.SignInResponse;
+import com.notapos.dto.PausedDeviceView;
 import com.notapos.dto.StaffCreateRequest;
 import com.notapos.dto.StaffUpdateRequest;
 import com.notapos.dto.StaffView;
@@ -8,6 +9,9 @@ import com.notapos.enums.StaffRole;
 import com.notapos.exception.NotSignedInException;
 import com.notapos.exception.StaffRuleException;
 import com.notapos.exception.TooManyAttemptsException;
+import com.notapos.security.StaffSession;
+import org.mockito.ArgumentCaptor;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.notapos.service.StaffService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -141,14 +146,14 @@ class StaffControllerTest {
         //      says the same in seconds, which is the standard way to tell a program.
 
         when(staffService.signIn(eq("1111"), any()))
-                .thenThrow(new TooManyAttemptsException("Too many wrong PINs on this device. Try again in 5 minutes.", 300));
+                .thenThrow(new TooManyAttemptsException("Too many wrong PINs on this device. Try again in 5 minutes, or ask a manager to release this terminal.", 300));
 
         mockMvc.perform(post("/api/staff/sign-in")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"pin\":\"1111\"}"))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().string("Retry-After", "300"))
-                .andExpect(jsonPath("$.message").value("Too many wrong PINs on this device. Try again in 5 minutes."));
+                .andExpect(jsonPath("$.message").value("Too many wrong PINs on this device. Try again in 5 minutes, or ask a manager to release this terminal."));
     }
 
     @Test
@@ -411,5 +416,92 @@ class StaffControllerTest {
                 .andExpect(status().isUnauthorized());
 
         verify(staffService, never()).updateStaff(any(), any());
+    }
+
+    // ------------------------------------------------------------------
+    // Terminals paused for wrong PINs (managers only)
+    // ------------------------------------------------------------------
+
+    // Make a request arrive from a given address, the way it would from that terminal
+    private static RequestPostProcessor from(String address) {
+        return request -> {
+            request.setRemoteAddr(address);
+            return request;
+        };
+    }
+
+    @Test
+    void testGetPausedDevices_AsAManager_ShouldReturnTheListAndSayWhereTheManagerIs() throws Exception {
+        // WHAT: Test GET /api/staff/paused-devices signed in as a manager
+        // WHY: The Staff screen lists the terminals nobody can sign in at. The manager's
+        //      own address is passed along so the list can mark the terminal they are at.
+
+        when(staffService.getPausedDevices("192.168.1.5")).thenReturn(List.of(
+                new PausedDeviceView("192.168.1.21", 272, false)));
+
+        mockMvc.perform(get("/api/staff/paused-devices").with(SignIn.withToken(managerToken)).with(from("192.168.1.5")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].device").value("192.168.1.21"))
+                .andExpect(jsonPath("$[0].secondsLeft").value(272))
+                .andExpect(jsonPath("$[0].thisDevice").value(false));
+    }
+
+    @Test
+    void testReleasePausedDevice_AsAManager_ShouldPassTheTerminalAndWhoIsReleasingIt() throws Exception {
+        // WHAT: Test POST /api/staff/paused-devices/release signed in as a manager
+        // WHY: The service needs the terminal to release, and who is doing it for the log
+
+        when(staffService.releasePausedDevice(any(), any(), any())).thenReturn(List.of());
+
+        mockMvc.perform(post("/api/staff/paused-devices/release")
+                        .with(SignIn.withToken(managerToken)).with(from("192.168.1.5"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"device\":\"192.168.1.21\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        ArgumentCaptor<StaffSession> releasedBy = ArgumentCaptor.forClass(StaffSession.class);
+        verify(staffService).releasePausedDevice(eq("192.168.1.21"), releasedBy.capture(), eq("192.168.1.5"));
+        assertEquals(StaffRole.MANAGER, releasedBy.getValue().role());
+    }
+
+    @Test
+    void testReleasePausedDevice_WithSomethingThatIsNotAnAddress_ShouldReturn400() throws Exception {
+        // WHAT: Test a release with no address, and with text that is not one
+        // WHY: The address is written to the log. Text with a line break in it could be
+        //      used to fake a log line, so only the characters an address has are taken.
+
+        for (String body : List.of("{}", "{\"device\":\"\"}", "{\"device\":\"bar\\nfake log line\"}", "{\"device\":\"bar terminal\"}")) {
+            mockMvc.perform(post("/api/staff/paused-devices/release").with(SignIn.withToken(managerToken))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest());
+        }
+
+        verify(staffService, never()).releasePausedDevice(any(), any(), any());
+    }
+
+    @Test
+    void testPausedDevices_WhenNotAManager_ShouldBeRefused() throws Exception {
+        // WHAT: Test both endpoints with no sign-in, and signed in as a server
+        // WHY: Releasing a pause overrides a safety measure. A server who could do it
+        //      could guess PINs without limit: guess five, release, guess five more.
+
+        mockMvc.perform(get("/api/staff/paused-devices"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/staff/paused-devices").with(SignIn.withToken(serverToken)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/staff/paused-devices/release")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"device\":\"192.168.1.21\"}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/staff/paused-devices/release").with(SignIn.withToken(serverToken))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"device\":\"192.168.1.21\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Your role (server) is not allowed to do that."));
+
+        verify(staffService, never()).getPausedDevices(any());
+        verify(staffService, never()).releasePausedDevice(any(), any(), any());
     }
 }

@@ -127,7 +127,7 @@ class SignInHardeningIntegrationTest extends BaseIntegrationTest {
         // And - the bar terminal is paused, even for a right PIN, and is told for how long
         mockMvc.perform(signInWith("1111").with(from(BAR_TERMINAL)))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.message").value("Too many wrong PINs on this device. Try again in 30 seconds."));
+                .andExpect(jsonPath("$.message").value("Too many wrong PINs on this device. Try again in 30 seconds, or ask a manager to release this terminal."));
     }
 
     // ------------------------------------------------------------------

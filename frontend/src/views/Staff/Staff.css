@@ -154,3 +154,55 @@
   gap: 10px;
   margin-top: 15px;
 }
+
+/* --- Terminals paused for wrong PINs --- */
+.staff-paused {
+  background: #16213e;
+  border: 2px solid #b026ff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.staff-paused-help,
+.staff-paused-none {
+  color: #9ca3af;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.staff-paused-none {
+  margin-top: 12px;
+  color: #e0e0e0;
+}
+
+/* One paused terminal: address, "this terminal" mark, time left, RELEASE */
+.staff-paused-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  margin-top: 12px;
+  padding: 12px 15px;
+  background: #0f0f1e;
+  border: 2px solid #ffd700;                /* Yellow: something here needs a look */
+  border-radius: 8px;
+}
+
+.staff-paused-device {
+  flex: 1;
+  color: #ffd700;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.staff-paused-here {
+  color: #39ff14;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.staff-paused-left {
+  color: #e0e0e0;
+  font-size: 12px;
+}

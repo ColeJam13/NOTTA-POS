@@ -1,5 +1,6 @@
 package com.notapos.service;
 
+import com.notapos.dto.PausedDeviceView;
 import com.notapos.dto.SignInResponse;
 import com.notapos.dto.StaffCreateRequest;
 import com.notapos.dto.StaffUpdateRequest;
@@ -42,7 +43,9 @@ import java.util.Optional;
  *   A 4-digit PIN has only 10,000 possibilities. Without a limit, a script
  *   could try them all in a minute. SignInGuard counts wrong PINs per device
  *   and pauses sign-in where too many come from; every place a PIN is checked
- *   in this class goes through it (signIn and changeOwnPin).
+ *   in this class goes through it (signIn and changeOwnPin). A manager can
+ *   see which terminals are paused and release one (getPausedDevices and
+ *   releasePausedDevice).
  *
  * THE STARTER PIN
  *   A new database gets one manager with PIN 1234 (ensureFirstManager). That
@@ -168,6 +171,48 @@ public class StaffService {
         return staffRepository.findByIsActive(true).stream()
                 .filter(staff -> pinEncoder.matches(pin, staff.getPinHash()))
                 .findFirst();
+    }
+
+    // ------------------------------------------------------------------
+    // Terminals paused for wrong PINs (managers only; the owner's decision D11)
+    // ------------------------------------------------------------------
+
+    /**
+     * The terminals where sign-in is paused right now.
+     *
+     * This reads SignInGuard's memory, not the database.
+     *
+     * @param askingFrom The address the manager's own request came from, so the
+     *                   list can mark the terminal they are standing at
+     */
+    public List<PausedDeviceView> getPausedDevices(String askingFrom) {
+        return signInGuard.pausedDevices().stream()
+                .map(paused -> new PausedDeviceView(
+                        paused.device(), paused.secondsLeft(), paused.device().equals(askingFrom)))
+                .toList();
+    }
+
+    /**
+     * Let a paused terminal sign people in again, now, with its wrong PINs forgotten.
+     *
+     * It signs nobody in. Releasing a terminal that is not paused (its pause ran
+     * out a moment ago, say) changes nothing and is not an error: the manager's
+     * list can be a few seconds old.
+     *
+     * Every release is written to the log with who did it. A release is one
+     * person overriding a safety measure, so there should be a record of it.
+     *
+     * @param device     The address of the terminal to release
+     * @param releasedBy The manager doing it
+     * @param askingFrom The address the manager's request came from
+     * @return The paused terminals as they now stand, for the screen to redraw from
+     */
+    public List<PausedDeviceView> releasePausedDevice(String device, StaffSession releasedBy, String askingFrom) {
+        if (signInGuard.release(device)) {
+            log.warn("Sign-in pause on {} was released by {} (staff ID {})",
+                    device, releasedBy.name(), releasedBy.staffId());
+        }
+        return getPausedDevices(askingFrom);
     }
 
     // ------------------------------------------------------------------
