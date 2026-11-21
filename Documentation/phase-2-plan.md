@@ -2,6 +2,8 @@
 
 Revision 2, 2026-11-20. Revision 1 was written after an independent review of pull requests #263 to #274. This revision follows a check of #275 to #279 and adds four things the owner asked for: a home test host, an app on staff phones, bringing the build and sign-in onto standard tools, and switchable UI templates.
 
+Revision 3 notes, 2026-11-21: a check of #281 to #286 found the work sound (`main` at `83ad70e`, CI green). The owner answered four questions, recorded as D4, D9, D10, and D11 below. They add one small step, A6, which is next, and they change the feature order.
+
 This is the work order. Read `CLAUDE.md` first; its working rules and process rules apply to everything here.
 
 ## What changed in this revision
@@ -35,11 +37,12 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 6 | A5. Small consistency fixes | Done (#284) |
 | 7 | P1. Replace Create React App with Vite | Done (#285) |
 | 8 | P2. One thing to start, and the home test host | Done (#286) |
-| 9 | **B4a. Design tokens: every screen reads its look from named values** | Next |
-| 10 | B4b and B4c. Template system, then the new templates | D9 |
+| 8a | **A6. Two follow-ups from the review: tips on closed checks, and releasing a paused terminal** | Next. D10, D11 (decided) |
+| 9 | B4a. Design tokens: every screen reads its look from named values | |
+| 10 | B4b and B4c. Template system, then the new templates | D9 (default decided) |
 | 11 | P3. Phone-sized screens | |
 | 12 | P4. HTTPS on a private network, and the installable app | D8 |
-| 13 | B1, B5, B2, B3 (features) | D4, D5, D6 |
+| 13 | B5, then B1, B2, B3 (features, in that order) | D4 (decided), D5, D6 |
 | Later | P5. Store apps and card payments through Square | D7 |
 
 Why this order: security first, because the test host and phones put the backend on a network other devices can reach. The build tool moves next, while the frontend is not mid-feature. Tokens come before phone layouts because both touch every stylesheet, and doing tokens first means the phone work is written once, against the named values.
@@ -152,6 +155,28 @@ Build:
 - **Ticket order.** Items should print in the order the server rang them in. Parallel saves hand out IDs out of sequence and Active Orders sorts by ID. Add an explicit position or ring-in timestamp and sort on that.
 - **Clock.** The countdown compares backend timestamps with the tablet's clock. Send the time remaining (or the server's current time) with the response so a tablet with a wrong clock still counts down correctly.
 
+### A6. Two follow-ups from the review (one pull request)
+
+Both come from the owner's answers on 2026-11-21. They are small and go before B4a.
+
+**Tips on closed checks: own checks only (D10).**
+
+- Today `GET /api/tables/overview` gives each closed check's tip and payment method to anyone signed in, and the Tables and Quick Orders screens show them.
+- The rule: a person sees the tip and payment method on checks they opened. A manager sees them on every check. Everyone still sees that a check was closed and its total.
+- Decide it on the backend: leave the two fields out of the answer for a check the person may not see them on. Do not send them and hide them on the screen.
+- "Opened" means the order's `staffId`. A closed check with no `staffId` (closed before staff profiles existed) shows its tip to managers only.
+- `components/TableChecks` draws both screens, so one change covers both. It should show nothing in that spot, not a blank label or a zero.
+- Add the endpoint's new behavior to `RoleMatrixIntegrationTest` or an integration test beside it: a server reads the overview and gets their own tip and nobody else's.
+
+**A paused terminal: a manager can release it, and no pause is longer than 5 minutes (D11).**
+
+- Today a device that keeps getting PINs wrong is paused for 30 seconds, then 1 minute, 5 minutes, 15 minutes, and an hour, and nothing can end a pause early. On a Friday night a terminal dead for an hour is worse than the risk it guards against.
+- Cap the pauses at 5 minutes: 30 seconds, 1 minute, then 5 minutes each time after. The restaurant-wide rule stays as it is.
+- A manager can see which devices are paused (the address, and how long is left) and release one. Releasing ends the pause and clears that device's wrong-PIN count. It does not sign anyone in.
+- The manager does this from a device that is not paused, or from one where they are already signed in: a pause stops new sign-ins, not people signed in. Put it on the Staff screen.
+- Manager-only on the backend, in the role matrix test like every other endpoint. Log each release with who did it.
+- Update the `SignInGuard` rules where `CLAUDE.md` lists them.
+
 ## Part P: platform
 
 These make the app something that can be installed in one place and used from devices other than the developer's.
@@ -225,6 +250,7 @@ An installable web app (a PWA) is the existing site with an icon on the phone's 
 - Then: the app manifest (name, icons, colors from the active template), a service worker that caches the app's own files so it opens instantly, and an "install this app" prompt with instructions for iPhone and Android.
 - A QR code on a manager screen that carries the server's address, so joining a phone is "scan, then enter your PIN".
 - Not in this step: taking orders while offline. Show a clear "lost connection to the restaurant server" state and recover cleanly when it returns.
+- Two things to settle in the investigation, both found in the review of #283: whatever serves HTTPS must not make every phone look like one device to `SignInGuard` (a proxy in front of the backend does exactly that unless the real address is passed on), and the sign-in token is kept in the browser tab's `sessionStorage`, which an installed app loses each time it is closed. Whether a phone asks for the PIN on every open is the owner's call; ask it with D8.
 
 ### P5. Store apps and card payments through Square (later; do not build yet)
 
@@ -253,7 +279,7 @@ A host screen: floor with table statuses (use the existing `TableStatusLog` for 
 
 ### B4. UI templates
 
-The owner wants a list of default templates a manager can switch between: **Plain, Coffee Shop, Nightclub, and 8-Bit** (the owner's original retro design, which is the look the app has today). Three pull requests.
+The owner wants a list of default templates a manager can switch between: **Plain, Coffee Shop, Nightclub, and 8-Bit**. Confirmed by the owner on 2026-11-21: the look the app has today is the 8-Bit design, and 8-Bit is the default a new restaurant starts on. Three pull requests.
 
 **B4a. Design tokens, with no visible change.**
 
@@ -285,12 +311,14 @@ The owner wants a list of default templates a manager can switch between: **Plai
 | D1 | Adopt Flyway migrations. **Decided 2026-11-20: yes. Done in #278.** | |
 | D2 | Role matrix. **Decided 2026-11-20: confirmed as written**, including hosts opening orders, ringing in, sending, and taking payment. | A3b |
 | D3 | How shared terminals sign people out. **Decided 2026-11-20: only on SIGN OUT, for now.** | A4 |
-| D4 | Feature order. Proposed: notifications, check handling (voids, comps, splits), host view, Challenges | Step 13 |
+| D4 | Feature order. **Decided 2026-11-21: check handling first (voids, comps, splits), then notifications, host view, Challenges.** | Step 13 |
 | D5 | Notifications: who sends to whom, acknowledged or not | B1 |
 | D6 | Challenges: which measures and what period | B3 |
 | D7 | Store apps: wrap the web app (proposed) or write native apps; the Square account model | P5 |
 | D8 | How the app is served over HTTPS inside a restaurant (after the investigation in P4) | P4 |
-| D9 | Default template, and any direction for Coffee Shop and Nightclub | B4c |
+| D9 | Default template: **decided 2026-11-21, 8-Bit (today's look).** Still open: any direction the owner wants to give for Coffee Shop and Nightclub; ask when proposing each | B4c |
+| D10 | Who sees tips on closed checks. **Decided 2026-11-21: each person sees tips on checks they opened; managers see all.** | A6 |
+| D11 | A terminal paused for wrong PINs. **Decided 2026-11-21: a manager can release it, and no pause is longer than 5 minutes.** | A6 |
 
 Ask these at the point they are needed. Do not guess and build.
 
@@ -298,7 +326,7 @@ Owner actions still open unless already done: turn on branch protection for `mai
 
 ## How to continue
 
-1. Start B4a. It needs no decision from the owner. Part A, P1, and P2 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
+1. Start A6, then B4a. Neither needs a decision from the owner. Part A (A1 to A5), P1, and P2 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
 2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 
 ## Completed

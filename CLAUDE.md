@@ -169,12 +169,12 @@ When pair-programming interactively instead of automating: ask before writing co
 
 Everything through pull request #286 is merged, and `main` passes CI (740 backend tests, 179 frontend tests, a lint step, and a check of the packaged jar). Built: CI and the first cleanup pass, modifiers and kitchen notes, the working-state pass over the core flow, the 86 board, the editable floor map, combined endpoints for Tables, Quick Orders, and Financials, the kitchen display, Spring Boot 3.5, the start script, and staff profiles with PIN sign-in and roles.
 
-**The work order from here is `Documentation/phase-2-plan.md`** (revision 2, which followed a check of #275 to #279). Read it before starting anything; its "Order of work" table says what is next. In short:
+**The work order from here is `Documentation/phase-2-plan.md`** (revision 2, with revision 3 notes from a check of #281 to #286). Read it before starting anything; its "Order of work" table says what is next. In short:
 
 - Part A fixes defects and open doors in what is built, in order: A1 one server-side ring-in path (done), A2 two terminals on one check (done), A3 lock the API (done: Spring Security in A3a, default deny and the role matrix in A3b), A4 sign-in hardening and sessions in the database (done), A5 one tax rate, ticket order, and the clock (done). Part A is finished.
 - Part P is platform work: Vite in place of Create React App (P1, done), a packaged build and a home test host (P2, done), phone-sized screens, an installable app, and later store apps with Square.
-- Part B is features: notifications, host view with waitlist, challenges on real data, UI templates (Plain, Coffee Shop, Nightclub, 8-Bit), check handling. B4a (design tokens, the groundwork for templates and phone layouts) is next.
-- It lists decisions that are the owner's (D4 to D9 are open). Ask each one when it is needed. Do not guess and build.
+- Part B is features: notifications, host view with waitlist, challenges on real data, UI templates (Plain, Coffee Shop, Nightclub, 8-Bit), check handling. A6 (two small follow-ups: tips on closed checks, and releasing a paused terminal) is next, then B4a (design tokens, the groundwork for templates and phone layouts). Of the features, check handling comes first.
+- It lists decisions that are the owner's (D5 to D8 are open; D4, D9, D10, and D11 were decided on 2026-11-21). Ask each one when it is needed. Do not guess and build.
 
 Known gaps left open on purpose:
 
@@ -207,7 +207,7 @@ Known gaps left open on purpose:
 - A 4-digit PIN with no name is weak however it is guarded. A guesser on the restaurant's network who changes address for every few tries is held only by the restaurant-wide rule, about 40 tries every eleven minutes. The same rule lets anyone on that network keep new sign-ins paused by sending wrong PINs (people already signed in are not affected). Closing both needs terminals the backend recognises, not a longer pause.
 - Only the starter PIN is forced to change. A PIN a manager sets for someone on the Staff screen is known to that manager, and nothing asks the person to choose their own. `must_change_pin` and `PUT /api/staff/me/pin` are there to build that on; no screen offers "change my PIN" outside the forced case.
 - A signed-in person whose role is not allowed, sending a request that is also badly formed, is answered 400 (the validation message), not 403: Spring validates the request before the rule on the controller method runs. Nothing is let through. A request with no sign-in is always 401.
-- The Tables and Quick Orders screens show each closed check's tip and payment method to anyone signed in (`GET /api/tables/overview`). Only the `/api/payments` endpoints are manager-only. Whether servers should see tips on closed checks is the owner's call.
+- The Tables and Quick Orders screens show each closed check's tip and payment method to anyone signed in (`GET /api/tables/overview`). Only the `/api/payments` endpoints are manager-only. The owner has decided (D10): each person sees tips on checks they opened, managers see all. A6 in the plan builds it.
 - `POST` and `DELETE /api/order-item-modifiers` change an item's modifiers with none of the ring-in checks and without changing its price. No screen uses them; they are manager-only and are candidates for removal.
 - The create endpoints only a manager can reach (menu items, modifiers, modifier groups, prep stations, their links, table status logs) still save the request's own entity, so a POST that carries an ID updates that row. A manager can change those rows anyway.
 - Starting and completing an item do not check the item's current status, or that its check is still open.
