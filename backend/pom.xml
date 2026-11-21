@@ -90,13 +90,6 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- H2 Database - In-memory database for testing (keeping for backward compatibility) -->
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>test</scope>
-        </dependency>
-
         <!-- Testing. Spring Boot 4 split its test support into one starter per technology,
              each bringing JUnit, Mockito, AssertJ, and the test helpers for that part:
                webmvc-test    MockMvc, @WebMvcTest, @AutoConfigureMockMvc (controller and
