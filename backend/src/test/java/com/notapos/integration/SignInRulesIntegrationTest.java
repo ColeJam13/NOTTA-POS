@@ -410,4 +410,47 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(header().string("Access-Control-Allow-Origin", ALLOWED_ORIGIN));
     }
+
+    // ------------------------------------------------------------------
+    // Things this app's sign-in must NOT have
+    // ------------------------------------------------------------------
+
+    @Test
+    void testARefusal_ShouldNotMakeTheBrowserAskForAPassword() throws Exception {
+        // WHAT: Check the headers on a 401
+        // WHY: A "WWW-Authenticate" header on a 401 makes a browser pop up its own
+        //      username-and-password box. Sign-in here is the PIN pad and nothing else.
+
+        mockMvc.perform(get("/api/staff"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().doesNotExist("WWW-Authenticate"));
+    }
+
+    @Test
+    void testSignIn_ShouldNotHandOutACookie() throws Exception {
+        // WHAT: Check that no answer sets a cookie, signed in or not
+        // WHY: The token travels in a header the frontend adds itself. A browser attaches
+        //      cookies to requests on its own, including ones a hostile page tricks it
+        //      into sending; a header it does not. Keeping cookies out is what makes it
+        //      safe for this backend to do without CSRF tokens.
+
+        mockMvc.perform(post("/api/staff/sign-in").contentType(MediaType.APPLICATION_JSON).content("{\"pin\":\"2001\"}"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist("Set-Cookie"));
+        mockMvc.perform(get("/api/staff").header(TOKEN_HEADER, tokens.get(StaffRole.MANAGER)))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist("Set-Cookie"));
+        mockMvc.perform(get("/api/tables"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist("Set-Cookie"));
+    }
+
+    @Test
+    void testThereIsNoLoginPageOrLogoutAddress() throws Exception {
+        // WHAT: Ask for the addresses a ready-made login page and logout would live at
+        // WHY: The only ways in and out are POST /api/staff/sign-in and /sign-out
+
+        mockMvc.perform(get("/login")).andExpect(status().isNotFound());
+        mockMvc.perform(post("/logout")).andExpect(status().isNotFound());
+    }
 }
