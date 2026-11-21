@@ -57,6 +57,13 @@ Done when: tests show a ring-in onto a closed order and onto a missing order is 
 
 ### A2. Two terminals, one check
 
+**Done 2026-11-20** (Flyway in #278, the rest in #279). `Order` has a `@Version` column, and migration `V3` adds the partial unique index `orders_one_open_per_table` after merging any table's extra open orders into its oldest one. Two things were added beyond the list below:
+
+- **Row locks.** A version column only catches two requests that both save the order. A ring-in or a removal never saves the order, so no version check stood between it and a payment landing at the same instant: the item ended up on, or came off, a check that had just been paid. Two new tests showed both on the old code. Paying and clearing now hold the order row alone (`findByIdLockedForUpdate`); ring-in, send, modifier changes, and removing an item hold it open (`findByIdLockedForShare`, inside `requireOpenOrder`). Opening an order locks the table row. The version column and the index stay as the net underneath.
+- **`POST /api/orders` could overwrite an existing order.** A request body that named an existing order's ID was saved over it, so a paid check could be reopened. `createOrder` now builds a new order from the table, type, and server only.
+
+The terminal that loses a race is told so with the code `ORDER_NOT_OPEN` (payment, removal). The pay button was already disabled while a payment is in flight; a test now holds it there. `TwoTerminalsIntegrationTest` runs each race twenty times. The text below is kept as the record of what was found.
+
 No entity has a version column and no query takes a lock.
 
 - **Double payment.** Two `createPayment` calls for the same order at the same moment both read it as open, and both save a payment.
