@@ -91,7 +91,7 @@ class JsonShapeIntegrationTest extends BaseIntegrationTest {
         // Empty every table (nothing rolls back by itself in an integration test)
         for (String table : List.of("order_item_modifiers", "order_items", "payments", "orders",
                 "menu_item_modifier_groups", "modifiers", "modifier_groups", "menu_items", "prep_stations",
-                "table_status_logs", "tables", "staff_sessions", "staff")) {
+                "table_status_logs", "tables", "staff_sessions", "staff", "settings")) {
             jdbc.update("DELETE FROM " + table);
         }
 
@@ -268,7 +268,7 @@ class JsonShapeIntegrationTest extends BaseIntegrationTest {
                 .andExpect(content().string(containsString("\"tax\":0.54")))
                 .andExpect(content().string(containsString("\"total\":18.54")));
         asServer("/api/settings")
-                .andExpect(content().string("{\"taxRate\":0.03}"));
+                .andExpect(content().string(containsString("\"taxRate\":0.03")));
     }
 
     @Test

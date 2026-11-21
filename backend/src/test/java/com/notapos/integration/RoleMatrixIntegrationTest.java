@@ -222,6 +222,8 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
 
         // The settings a screen needs (the tax rate for the running total): anyone who is signed in
         endpoint("GET /api/settings", anyoneSignedIn, () -> get("/api/settings"));
+        // The restaurant's template (the look of every screen): the manager's choice (step B4b)
+        endpoint("PUT /api/settings/template", managerOnly, () -> json(put("/api/settings/template"), "{\"template\":\"8-bit\"}"));
 
         // Who am I, and signing out: anyone who is signed in
         endpoint("GET /api/staff/me", anyoneSignedIn, () -> get("/api/staff/me"));
