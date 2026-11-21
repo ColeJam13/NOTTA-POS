@@ -1,6 +1,6 @@
 package com.notapos.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.notapos.dto.StaffCreateRequest;
 import com.notapos.entity.MenuItem;
 import com.notapos.entity.MenuItemModifierGroup;
@@ -358,7 +358,7 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
         MvcResult result = mockMvc.perform(json(post("/api/staff/sign-in"), "{\"pin\":\"" + pin + "\"}"))
                 .andExpect(status().isOk())
                 .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asString();
     }
 
     /**
@@ -569,7 +569,7 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
             } else {
                 // The same body the frontend already reads for a 401
                 assertEquals("Sign in to do that.",
-                        objectMapper.readTree(result.getResponse().getContentAsString()).get("message").asText(), key);
+                        objectMapper.readTree(result.getResponse().getContentAsString()).get("message").asString(), key);
             }
         }
 

@@ -1,11 +1,11 @@
 package com.notapos.repository;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
  * Base class for all repository tests using Testcontainers.
@@ -46,11 +46,11 @@ public abstract class BaseRepositoryTest {
      * NOTE: Not using @Container annotation - we manage lifecycle manually
      * to ensure true singleton behavior across all test classes.
      */
-    private static final PostgreSQLContainer<?> postgres;
+    private static final PostgreSQLContainer postgres;
 
     // Static initializer block - runs once when class is loaded
     static {
-        postgres = new PostgreSQLContainer<>("postgres:16-alpine")
+        postgres = new PostgreSQLContainer("postgres:16-alpine")
                 .withDatabaseName("notta_pos_test")
                 .withUsername("test")
                 .withPassword("test");

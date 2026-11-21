@@ -2,7 +2,7 @@ package com.notapos.testsupport;
 
 import com.notapos.config.SecurityConfig;
 import com.notapos.config.TimeConfig;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.AliasFor;
 

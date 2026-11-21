@@ -3,7 +3,7 @@ package com.notapos.migration;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,8 +40,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class DatabaseMigrationTest {
 
-    private static final PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>("postgres:16-alpine")
+    private static final PostgreSQLContainer postgres =
+            new PostgreSQLContainer("postgres:16-alpine")
                     .withDatabaseName("postgres")
                     .withUsername("test")
                     .withPassword("test");
