@@ -33,8 +33,8 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 4 | A3b. Default deny, the role matrix, remove unused endpoints | Done (#282) |
 | 5 | A4. Sign-in hardening and sessions in the database | Done (#283) |
 | 6 | A5. Small consistency fixes | Done (#284) |
-| 7 | **P1. Replace Create React App with Vite** | Next |
-| 8 | P2. One thing to start, and the home test host | |
+| 7 | P1. Replace Create React App with Vite | Done (#285) |
+| 8 | **P2. One thing to start, and the home test host** | Next |
 | 9 | B4a. Design tokens: every screen reads its look from named values | |
 | 10 | B4b and B4c. Template system, then the new templates | D9 |
 | 11 | P3. Phone-sized screens | |
@@ -158,6 +158,16 @@ These make the app something that can be installed in one place and used from de
 
 ### P1. Replace Create React App with Vite
 
+**Done 2026-11-21 (#285).** The frontend is served and built by Vite 8 and tested with Vitest 4; `react-scripts` is gone (1,315 installed packages became 258). `VITE_API_URL` replaces `REACT_APP_API_URL`. Lint is its own command and CI step. No screen changed. What was decided along the way, beyond the text below:
+
+- **Files that contain JSX were renamed `.jsx`** (31 files: screens, components, and the tests that draw them). Vite 8 reads `.js` as plain JavaScript, and the setting that used to override that per file was removed with the move from esbuild to Oxc. The contents are unchanged and git records them as renames.
+- **Vitest, not Jest alongside.** All 175 tests moved with one mechanical change (`jest.` to `vi.`, 139 places, three functions). One test was corrected: it matched text in a form that was about to close, and passed under Jest on timing alone.
+- **Vitest 4 and jsdom 29, one major version behind the newest**, because the newest need Node.js 22 and this machine has Node 20, installed system-wide. Node 20 is past its end of support; upgrading it is an owner action (see the list below the decisions table). `./start.sh` now says so plainly if Node is too old.
+- **ESLint 10 with the core rules and the hooks rules.** The React and accessibility plugins Create React App bundled do not support ESLint 10, and ESLint 9 is past its end of support, so those two rule sets are not enforced for now (`CLAUDE.md`, known gaps).
+- **The build still writes to `build/`**, not Vite's default `dist/`, so nothing that refers to it had to change. P2 can rename it if the packaged build wants to.
+- **Two Create React App behaviors were kept on purpose, in `vite.config.js`:** the dev server answers on every network address (a tablet can open it), and tests ignore `.env.local`.
+- **`./start.sh` reinstalls packages when `package-lock.json` is newer than what is installed.** Without it, the first start after pulling this change fails, because the old `node_modules` has no Vite in it.
+
 Create React App is retired and no longer maintained. Vite is the standard replacement: it does the same two jobs (a development server and a production build) and is much faster at both.
 
 - Swap `react-scripts` for Vite. `index.html` moves to the frontend's root folder, as Vite expects.
@@ -274,11 +284,11 @@ The owner wants a list of default templates a manager can switch between: **Plai
 
 Ask these at the point they are needed. Do not guess and build.
 
-Owner actions still open unless already done: turn on branch protection for `main` (require both CI checks and an up-to-date branch), and change the local database password, which is still readable in this public repository's history.
+Owner actions still open unless already done: turn on branch protection for `main` (require both CI checks and an up-to-date branch), change the local database password, which is still readable in this public repository's history, and upgrade Node.js on the development machine from 20 to 22 or 24 (Node 20 is past its end of support; it needs the machine's password, so Claude cannot do it).
 
 ## How to continue
 
-1. Start P1. It needs no decision from the owner. Part A is finished.
+1. Start P2. It needs no decision from the owner. Part A and P1 are finished.
 2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 
 ## Completed
