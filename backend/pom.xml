@@ -80,11 +80,13 @@
             <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
-        <!-- Password hashing (BCrypt) for staff PINs. Only the hashing part of Spring
-             Security: the app's sign-in is its own (see StaffSessionInterceptor). -->
+        <!-- Spring Security: decides who is asking (authentication) and what they may do
+             (authorization) for every request. It also brings the BCrypt hashing used for
+             staff PINs, which used to be pulled in on its own as spring-security-crypto.
+             The rules are in config/SecurityConfig. -->
         <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-crypto</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
         <!-- Spring Boot DevTools - Hot reload during development -->

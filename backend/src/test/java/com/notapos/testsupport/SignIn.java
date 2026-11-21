@@ -1,7 +1,7 @@
 package com.notapos.testsupport;
 
 import com.notapos.enums.StaffRole;
-import com.notapos.security.StaffSessionInterceptor;
+import com.notapos.security.StaffTokenFilter;
 import com.notapos.security.StaffSessionStore;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
@@ -35,7 +35,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 public class SignIn {
 
     // The header the frontend sends the token in
-    public static final String TOKEN_HEADER = StaffSessionInterceptor.TOKEN_HEADER;
+    public static final String TOKEN_HEADER = StaffTokenFilter.TOKEN_HEADER;
 
     private final StaffSessionStore sessions;
 

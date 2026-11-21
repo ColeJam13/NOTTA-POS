@@ -5,7 +5,7 @@
  *      buttons all need the same answers. If each kept its own list they
  *      would drift apart.
  *
- * The backend enforces the important ones again (see @RequiresRole there):
+ * The backend enforces the important ones again (see @PreAuthorize there):
  * hiding a button here is for a tidy screen, not for security.
  *
  * A role of null means "nobody is signed in". In the running app that never

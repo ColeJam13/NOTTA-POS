@@ -12,13 +12,18 @@ import com.notapos.repository.OrderRepository;
 import com.notapos.repository.PaymentRepository;
 import com.notapos.repository.StaffRepository;
 import com.notapos.repository.TableRepository;
+import com.notapos.security.StaffTokenFilter;
 import com.notapos.service.StaffService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import java.math.BigDecimal;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -62,6 +67,8 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
     @Autowired private OrderItemModifierRepository orderItemModifierRepository;
     @Autowired private PaymentRepository paymentRepository;
     @Autowired private ObjectMapper objectMapper;
+    @Autowired private ApplicationContext applicationContext;
+    @Autowired @Qualifier("requestMappingHandlerMapping") private RequestMappingHandlerMapping handlerMapping;     // Every endpoint the backend has
 
     // A token for one signed-in person of each role, and who they are
     private final Map<StaffRole, String> tokens = new EnumMap<>(StaffRole.class);
@@ -338,34 +345,46 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
     // ------------------------------------------------------------------
 
     @Test
-    void testARefusedRequestThatIsAlsoBadlyFormed_ShouldBeRefusedForWhoIsAsking() throws Exception {
+    void testARequestThatIsBadlyFormedAndNotAllowed_ShouldBeToldItIsBadlyFormed() throws Exception {
         // WHAT: Send a request that is wrong twice: the person may not make it, and its body
         //       (or its parameters) would not pass validation either
-        // WHY: Someone who may not use an endpoint should be told that, and learn nothing
-        //      about what the endpoint expects.
+        // WHY: This pins down the ONE answer that changed when sign-in moved onto Spring
+        //      Security. The role rules sit on the controller method (@PreAuthorize). Spring
+        //      reads and validates the request before it calls the method, so a badly formed
+        //      request is answered 400 before the rule is reached. Under the home-built check
+        //      the order was the other way round, and these answered 401 and 403.
+        //
+        //      Nothing is let through: the same people sending a WELL formed request are
+        //      refused, which the tests at the top of this class prove for every endpoint.
+        //      What an outsider can learn this way is the wording of validation messages.
+        //      Step A3b of the plan refuses requests with no sign-in before they get this
+        //      far, which puts the 401 back in front for anyone not signed in.
 
         String badStaff = "{\"name\":\"\",\"role\":\"\",\"pin\":\"12\"}";
 
         // Nobody signed in
         mockMvc.perform(post("/api/staff").contentType(MediaType.APPLICATION_JSON).content(badStaff))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isBadRequest());
         mockMvc.perform(get("/api/reports/financials"))                             // No from or to
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isBadRequest());
         mockMvc.perform(put("/api/tables/layout").contentType(MediaType.APPLICATION_JSON).content("{\"tables\":[]}"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isBadRequest());
 
         // Signed in with a role that is not allowed
         String serverToken = tokens.get(StaffRole.SERVER);
         mockMvc.perform(post("/api/staff").header(TOKEN_HEADER, serverToken).contentType(MediaType.APPLICATION_JSON).content(badStaff))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isBadRequest());
         mockMvc.perform(get("/api/reports/financials").header(TOKEN_HEADER, serverToken))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isBadRequest());
 
-        // And for someone who IS allowed, the badly formed request is what gets reported
+        // Someone who IS allowed gets the same 400, as before
         mockMvc.perform(post("/api/staff").header(TOKEN_HEADER, tokens.get(StaffRole.MANAGER))
                 .contentType(MediaType.APPLICATION_JSON).content(badStaff))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Validation failed"));
+
+        // And none of the badly formed requests did anything
+        assertEquals(StaffRole.values().length + 1, staffRepository.count());       // One per role, plus "Someone Else"
     }
 
     // ------------------------------------------------------------------
@@ -452,5 +471,37 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
 
         mockMvc.perform(get("/login")).andExpect(status().isNotFound());
         mockMvc.perform(post("/logout")).andExpect(status().isNotFound());
+    }
+
+    // ------------------------------------------------------------------
+    // Two guards on the set-up itself
+    // ------------------------------------------------------------------
+
+    @Test
+    void testTheRulesTableInThisTest_ShouldCoverEveryEndpointThatHasARule() {
+        // WHAT: Count the controller methods that carry a @PreAuthorize rule
+        // WHY: The tests above only check the endpoints listed in setUp(). If someone adds a
+        //      rule to another endpoint and forgets this table, that rule would go untested
+        //      here. This fails until the table is brought up to date.
+        //      (This is the one test in this class that looks at how the backend is built.)
+
+        long endpointsWithARule = handlerMapping.getHandlerMethods().values().stream()
+                .filter(method -> method.hasMethodAnnotation(PreAuthorize.class)
+                        || method.getBeanType().isAnnotationPresent(PreAuthorize.class))
+                .count();
+
+        assertEquals(rules.size(), endpointsWithARule,
+                "An endpoint has a @PreAuthorize rule that is not in this test's table (or the other way round)");
+    }
+
+    @Test
+    void testTheTokenFilter_ShouldNotBeASpringBean() {
+        // WHAT: Check that StaffTokenFilter is not registered as a bean
+        // WHY: Spring Boot adds every filter bean to the web server by itself. As a bean the
+        //      filter would run twice per request: once there, outside Spring Security, and
+        //      once inside its chain. SecurityConfig creates it with "new" for that reason.
+        //      This catches a well-meant @Component being added to it later.
+
+        assertTrue(applicationContext.getBeansOfType(StaffTokenFilter.class).isEmpty());
     }
 }

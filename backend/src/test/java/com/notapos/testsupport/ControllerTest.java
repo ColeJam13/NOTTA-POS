@@ -1,5 +1,6 @@
 package com.notapos.testsupport;
 
+import com.notapos.config.SecurityConfig;
 import com.notapos.security.StaffSessionStore;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -27,11 +28,14 @@ import java.lang.annotation.Target;
  *       @MockBean) plus the pieces sign-in needs, so every controller test
  *       runs with the real "who may do this" check and can say who is asking.
  *
- * WHY:  @WebMvcTest on its own does not load ordinary @Component classes, and
- *       the list of who is signed in (StaffSessionStore) is one. Rather than
- *       have every test remember what to import, the list is here once. When
- *       how sign-in works changes, this file and SignIn change, and the tests
- *       do not.
+ * WHY:  @WebMvcTest on its own does not load the app's security setup
+ *       (SecurityConfig) or ordinary @Component classes such as the list of
+ *       who is signed in (StaffSessionStore). Without SecurityConfig, Spring
+ *       Boot falls back to its own default, which refuses every request, so
+ *       a controller test with plain @WebMvcTest fails with 401s and 403s
+ *       that have nothing to do with this app's rules. Rather than have every
+ *       test remember what to import, the list is here once. When how sign-in
+ *       works changes, this file and SignIn change, and the tests do not.
  *
  * HOW:  An annotation that carries other annotations is called a "composed"
  *       annotation. @AliasFor passes the controller class given here on to
@@ -45,7 +49,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @WebMvcTest
-@Import({StaffSessionStore.class, SignIn.class})
+@Import({SecurityConfig.class, StaffSessionStore.class, SignIn.class})
 public @interface ControllerTest {
 
     @AliasFor(annotation = WebMvcTest.class, attribute = "controllers")

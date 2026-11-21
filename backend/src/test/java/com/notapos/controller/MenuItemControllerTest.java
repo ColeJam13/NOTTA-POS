@@ -466,7 +466,7 @@ class MenuItemControllerTest {
     @Test
     void testGetMenuItems_WhenNobodyIsSignedIn_ShouldStillWork() throws Exception {
         // WHAT: Test that reading the menu needs no sign-in
-        // WHY: Only the endpoints marked @RequiresRole are restricted
+        // WHY: Only the endpoints marked @PreAuthorize are restricted
 
         when(menuItemService.getActiveMenuItems()).thenReturn(java.util.List.of(testItem));
 

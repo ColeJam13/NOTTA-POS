@@ -1,10 +1,8 @@
 package com.notapos.config;
 
-import com.notapos.security.StaffSessionInterceptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
@@ -23,6 +21,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  *   Set notta.cors.allowed-origins in application.properties (comma-separated),
  *   or set the NOTTA_CORS_ALLOWED_ORIGINS environment variable when starting
  *   the backend. With no setting, http://localhost:3000 is used.
+ *
+ * Spring Security uses these same rules (SecurityConfig asks for them with
+ * cors(withDefaults())), and applies them before it looks at who is signed in.
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -31,18 +32,8 @@ public class WebConfig implements WebMvcConfigurer {
     // comma-separated setting into an array for us.
     private final String[] allowedOrigins;
 
-    // Checks who is signed in before each request reaches a controller
-    private final StaffSessionInterceptor staffSessionInterceptor;
-
-    public WebConfig(@Value("${notta.cors.allowed-origins:http://localhost:3000}") String[] allowedOrigins,
-                     StaffSessionInterceptor staffSessionInterceptor) {
+    public WebConfig(@Value("${notta.cors.allowed-origins:http://localhost:3000}") String[] allowedOrigins) {
         this.allowedOrigins = allowedOrigins;
-        this.staffSessionInterceptor = staffSessionInterceptor;
-    }
-
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(staffSessionInterceptor).addPathPatterns("/api/**");
     }
 
     @Override
