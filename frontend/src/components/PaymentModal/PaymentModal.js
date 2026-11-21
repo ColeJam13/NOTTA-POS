@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Banknote, CreditCard, Gift } from 'lucide-react';
 import './PaymentModal.css';
 import { apiFetch, getJson, ORDER_NOT_OPEN } from '../../services/api';
+import { formatTaxRate } from '../../utils/totals';
 
 /**
  * The pop-up for closing a check: shows what is owed, takes a tip and a
@@ -45,7 +46,7 @@ function PaymentModal({ order, onClose, onPaymentSuccess, onCheckClosedElsewhere
   const subtotal = check ? check.subtotal : 0;
   const tax = check ? check.tax : 0;
   const total = check ? check.total : 0;
-  const taxRateLabel = check ? `${+(check.taxRate * 100).toFixed(2)}%` : '';      // 0.03 -> "3%" (the + drops trailing zeros)
+  const taxRateLabel = check ? formatTaxRate(check.taxRate) : '';                 // 0.03 -> "3%" (same label as the order screen)
   const tipValue = parseFloat(tipAmount) || 0;
   const grandTotal = total + tipValue;
 

@@ -15,6 +15,8 @@
  *   with REACT_APP_.)
  */
 
+import { noteServerTime } from './serverClock';
+
 // ----------------------------------------------------------------------------
 // Sign-in
 // ----------------------------------------------------------------------------
@@ -59,7 +61,10 @@ export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8
 export const apiFetch = (path, options) => {
   // Nobody signed in: send the request exactly as it was given
   if (!sessionToken) {
-    return fetch(`${API_BASE_URL}${path}`, options);
+    return fetch(`${API_BASE_URL}${path}`, options).then(response => {
+      noteServerTime(response);       // Every answer says what time the backend thinks it is (see serverClock.js)
+      return response;
+    });
   }
 
   // Someone is signed in: add their token, so the backend knows who is asking
@@ -70,6 +75,8 @@ export const apiFetch = (path, options) => {
   };
 
   return fetch(`${API_BASE_URL}${path}`, withToken).then(response => {
+    noteServerTime(response);         // Every answer says what time the backend thinks it is (see serverClock.js)
+
     // 401 = the backend no longer knows this token (the session was not used for 12 hours,
     // it was signed out, or a manager changed this person's PIN or role). Go back to the
     // PIN screen. A backend restart does not cause this: sessions are kept in the database.

@@ -1,3 +1,5 @@
+import { serverNow } from '../services/serverClock';
+
 /**
  * Utility functions for formatting data across the application
  * Centralized formatting logic for consistency and maintainability
@@ -27,10 +29,12 @@ export const formatTableName = (table) => {
  * @returns {string} - Formatted relative time string
  */
 export const formatTimeAgo = (timestamp) => {
-    const now = Date.now();
+    // "Now" by the backend's clock, the one the timestamp was written with. This
+    // device's own clock may be wrong, or set to another time zone (see serverClock.js).
+    const now = serverNow();
     const created = new Date(timestamp).getTime();
-    // minutes. Never below zero: if this device's clock is a little behind the
-    // server's, a brand new order would otherwise read "-1m ago".
+    // minutes. Never below zero: a stamp written a moment after the backend's time was
+    // last heard could otherwise read "-1m ago".
     const diff = Math.max(0, Math.floor((now - created) / 1000 / 60));
     
     if (diff < 60) return `${diff}m ago`;

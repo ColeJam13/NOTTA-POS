@@ -252,8 +252,8 @@ test('tapping a menu item adds it to the order as a draft and updates the totals
   expect(within(totals).getByText('$23.69')).toBeInTheDocument();
 
   // Nothing is saved to the backend until Send or Save Draft
-  // (the screen loads the menu and its modifier groups when it opens, and that is all)
-  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups']);
+  // (the screen loads the menu, its modifier groups, and the tax rate when it opens, and that is all)
+  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups', 'GET /api/settings']);
 });
 
 test('category tabs filter the menu and the selected tab is highlighted', async () => {
@@ -290,11 +290,12 @@ test('SEND ORDER with no table creates a Quick Order, saves items, and starts th
   expect(screen.getByRole('button', { name: 'SEND NOW?' })).toBeInTheDocument();
   expect(screen.getByText('Current Order - Quick Order QO1')).toBeInTheDocument();
 
-  // Requests, in order: load menu + modifiers, find next QO number, create table, open order, save item, send
+  // Requests, in order: load menu + modifiers + tax rate, find next QO number, create table, open order, save item, send
   // (the backend marks the table occupied when it opens the order - there is no separate "seat table" request)
   expect(calls).toEqual([
     'GET /api/menu-items',
     'GET /api/menu-items/modifier-groups',
+    'GET /api/settings',
     'GET /api/tables',
     'POST /api/tables',
     'POST /api/orders',
@@ -471,7 +472,7 @@ test('tapping an item with modifiers opens the picker, and a required group must
   expect(within(totals).getByText('$17.51')).toBeInTheDocument();
 
   // Still nothing saved to the backend until Send or Save Draft
-  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups']);
+  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups', 'GET /api/settings']);
 });
 
 test('a "choose 1" group swaps to the new choice, and an "up to N" group stops at N', async () => {
@@ -537,7 +538,8 @@ test('SEND ORDER saves an item together with its modifiers and kitchen note', as
     menuItemId: 4,
     quantity: 1,
     specialInstructions: 'no butter',
-    modifierIds: [14, 24]
+    modifierIds: [14, 24],
+    ringInPosition: 0           // The first item on the order
   });
   expect(saves[0].body).not.toHaveProperty('price');
   expect(calls).toContain('POST /api/order-items/order/77/send');
@@ -556,7 +558,7 @@ test('the pencil adds a kitchen note to an item that has no modifiers', async ()
 
   // The note shows on the line; the item is not saved yet, so the backend has not been told
   expect(within(orderList(container)).getByText('NOTE: extra crispy')).toBeInTheDocument();
-  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups']);
+  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups', 'GET /api/settings']);
 
   // Saving the draft sends the note along
   await userEvent.click(screen.getByRole('button', { name: 'SAVE DRAFT' }));
@@ -567,7 +569,8 @@ test('the pencil adds a kitchen note to an item that has no modifiers', async ()
     menuItemId: 2,
     quantity: 1,
     specialInstructions: 'extra crispy',
-    modifierIds: []
+    modifierIds: [],
+    ringInPosition: 0           // The first item on the order
   });
 });
 
@@ -696,7 +699,7 @@ test('SEND ORDER and SAVE DRAFT are disabled when there is nothing to send, so n
   expect(screen.getByRole('button', { name: 'SEND ORDER' })).toBeEnabled();
   expect(screen.getByRole('button', { name: 'SAVE DRAFT' })).toBeEnabled();
   // Still nothing but the two menu requests: no table and no order were created
-  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups']);
+  expect(calls).toEqual(['GET /api/menu-items', 'GET /api/menu-items/modifier-groups', 'GET /api/settings']);
 });
 
 test('opening a table asks the backend for its open order even when the table looked available', async () => {
@@ -982,7 +985,8 @@ test('a plain item is rung in through the same request as every other item, with
 
   // The backend works out the price from the menu. A price sent from here used to be saved as-is.
   const save = requests.find(r => r.method === 'POST' && r.path === '/api/order-items');
-  expect(save.body).toEqual({ orderId: 77, menuItemId: 1, quantity: 1, specialInstructions: '', modifierIds: [] });
+  // (ringInPosition is the item's place on the order: the one thing besides the item itself the screen does say)
+  expect(save.body).toEqual({ orderId: 77, menuItemId: 1, quantity: 1, specialInstructions: '', modifierIds: [], ringInPosition: 0 });
   expect(save.body).not.toHaveProperty('price');
   expect(save.body).not.toHaveProperty('status');
 });

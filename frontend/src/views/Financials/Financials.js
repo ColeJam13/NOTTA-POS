@@ -3,6 +3,7 @@ import NavBar from '../../components/NavBar/NavBar';
 import { formatTableName, formatTimeAgo, formatPaymentMethod } from '../../utils/formatters';
 import './Financials.css';
 import { getJson } from '../../services/api';
+import { serverNow } from '../../services/serverClock';
 
 // Write a Date the way the backend reads it: "2026-11-18T00:00:00", in this device's own
 // time with no time zone. (toISOString() would convert to UTC, which is a different clock
@@ -42,7 +43,13 @@ function Financials({ setCurrentView, setSelectedTable }) {
 
                                                                             // Get date range based on selected period
     const getDateRange = () => {
-        const now = new Date();
+        // "Today" is the backend's today. Checks are stamped with the backend's clock, so
+        // a device whose own date is wrong, or which sits in another time zone, would
+        // otherwise ask for a day that is not the one the checks were closed on
+        // (see services/serverClock.js). backendToday() makes a new Date each time it is
+        // called, because setHours() below changes the Date it is called on.
+        const backendToday = () => new Date(serverNow());
+        const now = backendToday();
         let startDate, endDate;
 
         switch(timePeriod) {
@@ -55,7 +62,7 @@ function Financials({ setCurrentView, setSelectedTable }) {
                 weekStart.setDate(now.getDate() - now.getDay());
                 weekStart.setHours(0, 0, 0, 0);
                 startDate = weekStart;
-                endDate = new Date(new Date().setHours(23, 59, 59, 999));      // Through the end of today, so a check closed a second from now is still counted
+                endDate = new Date(backendToday().setHours(23, 59, 59, 999));  // Through the end of today, so a check closed a second from now is still counted
                 break;
             case 'month':
                 startDate = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -67,7 +74,7 @@ function Financials({ setCurrentView, setSelectedTable }) {
                 // today as both dates found nothing. Adding a time of day makes JavaScript
                 // read it as local time, and the end date runs to the last moment of its day.
                 startDate = customStartDate ? new Date(`${customStartDate}T00:00:00`) : new Date(2000, 0, 1);
-                endDate = customEndDate ? new Date(`${customEndDate}T23:59:59.999`) : new Date(new Date().setHours(23, 59, 59, 999));
+                endDate = customEndDate ? new Date(`${customEndDate}T23:59:59.999`) : new Date(backendToday().setHours(23, 59, 59, 999));
                 break;
             default:
                 startDate = new Date(now.setHours(0, 0, 0, 0));

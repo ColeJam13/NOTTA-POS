@@ -7,14 +7,21 @@
  *      the guest would see one total on the order and be charged another.
  */
 
-// Sales tax rate as a decimal (0.03 = 3%).
-// The backend works out every check that is actually charged, using its own copy of
-// this number: notta.tax-rate in backend/src/main/resources/application.properties.
-// This copy is for the running total on the order screen. Change both together.
-export const TAX_RATE = 0.03;
+// THE TAX RATE IS NOT IN THIS FILE. It used to be (TAX_RATE = 0.03), beside the
+// backend's own copy, and the two had to be changed together. Now there is one:
+// notta.tax-rate in backend/src/main/resources/application.properties. The backend
+// works out every check that is charged with it, and hands it to the order screen
+// (GET /api/settings) for the running total. The functions below take the rate as
+// an argument, so nothing here can be out of step with what is charged.
 
-// Tax rate as a display label, e.g. "3%"
-export const TAX_RATE_LABEL = `${(TAX_RATE * 100).toFixed(TAX_RATE * 100 % 1 === 0 ? 0 : 2)}%`;
+/**
+ * A tax rate as a display label: 0.03 -> "3%", 0.0825 -> "8.25%".
+ * (toFixed(2) keeps two decimals; the + in front turns "3.00" back into 3.)
+ *
+ * @param {number} taxRate - The rate as a decimal
+ * @returns {string} - e.g. "3%"
+ */
+export const formatTaxRate = (taxRate) => `${+(taxRate * 100).toFixed(2)}%`;
 
 /**
  * Round a dollar amount to whole cents.
@@ -61,14 +68,23 @@ export const priceWithModifiers = (basePrice, modifiers = []) =>
  * Calculate subtotal, tax, and total for a list of order items.
  *
  * @param {Array} items - Order items, each with a price and optional quantity
- * @returns {{subtotal: number, tax: number, total: number}} - Amounts in dollars
+ * @param {number|null} taxRate - The rate the backend gave (0.03 = 3%), or null if it
+ *                                has not arrived (or could not be loaded)
+ * @returns {{subtotal: number, tax: number|null, total: number|null}} - Amounts in dollars.
+ *          With no rate, tax and total are null: the caller shows them as blank. A total
+ *          worked out from a guessed rate could differ from what the guest is charged.
  */
-export const calculateOrderTotals = (items) => {
+export const calculateOrderTotals = (items, taxRate) => {
   // Price x quantity for every line (quantity defaults to 1 if missing)
   const subtotal = roundToCents(
     items.reduce((sum, item) => sum + item.price * (item.quantity ?? 1), 0)
   );
-  const tax = roundToCents(subtotal * TAX_RATE);
+
+  if (taxRate === null || taxRate === undefined) {
+    return { subtotal, tax: null, total: null };
+  }
+
+  const tax = roundToCents(subtotal * taxRate);
   const total = roundToCents(subtotal + tax);
 
   return { subtotal, tax, total };

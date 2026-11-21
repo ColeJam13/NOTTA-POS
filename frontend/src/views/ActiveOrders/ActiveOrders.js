@@ -3,6 +3,7 @@ import NavBar from '../../components/NavBar/NavBar';
 import { formatTableName } from '../../utils/formatters';
 import './ActiveOrders.css';
 import { apiFetch, getJson } from '../../services/api';
+import { serverNow } from '../../services/serverClock';
 import { useStaff } from '../../context/StaffContext';
 import { canDo } from '../../utils/roles';
 
@@ -14,9 +15,12 @@ const WAITING_LATE_MINUTES = 15;
 const isOnKitchenTicket = (item) =>
   item.status === 'pending' || item.status === 'fired' || item.status === 'completed';
 
-// Whole minutes since a timestamp (never below zero - see formatTimeAgo for why)
+// Whole minutes since a timestamp (never below zero - see formatTimeAgo for why).
+// Measured from the backend's "now", not this tablet's: the timestamp was written with
+// the backend's clock, and a kitchen tablet whose own clock is off would otherwise show
+// a ticket as brand new, or as hours late (see serverClock.js).
 const minutesSince = (timestamp) =>
-  Math.max(0, Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000 / 60));
+  Math.max(0, Math.floor((serverNow() - new Date(timestamp).getTime()) / 1000 / 60));
 
 /**
  * Active Orders: every open order's items and where each one stands.
@@ -114,9 +118,12 @@ function ActiveOrders({ setCurrentView, setSelectedTable }) {
             (stationId === null || item.prepStationId == null || item.prepStationId === stationId))
         : order.items.filter(item => item.status !== 'draft');
 
-      // Sort by orderItemId to keep items in a stable order when status changes
-      // (copy first with [...] so the array held in state is never reordered in place)
-      const sortedItems = [...filteredItems].sort((a, b) => a.orderItemId - b.orderItemId);
+      // Keep the items in the order the server rang them in, which is the order the
+      // backend sends them in (ringInPosition, then ID where two share a position).
+      // filter() keeps that order, and it does not change when a status does, so a
+      // line never jumps. (This used to re-sort by orderItemId. IDs are handed out as
+      // the saves arrive, which is not always the order the items were tapped in.)
+      const sortedItems = filteredItems;
 
       if (sortedItems.length === 0) return null;
 
