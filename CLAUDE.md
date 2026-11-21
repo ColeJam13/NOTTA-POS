@@ -116,11 +116,12 @@ When pair-programming interactively instead of automating: ask before writing co
 
 Everything through pull request #279 is merged, and `main` passes CI (591 backend tests, 142 frontend tests). Built: CI and the first cleanup pass, modifiers and kitchen notes, the working-state pass over the core flow, the 86 board, the editable floor map, combined endpoints for Tables, Quick Orders, and Financials, the kitchen display, Spring Boot 3.5, the start script, and staff profiles with PIN sign-in and roles.
 
-**The work order from here is `Documentation/phase-2-plan.md`.** It was written after an independent review of #263 to #274. Read it before starting anything. In short:
+**The work order from here is `Documentation/phase-2-plan.md`** (revision 2, which followed a check of #275 to #279). Read it before starting anything; its "Order of work" table says what is next. In short:
 
-- Part A fixes defects and open doors in what is built, in order: A1 one server-side ring-in path (done), A2 two terminals on one check (done), A3 lock the API, A4 sign-in hardening, A5 one tax rate, ticket order, and the clock.
-- Part B is features: notifications, host view with waitlist, challenges on real data, themes, check handling.
-- It lists decisions that are the owner's (D2 to D7). Ask each one when it is needed. Do not guess and build.
+- Part A fixes defects and open doors in what is built, in order: A1 one server-side ring-in path (done), A2 two terminals on one check (done), A3 lock the API (now on Spring Security, in two pull requests), A4 sign-in hardening and sessions in the database, A5 one tax rate, ticket order, and the clock.
+- Part P is platform work: Vite in place of Create React App, a packaged build and a home test host, phone-sized screens, an installable app, and later store apps with Square.
+- Part B is features: notifications, host view with waitlist, challenges on real data, UI templates (Plain, Coffee Shop, Nightclub, 8-Bit), check handling.
+- It lists decisions that are the owner's (D3 to D9 are open). Ask each one when it is needed. Do not guess and build.
 
 Some items in the list below are scheduled in that plan (the two tax rates, ticket order, the clock, the open API, sign-out, the starting PIN). They stay listed here until the pull request that fixes each one removes it.
 
