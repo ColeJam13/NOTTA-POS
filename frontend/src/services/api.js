@@ -36,6 +36,12 @@ export const setOnSessionEnded = (handler) => {
   onSessionEnded = handler;
 };
 
+// The code the backend puts on its answer when an order is no longer open
+// (the check was paid or cleared, usually on another terminal). Screens check for
+// this code, never for the wording of the message. It lives here, beside the
+// request helpers, because both the order screen and the payment window need it.
+export const ORDER_NOT_OPEN = 'ORDER_NOT_OPEN';
+
 // Base address of the Spring Boot backend - no trailing slash
 export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 

@@ -27,6 +27,8 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Integration tests for two terminals acting on the same check at the same moment.
@@ -197,6 +199,27 @@ class TwoTerminalsIntegrationTest extends BaseIntegrationTest {
             assertEquals(1, paymentRepository.findByOrderId(order.getOrderId()).size(), "round " + round);
             assertEquals("closed", orderRepository.findById(order.getOrderId()).orElseThrow().getStatus());
         }
+    }
+
+    @Test
+    void testPayingACheckThatWasAlreadyPaid_ShouldAnswerWithTheClosedCheckCode() throws Exception {
+        // WHAT: Test what the terminal that lost the race is told
+        // WHY: "409" alone does not tell a screen what to do next. The code ORDER_NOT_OPEN
+        //      does: the payment window closes and the table is reloaded, the same way the
+        //      order screen already reacts when it tries to add to a closed check.
+
+        // Given - a check that has just been paid
+        Order order = openOrderWithOneSentItem("W1");
+        assertEquals(201, pay(order).call());
+
+        // When & Then - the same payment again
+        mockMvc.perform(post("/api/payments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderId\":" + order.getOrderId() + ",\"amount\":17.51,\"tipAmount\":0,\"paymentMethod\":\"cash\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ORDER_NOT_OPEN"))
+                .andExpect(jsonPath("$.message").value("This check was already closed, most likely on another terminal. Nothing was charged."));
+        assertEquals(1, paymentRepository.findByOrderId(order.getOrderId()).size());
     }
 
     // ------------------------------------------------------------------

@@ -129,8 +129,9 @@ class PaymentServiceTest {
         order.setStatus("closed");
         when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(order));
 
-        // When & Then
-        OrderStateException exception = assertThrows(OrderStateException.class,
+        // When & Then - OrderNotOpenException is the one that carries the code ORDER_NOT_OPEN,
+        // which is how the payment window knows to close and reload the table
+        com.notapos.exception.OrderNotOpenException exception = assertThrows(com.notapos.exception.OrderNotOpenException.class,
                 () -> paymentService.createPayment(testPayment));
         assertTrue(exception.getMessage().contains("already closed"));
         verify(paymentRepository, never()).save(any());
