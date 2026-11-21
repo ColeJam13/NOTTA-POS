@@ -9,8 +9,9 @@ import { setSessionToken } from './services/api';
  *
  * The fake backend works the same way as in CreateOrder.test.js: global.fetch
  * is replaced with a function that returns canned JSON. Here it also plays
- * the part of sign-in: it knows four PINs, hands out a token for each, and
- * (like the real backend) answers 401 to a token it no longer knows.
+ * the part of sign-in: it knows five PINs, hands out a token for each, and
+ * (like the real backend) answers 401 to a token it no longer knows. One of
+ * the five is the starter PIN, whose owner must choose a new one.
  */
 
 // PIN -> who it belongs to
@@ -18,7 +19,9 @@ const STAFF_BY_PIN = {
   '1111': { staffId: 1, name: 'Sarah Miller', role: 'server', isActive: true },
   '2222': { staffId: 2, name: 'Morgan', role: 'manager', isActive: true },
   '3333': { staffId: 3, name: 'Kit', role: 'kitchen', isActive: true },
-  '4444': { staffId: 4, name: 'Harper', role: 'host', isActive: true }
+  '4444': { staffId: 4, name: 'Harper', role: 'host', isActive: true },
+  // The first manager of a new database, still on the starter PIN
+  '1234': { staffId: 9, name: 'Manager', role: 'manager', isActive: true, mustChangePin: true }
 };
 
 let requests;         // [{ method, path, token }] - token is the X-Staff-Token header that was sent
@@ -52,6 +55,11 @@ beforeEach(() => {
     }
     if (path === '/api/staff/me') {
       return liveTokens[token] ? json(liveTokens[token]) : json({ message: 'Sign in to continue.' }, 401);
+    }
+    if (method === 'PUT' && path === '/api/staff/me/pin') {
+      // Like the real backend: the person is handed back with nothing left to change
+      liveTokens[token] = { ...liveTokens[token], mustChangePin: false };
+      return json(liveTokens[token]);
     }
 
     // --- the screens these tests open ---
@@ -212,6 +220,61 @@ test('SIGN OUT goes back to the PIN pad and ends the session on the backend', as
   expect(await screen.findByText(/Signed in as/)).toHaveTextContent('Morgan (Manager)');
 });
 
+// ============================================================================
+// The starter PIN
+// ============================================================================
+
+test('signing in with the starter PIN leads to choosing a new PIN, and to nothing else until that is done', async () => {
+  render(<App />);
+  await typePin('1234');
+
+  // Not Home: the only screen is the one that asks for a new PIN
+  expect(await screen.findByText('ENTER YOUR CURRENT PIN')).toBeInTheDocument();
+  expect(screen.getByText(/You signed in with the starter PIN/)).toBeInTheDocument();
+  expect(screen.queryByText(/Signed in as/)).not.toBeInTheDocument();
+  expect(homeButtons()).toEqual([]);
+
+  // Current PIN, new PIN, new PIN again
+  await typePin('1234');
+  await screen.findByText('CHOOSE A NEW PIN');
+  await typePin('4821');
+  await screen.findByText('ENTER THE NEW PIN AGAIN');
+  await typePin('4821');
+
+  // The app opens, as the same person, without signing in again
+  expect(await screen.findByText(/Signed in as/)).toHaveTextContent('Signed in as Manager (Manager)');
+  expect(homeButtons()).toContain('STAFF');
+  expect(requests).toContainEqual({ method: 'PUT', path: '/api/staff/me/pin', token: 'token-for-Manager' });
+});
+
+test('reloading while a new PIN is still owed comes back to the same screen, not to Home', async () => {
+  const first = render(<App />);
+  await typePin('1234');
+  await screen.findByText('ENTER YOUR CURRENT PIN');
+  first.unmount();                                                  // The page goes away...
+  setSessionToken(null);
+
+  render(<App />);                                                  // ...and loads again
+
+  // Reloading is not a way around it: the backend still says a new PIN is owed
+  expect(await screen.findByText('ENTER YOUR CURRENT PIN')).toBeInTheDocument();
+  expect(screen.queryByText(/Signed in as/)).not.toBeInTheDocument();
+});
+
+test('SIGN OUT on the choose-a-new-PIN screen goes back to the PIN pad, so someone else can sign in', async () => {
+  render(<App />);
+  await typePin('1234');
+  await screen.findByText('ENTER YOUR CURRENT PIN');
+
+  await userEvent.click(screen.getByRole('button', { name: 'SIGN OUT' }));
+
+  expect(screen.getByText('ENTER YOUR PIN')).toBeInTheDocument();
+  expect(requests).toContainEqual({ method: 'POST', path: '/api/staff/sign-out', token: 'token-for-Manager' });
+
+  await typePin('1111');
+  expect(await screen.findByText(/Signed in as/)).toHaveTextContent('Sarah Miller (Server)');
+});
+
 test('reloading the page keeps the person signed in', async () => {
   const first = await signIn('2222');
   first.unmount();                                                  // The page goes away...
@@ -229,7 +292,7 @@ test('reloading after the session ended on the backend shows the PIN pad', async
   const first = await signIn('2222');
   first.unmount();
   setSessionToken(null);
-  liveTokens = {};                                                  // The backend was restarted: it no longer knows the token
+  liveTokens = {};                                                  // The backend no longer knows the token (a manager changed this person's PIN, say)
 
   render(<App />);
 

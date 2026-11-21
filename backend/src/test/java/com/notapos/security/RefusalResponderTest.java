@@ -85,7 +85,7 @@ class RefusalResponderTest {
         // WHAT: A signed-in host is refused
         // WHY: 403 means "we know who you are, and no". Naming the role tells the person why.
 
-        StaffSession host = new StaffSession(4L, "Hannah", StaffRole.HOST, Instant.now());
+        StaffSession host = new StaffSession(4L, "Hannah", StaffRole.HOST, Instant.now(), false);
         SecurityContextHolder.getContext().setAuthentication(StaffTokenFilter.authenticationFor(host));
 
         responder.handle(request, response, new AccessDeniedException("no"));
@@ -95,6 +95,24 @@ class RefusalResponderTest {
         assertEquals(403, body.get("status").asInt());
         assertEquals("Forbidden", body.get("error").asText());
         assertEquals("Your role (host) is not allowed to do that.", body.get("message").asText());
+    }
+
+    @Test
+    void testHandle_WhenTheyStillHoldTheStarterPin_ShouldWrite403WithTheCodeTheScreenChecks() throws Exception {
+        // WHAT: The first manager, signed in with 1234, is refused something
+        // WHY: The reason is not their role (a manager may do everything). The code tells
+        //      the frontend to show the "choose a new PIN" screen; screens react to the
+        //      code, never to the wording.
+
+        StaffSession firstManager = new StaffSession(1L, "Manager", StaffRole.MANAGER, Instant.now(), true);
+        SecurityContextHolder.getContext().setAuthentication(StaffTokenFilter.authenticationFor(firstManager));
+
+        responder.handle(request, response, new AccessDeniedException("no"));
+
+        assertEquals(403, response.getStatus());
+        JsonNode body = objectMapper.readTree(response.getContentAsString());
+        assertEquals("PIN_CHANGE_REQUIRED", body.get("code").asText());
+        assertEquals("Choose a new PIN before doing anything else.", body.get("message").asText());
     }
 
     @Test

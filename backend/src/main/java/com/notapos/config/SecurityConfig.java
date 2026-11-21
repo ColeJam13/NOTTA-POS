@@ -2,6 +2,7 @@ package com.notapos.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.notapos.security.RefusalResponder;
+import com.notapos.security.StaffSession;
 import com.notapos.security.StaffSessionStore;
 import com.notapos.security.StaffTokenFilter;
 import jakarta.servlet.DispatcherType;
@@ -10,12 +11,15 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 
 /**
@@ -41,6 +45,11 @@ import org.springframework.security.web.authentication.logout.LogoutFilter;
  *        one exception is signing in itself. This is "default deny": a new
  *        endpoint is closed to outsiders without anyone remembering to close it.
  *
+ *        One more rule lives here, since step A4: a person who signed in with
+ *        the starter PIN may only choose a new one (and ask who they are, and
+ *        sign out). It is in the chain, not on each controller method, for the
+ *        same reason as default deny: nobody has to remember it for a new endpoint.
+ *
  *     2. At the controller method, for anything only some roles may do, by a
  *        rule written next to it:
  *
@@ -59,6 +68,8 @@ import org.springframework.security.web.authentication.logout.LogoutFilter;
  *   Signed in, role not allowed: 403 "Your role (...) is not allowed to do
  *       that." The rule on the method throws AccessDeniedException and
  *       GlobalExceptionHandler writes the answer.
+ *   Signed in, still holding the starter PIN: 403 with the code
+ *       PIN_CHANGE_REQUIRED. Written by RefusalResponder.
  *
  * The parts of Spring Security this app does not use are listed, and switched
  * off, in securityFilterChain(). PINs are still checked by StaffService.
@@ -69,6 +80,28 @@ import org.springframework.security.web.authentication.logout.LogoutFilter;
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    /**
+     * The rule for every request not named in securityFilterChain(): the person
+     * is signed in, and is not still holding the starter PIN.
+     *
+     * An AuthorizationManager is Spring Security's name for "something that looks
+     * at who is asking and answers yes or no". The ready-made ones (authenticated(),
+     * hasRole(...)) know nothing about PINs, so this app supplies its own.
+     *
+     * "authentication.get()" is who StaffTokenFilter identified. For a request
+     * with no good token Spring Security supplies a stand-in "anonymous" person,
+     * whose principal is not a StaffSession, so the answer is no.
+     *
+     * What the refused person is told depends on who they are: nobody signed in
+     * gets 401, the starter-PIN holder gets 403 PIN_CHANGE_REQUIRED (RefusalResponder).
+     */
+    static final AuthorizationManager<RequestAuthorizationContext> SIGNED_IN_WITH_A_PIN_OF_THEIR_OWN =
+            (authentication, request) -> new AuthorizationDecision(
+                    authentication.get() != null
+                            && authentication.get().isAuthenticated()
+                            && authentication.get().getPrincipal() instanceof StaffSession staff
+                            && !staff.mustChangePin());
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, StaffSessionStore sessions,
@@ -89,9 +122,17 @@ public class SecurityConfig {
                         // Signing in is the one thing a person who is not signed in may do
                         .requestMatchers(HttpMethod.POST, "/api/staff/sign-in").permitAll()
 
-                        // Everything else, whatever its address: only for a signed-in person.
-                        // What each ROLE may do is decided at the controller method (@PreAuthorize).
-                        .anyRequest().authenticated())
+                        // What a signed-in person may do even while they still hold the starter
+                        // PIN: choose a new one, ask who they are (a reloaded page needs that to
+                        // know which screen to show), and sign out.
+                        .requestMatchers(HttpMethod.PUT, "/api/staff/me/pin").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/staff/me").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/staff/sign-out").authenticated()
+
+                        // Everything else, whatever its address: only for a signed-in person who
+                        // has a PIN of their own. What each ROLE may do is decided at the
+                        // controller method (@PreAuthorize).
+                        .anyRequest().access(SIGNED_IN_WITH_A_PIN_OF_THEIR_OWN))
 
                 // What to answer when the rules above refuse a request: this app's own JSON
                 // error, not Spring Security's default (an empty 403).

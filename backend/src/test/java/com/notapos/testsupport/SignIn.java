@@ -16,10 +16,11 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  *     mockMvc.perform(post("/api/orders").with(signIn.as(7L, "Sarah", StaffRole.SERVER)))   // a particular person
  *     mockMvc.perform(get("/api/staff"))                                  // nobody: no .with(...)
  *
- * WHAT: Each call starts a real session in the real StaffSessionStore and puts
+ * WHAT: Each call starts a real session in the test's StaffSessionStore and puts
  *       its token on the request, exactly as the frontend does after the PIN
- *       pad. Nothing about sign-in is faked, so the request goes through the
- *       same check as a real one.
+ *       pad. The request then goes through the same check as a real one. (In an
+ *       integration test the store is the real, database one. In a controller
+ *       test, which starts no database, it is InMemoryStaffSessionStore.)
  *
  * WHY:  Tests used to create a session and write the header name by hand in
  *       every file. With one helper, a change to how the token travels is a
@@ -28,7 +29,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * ".with(...)" is MockMvc's hook for adjusting a request before it is sent; the
  * thing passed to it is called a RequestPostProcessor.
  *
- * Available in any test marked @ControllerTest.
+ * Available in any test marked @ControllerTest, and in every integration test.
  *
  * @author CJ
  */
@@ -77,6 +78,14 @@ public class SignIn {
 
     public RequestPostProcessor as(Long staffId, String name, StaffRole role) {
         return withToken(tokenFor(staffId, name, role));
+    }
+
+    // ------------------------------------------------------------------
+    // Someone who signed in with the starter PIN and has not chosen their own yet
+    // ------------------------------------------------------------------
+
+    public RequestPostProcessor asManagerWhoMustChangePin() {
+        return withToken(sessions.createSession(999L, "Manager", StaffRole.MANAGER, true));
     }
 
     // ------------------------------------------------------------------

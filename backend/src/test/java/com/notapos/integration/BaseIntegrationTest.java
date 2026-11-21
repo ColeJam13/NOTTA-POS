@@ -1,5 +1,7 @@
 package com.notapos.integration;
 
+import com.notapos.security.SignInGuard;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -44,7 +46,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
  *
  *     mockMvc.perform(post("/api/orders").with(signIn.asServer()) ...)
  *
- * That starts a real session without going through the PIN pad. Tests ABOUT
+ * That starts a real session (a row in staff_sessions) without going through
+ * the PIN pad. Tests ABOUT
  * signing in (SignInRulesIntegrationTest, RoleMatrixIntegrationTest) create
  * real staff and sign in with real PINs instead.
  *
@@ -86,4 +89,15 @@ public abstract class BaseIntegrationTest {
 
     @Autowired
     protected SignIn signIn;            // Says who a request comes from: .with(signIn.asServer())
+
+    @Autowired
+    private SignInGuard signInGuard;
+
+    // Every integration test shares one running backend, and with it one count of wrong
+    // PINs (SignInGuard keeps it in memory). Without this, a test that types wrong PINs on
+    // purpose would leave sign-in paused for whichever test happened to run next.
+    @BeforeEach
+    void forgetWrongPinsFromEarlierTests() {
+        signInGuard.forgetEverything();
+    }
 }

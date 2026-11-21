@@ -31,8 +31,8 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 2 | A2. Two terminals, one check (with Flyway) | Done |
 | 3 | A3a. Move sign-in onto Spring Security, same rules as today | Done (#281) |
 | 4 | A3b. Default deny, the role matrix, remove unused endpoints | Done (#282) |
-| 5 | **A4. Sign-in hardening and sessions in the database** | Next. D3 |
-| 6 | A5. Small consistency fixes | |
+| 5 | A4. Sign-in hardening and sessions in the database | Done (#283) |
+| 6 | **A5. Small consistency fixes** | Next |
 | 7 | P1. Replace Create React App with Vite | |
 | 8 | P2. One thing to start, and the home test host | |
 | 9 | B4a. Design tokens: every screen reads its look from named values | |
@@ -113,6 +113,15 @@ Done when: a test walks every mapped endpoint without a token and gets 401 for a
 
 ### A4. Sign-in hardening
 
+**Done 2026-11-21 (#283).** Wrong PINs are counted per device by `security/SignInGuard`; sessions are rows in `staff_sessions` (migration V4) holding a hash of each token; the first manager must choose a new PIN before doing anything else (migration V5), and 1234 is refused as a new PIN; `SessionSweepTask` removes sessions unused for 12 hours. What was decided along the way, beyond the text below:
+
+- **D3, the owner's decision: a shared terminal signs a person out only on SIGN OUT**, as it does today ("only on sign-out is the right call for now"). Nothing was built for it. A session still ends when it has not been used for 12 hours.
+- **The numbers are Claude's, and are constants at the top of `SignInGuard`.** Five wrong in a row on a device pauses it; so does ten wrong within ten minutes whatever was typed in between (a right PIN restarts the row, so honest mistakes on a shared terminal never add up; the ten-in-ten rule stops someone with their own PIN guessing four at a time between proper sign-ins). Pauses on a device run 30 seconds, 1 minute, 5 minutes, 15 minutes, then an hour, and reset after a clean day. The restaurant-wide ceiling is 40 wrong within ten minutes, for a one-minute pause.
+- **An existing database is covered.** A manager who still signs in with 1234 is found when the backend starts, marked, and signed out; their next sign-in leads to choosing a new PIN. The owner's own database is in this position unless that PIN was changed already.
+- **Choosing a new PIN asks for the current one again**, and a wrong one counts against the same guard as a wrong PIN at sign-in.
+- **A corrected name is written into that person's open sessions.** Sessions can now last for days, and the orders a person opens carry the name in their session.
+- **What this does not solve** is in `CLAUDE.md` under the known gaps: the counts are in memory; a "device" is an address, which a proxy or a shared router blurs (see P2); and a 4-digit PIN with no name stays guessable by someone on the network who keeps changing address.
+
 Found in `StaffService` and `StaffSessionInterceptor`.
 
 - **The lockout is one counter for the whole restaurant.** Five wrong PINs in a minute from any device pause sign-in for every device. A busy shift can trip it by accident, and anything on the network can hold it shut by sending five bad PINs every 30 seconds.
@@ -164,8 +173,9 @@ Build:
 Rules for the test host, to state in the document:
 
 - Home network only. No port forwarding on the router. The machine runs an operating system that no longer gets security updates, so it must not be reachable from the internet.
-- Change the first manager's PIN before any other device connects.
+- Change the first manager's PIN before any other device connects. (Since A4 the app forces this at the first sign-in.)
 - A3 and A4 must be merged before the app is put on the test host.
+- If anything is put in front of the backend that passes requests on (a reverse proxy), it must hand over the real address of each device, and the backend must be told to read it (`server.forward-headers-strategy`). Wrong PINs are counted per address (A4); behind a proxy that does not do this, every phone and tablet looks like one device. The packaged build in this step has no proxy, so this is a note for whoever adds one.
 
 Claude Code works in Linux and cannot run the Windows script or reach the machine. Say plainly in the pull request that the Windows steps are unverified, and give the owner a short checklist to run on the real machine.
 
@@ -245,7 +255,7 @@ The owner wants a list of default templates a manager can switch between: **Plai
 |---|---|---|
 | D1 | Adopt Flyway migrations. **Decided 2026-11-20: yes. Done in #278.** | |
 | D2 | Role matrix. **Decided 2026-11-20: confirmed as written**, including hosts opening orders, ringing in, sending, and taking payment. | A3b |
-| D3 | How shared terminals sign people out: after every sent order or payment, after N idle minutes, or only on SIGN OUT | A4 |
+| D3 | How shared terminals sign people out. **Decided 2026-11-20: only on SIGN OUT, for now.** | A4 |
 | D4 | Feature order. Proposed: notifications, check handling (voids, comps, splits), host view, Challenges | Step 13 |
 | D5 | Notifications: who sends to whom, acknowledged or not | B1 |
 | D6 | Challenges: which measures and what period | B3 |
@@ -259,7 +269,7 @@ Owner actions still open unless already done: turn on branch protection for `mai
 
 ## How to continue
 
-1. Get the owner's answer to D3, then start A4.
+1. Start A5. It needs no decision from the owner.
 2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 
 ## Completed

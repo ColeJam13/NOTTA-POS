@@ -9,6 +9,7 @@ import Financials from './views/Financials';
 import Challenges from './views/Challenges';
 import EightySixBoard from './views/EightySixBoard';
 import SignIn from './views/SignIn';
+import ChangePin from './views/ChangePin';
 import Staff from './views/Staff';
 import { StaffContext } from './context/StaffContext';
 import { apiFetch, setSessionToken, setOnSessionEnded } from './services/api';
@@ -43,7 +44,7 @@ function App() {
   const [currentView, setCurrentViewState] = useState('home');
   const [selectedTable, setSelectedTable] = useState(null);
 
-  // Who is signed in: { staffId, name, role }, or null when nobody is
+  // Who is signed in: { staffId, name, role, mustChangePin }, or null when nobody is
   const [staff, setStaff] = useState(null);
 
   // True while a stored token is being checked after a page reload, so the PIN
@@ -123,6 +124,14 @@ function App() {
 
   if (!staff) {
     return <SignIn onSignedIn={handleSignedIn} />;
+  }
+
+  // Signed in with the starter PIN: the only screen is "choose a new PIN". The backend
+  // refuses everything else from this person too, so no other screen would work anyway.
+  // When the PIN is changed the backend hands the person back without the flag, and the
+  // app opens as usual.
+  if (staff.mustChangePin) {
+    return <ChangePin staff={staff} onPinChanged={setStaff} onSignOut={signOut} />;
   }
 
   return (

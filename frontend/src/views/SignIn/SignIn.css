@@ -1,3 +1,5 @@
+/* The page around the PIN pad. The pad itself is styled in components/PinPad/PinPad.css. */
+
 .sign-in-page {
   min-height: 100vh;
   display: flex;
@@ -19,70 +21,4 @@
   color: #39ff14;
   font-size: 16px;
   letter-spacing: 2px;
-}
-
-/* The four dots that fill in as the PIN is typed */
-.pin-dots {
-  display: flex;
-  gap: 18px;
-}
-
-.pin-dot {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 3px solid #b026ff;
-  background: transparent;
-  transition: background 0.15s;
-}
-
-.pin-dot.filled {
-  background: #39ff14;
-  border-color: #39ff14;
-}
-
-.sign-in-message {
-  min-height: 20px;                     /* Keeps its space when empty, so the pad never jumps */
-  color: #ff3366;
-  font-size: 12px;
-  text-align: center;
-}
-
-/* Three keys per row. Big enough to hit without looking. */
-.pin-pad {
-  display: grid;
-  grid-template-columns: repeat(3, 90px);
-  gap: 14px;
-}
-
-.pin-key {
-  height: 90px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #16213e;
-  color: #e0e0e0;
-  border: 2px solid #b026ff;
-  border-radius: 12px;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 22px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.pin-key:hover:not(:disabled),
-.pin-key:active:not(:disabled) {
-  background: #b026ff;
-  color: #1a1a2e;
-}
-
-.pin-key:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pin-key-action {
-  font-size: 10px;
-  border-color: #666;
-  color: #9ca3af;
 }

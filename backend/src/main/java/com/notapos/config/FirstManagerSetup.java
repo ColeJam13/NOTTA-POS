@@ -11,7 +11,10 @@ import org.springframework.stereotype.Component;
  * If there are no staff at all, nobody can sign in - and so nobody could add
  * the first staff member. This asks StaffService to create a first manager
  * in that case (see StaffService.ensureFirstManager). When staff already
- * exist it does nothing.
+ * exist that step does nothing.
+ *
+ * It then asks StaffService to find anyone still signing in with the starter
+ * PIN and mark them to choose a new one (requireChangeOfStarterPin).
  *
  * An ApplicationRunner is Spring Boot's hook for "do this once at start-up".
  *
@@ -29,5 +32,6 @@ public class FirstManagerSetup implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         staffService.ensureFirstManager();
+        staffService.requireChangeOfStarterPin();
     }
 }

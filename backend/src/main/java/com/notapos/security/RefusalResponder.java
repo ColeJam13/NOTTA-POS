@@ -57,6 +57,11 @@ public class RefusalResponder implements AuthenticationEntryPoint, AccessDeniedH
         return "Your role (" + role.getValue() + ") is not allowed to do that.";
     }
 
+    // The code and words for a person who holds the starter PIN and tries to do anything
+    // but choose a new one. The frontend checks the code, never the wording.
+    public static final String PIN_CHANGE_REQUIRED = "PIN_CHANGE_REQUIRED";
+    public static final String CHOOSE_A_NEW_PIN = "Choose a new PIN before doing anything else.";
+
     private final ObjectMapper objectMapper;        // Turns the ApiError into JSON, the same way controllers' answers are
 
     public RefusalResponder(ObjectMapper objectMapper) {
@@ -66,28 +71,33 @@ public class RefusalResponder implements AuthenticationEntryPoint, AccessDeniedH
     @Override                                       // Nobody is signed in (no token, or one the backend does not know) -> 401
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
-        write(response, HttpStatus.UNAUTHORIZED, NOT_SIGNED_IN);
+        write(response, HttpStatus.UNAUTHORIZED, NOT_SIGNED_IN, null);
     }
 
-    // Signed in, but a rule in the filter chain said no -> 403, naming the role.
-    // Nothing reaches this today: the chain's only rule is "be signed in", and role rules
-    // sit on controller methods, where GlobalExceptionHandler answers. It is here so that a
-    // role rule added to SecurityConfig later answers in the same shape as everything else,
-    // instead of with Spring Boot's own error page.
+    // Signed in, but a rule in the filter chain said no -> 403.
+    // The chain has one such rule: a person who still holds the starter PIN may do nothing
+    // but choose a new one (see SecurityConfig). They are told so, with a code the frontend
+    // reacts to. Role rules sit on controller methods, where GlobalExceptionHandler answers;
+    // the "naming the role" branch is here so that a role rule added to SecurityConfig later
+    // answers in the same shape as everything else, instead of with Spring Boot's own error page.
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException {
         Authentication whoIsAsking = SecurityContextHolder.getContext().getAuthentication();
 
         if (whoIsAsking != null && whoIsAsking.getPrincipal() instanceof StaffSession staff) {
-            write(response, HttpStatus.FORBIDDEN, roleNotAllowed(staff.role()));
+            if (staff.mustChangePin()) {
+                write(response, HttpStatus.FORBIDDEN, CHOOSE_A_NEW_PIN, PIN_CHANGE_REQUIRED);
+            } else {
+                write(response, HttpStatus.FORBIDDEN, roleNotAllowed(staff.role()), null);
+            }
         } else {
-            write(response, HttpStatus.UNAUTHORIZED, NOT_SIGNED_IN);
+            write(response, HttpStatus.UNAUTHORIZED, NOT_SIGNED_IN, null);
         }
     }
 
-    private void write(HttpServletResponse response, HttpStatus status, String message) throws IOException {
-        ApiError body = new ApiError(LocalDateTime.now(), status.value(), status.getReasonPhrase(), message, null, null);
+    private void write(HttpServletResponse response, HttpStatus status, String message, String code) throws IOException {
+        ApiError body = new ApiError(LocalDateTime.now(), status.value(), status.getReasonPhrase(), message, null, code);
 
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

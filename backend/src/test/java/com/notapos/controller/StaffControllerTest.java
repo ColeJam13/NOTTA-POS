@@ -69,8 +69,8 @@ class StaffControllerTest {
         // WHAT: Test POST /api/staff/sign-in
         // WHY: The PIN pad sends the four digits and gets back who that is
 
-        when(staffService.signIn("1111")).thenReturn(
-                new SignInResponse(new StaffView(1L, "Sarah", "server", true), "a-long-random-token"));
+        when(staffService.signIn(eq("1111"), any())).thenReturn(
+                new SignInResponse(new StaffView(1L, "Sarah", "server", true, false), "a-long-random-token"));
 
         mockMvc.perform(post("/api/staff/sign-in")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -79,6 +79,7 @@ class StaffControllerTest {
                 .andExpect(jsonPath("$.staff.name").value("Sarah"))
                 .andExpect(jsonPath("$.staff.role").value("server"))
                 .andExpect(jsonPath("$.token").value("a-long-random-token"))
+                .andExpect(jsonPath("$.staff.mustChangePin").value(false))
                 // Nothing about the PIN comes back
                 .andExpect(jsonPath("$.staff.pin").doesNotExist())
                 .andExpect(jsonPath("$.staff.pinHash").doesNotExist());
@@ -89,7 +90,7 @@ class StaffControllerTest {
         // WHAT: Test sign-in with a PIN nobody has
         // WHY: The PIN pad shows the message and clears the dots
 
-        when(staffService.signIn("9999")).thenThrow(new NotSignedInException("PIN not recognized."));
+        when(staffService.signIn(eq("9999"), any())).thenThrow(new NotSignedInException("PIN not recognized."));
 
         mockMvc.perform(post("/api/staff/sign-in")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -110,22 +111,44 @@ class StaffControllerTest {
                     .andExpect(status().isBadRequest());
         }
 
-        verify(staffService, never()).signIn(any());
+        verify(staffService, never()).signIn(any(), any());
+    }
+
+    @Test
+    void testSignIn_ShouldTellTheServiceWhichDeviceTheRequestCameFrom() throws Exception {
+        // WHAT: Test that the address a sign-in comes from reaches StaffService
+        // WHY: Wrong PINs are counted per device. If the controller passed nothing, or
+        //      the same thing every time, the whole restaurant would be one device again.
+
+        when(staffService.signIn(any(), any())).thenThrow(new NotSignedInException("PIN not recognized."));
+
+        mockMvc.perform(post("/api/staff/sign-in")
+                .with(request -> {
+                    request.setRemoteAddr("192.168.1.21");          // The bar terminal
+                    return request;
+                })
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pin\":\"9999\"}"))
+                .andExpect(status().isUnauthorized());
+
+        verify(staffService).signIn("9999", "192.168.1.21");
     }
 
     @Test
     void testSignIn_WhenPausedAfterTooManyWrongPins_ShouldReturn429() throws Exception {
         // WHAT: Test sign-in while the wrong-PIN limit is in effect
-        // WHY: The PIN pad tells the person to wait
+        // WHY: The PIN pad tells the person to wait, in words. The Retry-After header
+        //      says the same in seconds, which is the standard way to tell a program.
 
-        when(staffService.signIn("1111"))
-                .thenThrow(new TooManyAttemptsException("Too many wrong PINs. Wait 30 seconds and try again."));
+        when(staffService.signIn(eq("1111"), any()))
+                .thenThrow(new TooManyAttemptsException("Too many wrong PINs on this device. Try again in 5 minutes.", 300));
 
         mockMvc.perform(post("/api/staff/sign-in")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"pin\":\"1111\"}"))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.message").value("Too many wrong PINs. Wait 30 seconds and try again."));
+                .andExpect(header().string("Retry-After", "300"))
+                .andExpect(jsonPath("$.message").value("Too many wrong PINs on this device. Try again in 5 minutes."));
     }
 
     @Test
@@ -148,7 +171,8 @@ class StaffControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.staffId").value(2))
                 .andExpect(jsonPath("$.name").value("Morgan"))
-                .andExpect(jsonPath("$.role").value("manager"));
+                .andExpect(jsonPath("$.role").value("manager"))
+                .andExpect(jsonPath("$.mustChangePin").value(false));
     }
 
     @Test
@@ -166,6 +190,108 @@ class StaffControllerTest {
     }
 
     // ------------------------------------------------------------------
+    // Choosing a new PIN for yourself, and the starter PIN
+    // ------------------------------------------------------------------
+
+    @Test
+    void testChangeOwnPin_ShouldPassWhoTheTokenAndTheDeviceAlong() throws Exception {
+        // WHAT: Test PUT /api/staff/me/pin
+        // WHY: The service needs all three: who is changing (from the session, never from
+        //      the request body), which session to keep signed in, and which device to
+        //      count a wrong current PIN against
+
+        when(staffService.changeOwnPin(any(), any(), any(), any(), any()))
+                .thenReturn(new StaffView(1L, "Sarah", "server", true, false));
+
+        mockMvc.perform(put("/api/staff/me/pin").with(SignIn.withToken(serverToken))
+                .with(request -> {
+                    request.setRemoteAddr("192.168.1.21");
+                    return request;
+                })
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"currentPin\":\"1111\",\"newPin\":\"4821\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Sarah"))
+                .andExpect(jsonPath("$.mustChangePin").value(false));
+
+        verify(staffService).changeOwnPin(
+                argThat(who -> who.staffId().equals(1L) && who.role() == StaffRole.SERVER),
+                eq(serverToken), eq("1111"), eq("4821"), eq("192.168.1.21"));
+    }
+
+    @Test
+    void testChangeOwnPin_WithPinsOfTheWrongShape_ShouldReturn400WithEachProblem() throws Exception {
+        // WHAT: Test a PIN change where a PIN is missing or is not four digits
+        // WHY: Not worth checking against anyone - and not counted as a wrong guess
+
+        mockMvc.perform(put("/api/staff/me/pin").with(SignIn.withToken(serverToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"newPin\":\"48\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.currentPin").value("Current PIN is required"))
+                .andExpect(jsonPath("$.fieldErrors.newPin").value("New PIN must be exactly 4 digits"));
+
+        verify(staffService, never()).changeOwnPin(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void testChangeOwnPin_WithNoSignIn_ShouldReturn401() throws Exception {
+        // WHAT: Test a PIN change by nobody
+        // WHY: It changes the PIN of whoever is signed in. With nobody signed in there is no one to change.
+
+        mockMvc.perform(put("/api/staff/me/pin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"currentPin\":\"1111\",\"newPin\":\"4821\"}"))
+                .andExpect(status().isUnauthorized());
+
+        verify(staffService, never()).changeOwnPin(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void testSomeoneWhoMustChangeTheirPin_ShouldBeRefusedEverythingElse() throws Exception {
+        // WHAT: Test a manager who signed in with the starter PIN asking for the staff list
+        // WHY: Until the starter PIN is changed, anyone who knows it is a manager. So the
+        //      backend, not only the screen, allows nothing else. The code tells the
+        //      frontend which screen to show.
+
+        mockMvc.perform(get("/api/staff").with(signIn.asManagerWhoMustChangePin()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("PIN_CHANGE_REQUIRED"))
+                .andExpect(jsonPath("$.message").value("Choose a new PIN before doing anything else."));
+
+        mockMvc.perform(post("/api/staff").with(signIn.asManagerWhoMustChangePin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Alex\",\"role\":\"manager\",\"pin\":\"4444\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("PIN_CHANGE_REQUIRED"));
+
+        verify(staffService, never()).getAllStaff();
+        verify(staffService, never()).createStaff(any());
+    }
+
+    @Test
+    void testSomeoneWhoMustChangeTheirPin_MayStillAskWhoTheyAreChooseAPinAndSignOut() throws Exception {
+        // WHAT: Test the three things the starter-PIN holder is allowed
+        // WHY: Choosing a PIN is the way out. "Who am I" is what a reloaded page asks to
+        //      learn it must show the new-PIN screen. Signing out lets someone else sign in.
+
+        when(staffService.changeOwnPin(any(), any(), any(), any(), any()))
+                .thenReturn(new StaffView(999L, "Manager", "manager", true, false));
+
+        mockMvc.perform(get("/api/staff/me").with(signIn.asManagerWhoMustChangePin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mustChangePin").value(true));
+
+        mockMvc.perform(put("/api/staff/me/pin").with(signIn.asManagerWhoMustChangePin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"currentPin\":\"1234\",\"newPin\":\"4821\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/staff/sign-out").with(signIn.asManagerWhoMustChangePin()))
+                .andExpect(status().isNoContent());
+    }
+
+    // ------------------------------------------------------------------
     // Managing staff (managers only)
     // ------------------------------------------------------------------
 
@@ -175,8 +301,8 @@ class StaffControllerTest {
         // WHY: The Staff screen lists everyone
 
         when(staffService.getAllStaff()).thenReturn(List.of(
-                new StaffView(2L, "Morgan", "manager", true),
-                new StaffView(1L, "Sarah", "server", true)));
+                new StaffView(2L, "Morgan", "manager", true, false),
+                new StaffView(1L, "Sarah", "server", true, false)));
 
         mockMvc.perform(get("/api/staff").with(SignIn.withToken(managerToken)))
                 .andExpect(status().isOk())
@@ -206,7 +332,7 @@ class StaffControllerTest {
         // WHY: A manager adds a new hire
 
         when(staffService.createStaff(new StaffCreateRequest("Alex", "bartender", "3333")))
-                .thenReturn(new StaffView(3L, "Alex", "bartender", true));
+                .thenReturn(new StaffView(3L, "Alex", "bartender", true, false));
 
         mockMvc.perform(post("/api/staff").with(SignIn.withToken(managerToken))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -250,7 +376,7 @@ class StaffControllerTest {
         // WHY: Fields that are left out are not changed
 
         when(staffService.updateStaff(eq(1L), eq(new StaffUpdateRequest(null, "bartender", null, null))))
-                .thenReturn(new StaffView(1L, "Sarah", "bartender", true));
+                .thenReturn(new StaffView(1L, "Sarah", "bartender", true, false));
 
         mockMvc.perform(put("/api/staff/1").with(SignIn.withToken(managerToken))
                 .contentType(MediaType.APPLICATION_JSON)

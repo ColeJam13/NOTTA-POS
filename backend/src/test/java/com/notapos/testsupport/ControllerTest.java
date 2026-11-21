@@ -1,7 +1,6 @@
 package com.notapos.testsupport;
 
 import com.notapos.config.SecurityConfig;
-import com.notapos.security.StaffSessionStore;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.AliasFor;
@@ -30,7 +29,9 @@ import java.lang.annotation.Target;
  *
  * WHY:  @WebMvcTest on its own does not load the app's security setup
  *       (SecurityConfig) or ordinary @Component classes such as the list of
- *       who is signed in (StaffSessionStore). Without SecurityConfig, Spring
+ *       who is signed in. The real list is in the database, which a controller
+ *       test does not start, so an in-memory one that behaves the same stands
+ *       in for it (InMemoryStaffSessionStore). Without SecurityConfig, Spring
  *       Boot falls back to its own default, which refuses every request, so
  *       a controller test with plain @WebMvcTest fails with 401s and 403s
  *       that have nothing to do with this app's rules. Rather than have every
@@ -49,7 +50,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @WebMvcTest
-@Import({SecurityConfig.class, StaffSessionStore.class, SignIn.class})
+@Import({SecurityConfig.class, InMemoryStaffSessionStore.class, SignIn.class})
 public @interface ControllerTest {
 
     @AliasFor(annotation = WebMvcTest.class, attribute = "controllers")
