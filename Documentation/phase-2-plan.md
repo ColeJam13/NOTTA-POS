@@ -30,8 +30,8 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 1 | A1. One ring-in path | Done |
 | 2 | A2. Two terminals, one check (with Flyway) | Done |
 | 3 | A3a. Move sign-in onto Spring Security, same rules as today | Done (#281) |
-| 4 | **A3b. Default deny, the role matrix, remove unused endpoints** | Next. D2 (decided) |
-| 5 | A4. Sign-in hardening and sessions in the database | D3 |
+| 4 | A3b. Default deny, the role matrix, remove unused endpoints | Done (#282) |
+| 5 | **A4. Sign-in hardening and sessions in the database** | Next. D3 |
 | 6 | A5. Small consistency fixes | |
 | 7 | P1. Replace Create React App with Vite | |
 | 8 | P2. One thing to start, and the home test host | |
@@ -80,6 +80,17 @@ The text below is kept as the record of what was asked for.
 Done when: every existing test passes with unchanged meaning, the seven rules behave as before in the browser, and `CLAUDE.md` describes the new pattern in place of the old one.
 
 **A3b: default deny, the role matrix, and removals.** Its own pull request.
+
+**Done 2026-11-20 (#282).** Every request needs a signed-in person except `POST /api/staff/sign-in`; the matrix below is `security/Permissions`, applied with `@PreAuthorize`; the four unused endpoints are deleted. `RoleMatrixIntegrationTest` lists every endpoint and calls each one as nobody and as each role. What was decided along the way, beyond the text below:
+
+- **Endpoints the matrix does not name.** Changing a table's status directly, table status logs, adding or removing a single modifier on an order item, and running the edit-window sweep by hand: no screen uses them, so they are manager-only until a feature needs one. Clearing an empty check, removing an unsent item, and changing an item's modifiers count as taking orders.
+- **`POST /api/tables` does two jobs.** A Quick Order is a row in `tables`, so anyone who takes orders may create one; a table on the floor is manager-only.
+- **Two more "create" endpoints could overwrite a row** when the request carried an ID: tables (a server could rewrite a floor table) and payments (a new payment could replace an earlier one). Both now always create. Each had a failing test first.
+- **Hosts on screen.** The matrix lets a host open a check, ring in, send, and take payment, so `utils/roles.js` now offers hosts Quick Orders and the order screen. START and COMPLETE on the kitchen display are only drawn for the kitchen, the bar, and managers.
+- **Signing out, or asking who-am-I, with no valid session** is now answered 401 like any other request from nobody (it was 204 and its own 401 message).
+- **Left for the owner:** the Tables and Quick Orders screens still show each closed check's tip and payment method to anyone signed in. Only the `/api/payments` endpoints are manager-only.
+
+The text below is kept as the record of what was asked for.
 
 - Every `/api/**` request needs a valid session except `POST /api/staff/sign-in`.
 - A role rule on every endpoint that changes data, following the matrix. **D2 was decided on 2026-11-20: confirmed as written.**
@@ -248,9 +259,8 @@ Owner actions still open unless already done: turn on branch protection for `mai
 
 ## How to continue
 
-1. Start A3b.
-2. Ask D3 while A3b is in review, since A4 follows.
-3. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
+1. Get the owner's answer to D3, then start A4.
+2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 
 ## Completed
 
