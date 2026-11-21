@@ -54,11 +54,26 @@ public class OrderItemService {
      * Everything that adds to, sends, or changes an order's items calls this first
      * (ringing in and changing modifiers do so from OrderItemModifierService).
      *
+     * The order is read "for share" (see OrderRepository), which keeps it open until the
+     * calling transaction ends. Checking and then acting are two steps, and without the
+     * lock a payment on another terminal could land between them: the answer "open" was
+     * true when it was read and false by the time the item was saved. With it, the
+     * payment waits for this request to finish (and then counts the new item), or this
+     * request waits for the payment (and then reads the order as closed). Several
+     * requests can hold the order "for share" together, so a round of items saved at
+     * once does not queue up.
+     *
+     * @Transactional (a writing transaction, not this class's read-only default) because
+     * a lock can only be taken in one. When the caller already has a transaction, which
+     * is always the case in this codebase, this joins it and the lock lasts until the
+     * caller commits.
+     *
      * @throws ResourceNotFoundException if there is no such order (404)
      * @throws OrderNotOpenException     if the order is closed (409, code ORDER_NOT_OPEN)
      */
+    @Transactional
     public Order requireOpenOrder(Long orderId) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdLockedForShare(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
 
         if (!OrderStatus.OPEN.matches(order.getStatus())) {
@@ -240,6 +255,11 @@ public class OrderItemService {
     public void deleteOrderItem(Long id) {                              // Delete an order item (only if not locked)
         OrderItem item = orderItemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order item not found with id: " + id));
+
+        // Nothing comes off a closed check, and the check cannot be closed while this runs.
+        // Without it, a payment at the same instant added up the check with this item on it
+        // and then the item was deleted: the guest paid for a dish that was never made.
+        requireOpenOrder(item.getOrderId());
 
         if (item.getIsLocked()) {
             throw new ItemLockedException("Cannot delete locked item. Item has been sent to kitchen.");

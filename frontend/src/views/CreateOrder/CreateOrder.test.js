@@ -64,6 +64,7 @@ let itemsAreLocked;   // true = the fake backend answers 409 (already sent to ki
 let menuNow;          // what GET /api/menu-items returns right now (a test can 86 an item by replacing this)
 let orderCheck;       // what GET /api/orders/77/check returns (the check as the backend works it out)
 let paymentRefusal;   // a message = the fake backend answers 409 with that message to a payment
+let holdPayments;     // a promise = the fake backend does not answer a payment until it resolves (a slow network)
 
 // What the real backend does when it saves modifiers: menu price + the chosen upcharges
 const priceWithUpcharges = (menuItemId, modifierIds) => {
@@ -96,6 +97,7 @@ beforeEach(() => {
   menuNow = MENU;
   orderCheck = { orderId: 77, status: 'open', itemCount: 1, unsentItemCount: 0, subtotal: 17.0, tax: 0.51, total: 17.51, taxRate: 0.03 };
   paymentRefusal = null;
+  holdPayments = null;
 
   global.fetch = jest.fn(async (url, options = {}) => {
     const method = options.method || 'GET';
@@ -121,7 +123,8 @@ beforeEach(() => {
     const addsToOrChangesTheOrder =
       (method === 'POST' && path === '/api/order-items') ||
       (method === 'POST' && /^\/api\/order-items\/order\/77\/send(-now)?$/.test(path)) ||
-      (method === 'PUT' && /^\/api\/order-items\/\d+\/modifiers$/.test(path));
+      (method === 'PUT' && /^\/api\/order-items\/\d+\/modifiers$/.test(path)) ||
+      (method === 'DELETE' && /^\/api\/order-items\/\d+$/.test(path));
     if (checkClosedElsewhere && addsToOrChangesTheOrder) {
       return jsonResponse({
         message: 'This check was already closed, most likely on another terminal. Nothing was added or sent.',
@@ -168,6 +171,14 @@ beforeEach(() => {
     }
     if (method === 'GET' && path === '/api/orders/77/check') return jsonResponse(orderCheck);
     if (method === 'POST' && path === '/api/payments') {
+      if (holdPayments) await holdPayments;
+      // Like the real backend: a check that was already paid answers with the closed-check code
+      if (checkClosedElsewhere) {
+        return jsonResponse({
+          message: 'This check was already closed, most likely on another terminal. Nothing was charged.',
+          code: 'ORDER_NOT_OPEN'
+        }, 409);
+      }
       if (paymentRefusal) return jsonResponse({ message: paymentRefusal }, 409);
       return jsonResponse({ paymentId: 1, ...body }, 201);
     }
@@ -790,14 +801,14 @@ test('a refused payment shows the reason the backend gave and leaves the order o
   const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
   existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
   existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
-  paymentRefusal = 'Order #77 is already closed.';
+  paymentRefusal = 'This order has 1 unsent item(s). Send or remove them before closing the check.';
   const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
   await within(orderList(container)).findByText('Chicken Cutty');
   await userEvent.click(screen.getByRole('button', { name: 'CLOSE ORDER' }));
 
   await userEvent.click(await screen.findByRole('button', { name: 'PROCESS PAYMENT' }));
 
-  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Order #77 is already closed.'));
+  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('This order has 1 unsent item(s). Send or remove them before closing the check.'));
   expect(screen.queryByText('Payment Processed Successfully!')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'PROCESS PAYMENT' })).toBeEnabled();
 });
@@ -1041,4 +1052,72 @@ test('changing modifiers on a check that was closed on another terminal says the
     'This check was already closed on another terminal. Nothing was added or sent.'
   ));
   expect(alertSpy).not.toHaveBeenCalledWith('Too late to change this item - it was already sent to the prep station');
+});
+
+test('removing an item from a check that was closed on another terminal says the check was closed, not that the item was sent', async () => {
+  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  const { container } = await renderScreen();
+  await userEvent.click(menuCard('Chicken Cutty'));
+  await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
+  await screen.findByText('15 seconds to edit');
+
+  // The check is paid on another terminal while this screen is still counting down
+  checkClosedElsewhere = true;
+  await userEvent.click(within(orderList(container)).getByRole('button', { name: 'x' }));
+
+  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(
+    'This check was already closed on another terminal. Nothing was removed.'
+  ));
+  expect(alertSpy).not.toHaveBeenCalledWith('Too late to remove this item - it was already sent to the prep station');
+  // The paid check is off the screen and no countdown is left running
+  expect(within(orderList(container)).queryByText('Chicken Cutty')).not.toBeInTheDocument();
+  expect(screen.queryByText(/seconds to edit/)).not.toBeInTheDocument();
+});
+
+test('paying a check that was already paid on another terminal says so and clears it off the screen', async () => {
+  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
+  const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
+  await within(orderList(container)).findByText('Chicken Cutty');
+  await userEvent.click(screen.getByRole('button', { name: 'CLOSE ORDER' }));
+  await screen.findByRole('button', { name: 'PROCESS PAYMENT' });
+
+  // Two servers have the payment window up for W3. The other one presses first.
+  checkClosedElsewhere = true;
+  existingOrders = [];                                              // The table has no open check any more
+  await userEvent.click(screen.getByRole('button', { name: 'PROCESS PAYMENT' }));
+
+  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(
+    'This check was already closed on another terminal. Nothing was charged.'
+  ));
+  // The payment window is gone, nothing claims the payment went through, and the paid item is off the screen
+  expect(screen.queryByRole('button', { name: 'PROCESS PAYMENT' })).not.toBeInTheDocument();
+  expect(screen.queryByText('Payment Processed Successfully!')).not.toBeInTheDocument();
+  await waitFor(() => expect(within(orderList(container)).queryByText('Chicken Cutty')).not.toBeInTheDocument());
+});
+
+test('PROCESS PAYMENT cannot be pressed a second time while the payment is on its way', async () => {
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
+  const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
+  await within(orderList(container)).findByText('Chicken Cutty');
+  await userEvent.click(screen.getByRole('button', { name: 'CLOSE ORDER' }));
+  await screen.findByRole('button', { name: 'PROCESS PAYMENT' });
+
+  // A slow network: the backend does not answer until the test lets it
+  let letThePaymentThrough;
+  holdPayments = new Promise(resolve => { letThePaymentThrough = resolve; });
+  await userEvent.click(screen.getByRole('button', { name: 'PROCESS PAYMENT' }));
+
+  // While it waits, the button says so and is switched off...
+  const waiting = await screen.findByRole('button', { name: 'PROCESSING...' });
+  expect(waiting).toBeDisabled();
+  // ...so an impatient second tap sends nothing
+  await userEvent.click(waiting);
+  expect(requests.filter(r => r.method === 'POST' && r.path === '/api/payments')).toHaveLength(1);
+
+  letThePaymentThrough();
+  await screen.findByText('Payment Processed Successfully!');
+  expect(requests.filter(r => r.method === 'POST' && r.path === '/api/payments')).toHaveLength(1);
 });

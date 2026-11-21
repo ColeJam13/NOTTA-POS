@@ -2,6 +2,7 @@ package com.notapos.service;
 import org.springframework.transaction.annotation.Transactional;
 import com.notapos.enums.OrderStatus;
 import com.notapos.enums.TableStatus;
+import com.notapos.exception.OrderNotOpenException;
 import com.notapos.exception.OrderStateException;
 import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.dto.OrderCheckView;
@@ -86,20 +87,32 @@ public class PaymentService {
      *
      * Before any money is recorded the order is checked:
      *   - it must exist (404)
-     *   - it must still be open (409) - stops a check being paid twice
+     *   - it must still be open (409, code ORDER_NOT_OPEN) - stops a check being paid twice
      *   - it must have no unsent items (409) - a draft was never made by the kitchen,
      *     so the server has to send it or remove it first
      *   - it must have something on it (409)
      *   - the amount must equal the check the backend works out (409) - if another
      *     screen added an item after this one loaded, the guest was shown an old total
+     *
+     * The order is held alone from the first line to the commit ("for update", see
+     * OrderRepository). Those checks are only worth something if nothing changes
+     * between making them and saving the payment:
+     *   - a second payment for the same check waits here, and when its turn comes it
+     *     reads the order as closed and is refused. (Before, two payments pressed at
+     *     the same instant both read "open" and both were saved.)
+     *   - an item being rung in, sent, or removed on another terminal either finishes
+     *     before this starts, and is then part of the check that is added up below, or
+     *     waits until this is done, and is then refused because the check is closed.
      */
     @Transactional
     public Payment createPayment(Payment payment) {
-        Order order = orderRepository.findById(payment.getOrderId())
+        Order order = orderRepository.findByIdLockedForUpdate(payment.getOrderId())
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + payment.getOrderId()));
 
+        // OrderNotOpenException carries the code ORDER_NOT_OPEN, so the screen that lost the
+        // race can do more than show the words: it closes the payment window and reloads the table.
         if (!OrderStatus.OPEN.matches(order.getStatus())) {
-            throw new OrderStateException("Order #" + order.getOrderId() + " is already closed.");
+            throw new OrderNotOpenException("This check was already closed, most likely on another terminal. Nothing was charged.");
         }
 
         OrderCheckView check = orderCheckService.buildCheck(order);

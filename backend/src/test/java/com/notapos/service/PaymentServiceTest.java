@@ -90,7 +90,7 @@ class PaymentServiceTest {
         
         // Given - An open order whose check comes to exactly what is being paid
         Order order = openOrder();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(order));
         when(orderCheckService.buildCheck(order)).thenReturn(check(2, 0, "48.54", "1.46", "50.00"));
         when(paymentRepository.save(any(Payment.class))).thenReturn(testPayment);
 
@@ -112,7 +112,7 @@ class PaymentServiceTest {
         //      could be pressed before the order was ever saved.
 
         // Given - No such order
-        when(orderRepository.findById(1L)).thenReturn(Optional.empty());
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.empty());
 
         // When & Then
         assertThrows(ResourceNotFoundException.class, () -> paymentService.createPayment(testPayment));
@@ -127,10 +127,11 @@ class PaymentServiceTest {
         // Given
         Order order = openOrder();
         order.setStatus("closed");
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(order));
 
-        // When & Then
-        OrderStateException exception = assertThrows(OrderStateException.class,
+        // When & Then - OrderNotOpenException is the one that carries the code ORDER_NOT_OPEN,
+        // which is how the payment window knows to close and reload the table
+        com.notapos.exception.OrderNotOpenException exception = assertThrows(com.notapos.exception.OrderNotOpenException.class,
                 () -> paymentService.createPayment(testPayment));
         assertTrue(exception.getMessage().contains("already closed"));
         verify(paymentRepository, never()).save(any());
@@ -144,7 +145,7 @@ class PaymentServiceTest {
 
         // Given - One sent item and two drafts
         Order order = openOrder();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(order));
         when(orderCheckService.buildCheck(order)).thenReturn(check(1, 2, "48.54", "1.46", "50.00"));
 
         // When & Then
@@ -163,7 +164,7 @@ class PaymentServiceTest {
 
         // Given
         Order order = openOrder();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(order));
         when(orderCheckService.buildCheck(order)).thenReturn(check(0, 0, "0.00", "0.00", "0.00"));
         testPayment.setAmount(new BigDecimal("0.00"));
 
@@ -180,7 +181,7 @@ class PaymentServiceTest {
 
         // Given - The screen thinks the check is 50.00, the order really comes to 67.51
         Order order = openOrder();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(order));
         when(orderCheckService.buildCheck(order)).thenReturn(check(3, 0, "65.54", "1.97", "67.51"));
 
         // When & Then
@@ -202,7 +203,7 @@ class PaymentServiceTest {
         // Given
         Order order = openOrder();
         testPayment.setAmount(new BigDecimal("50"));
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(order));
         when(orderCheckService.buildCheck(order)).thenReturn(check(2, 0, "48.54", "1.46", "50.00"));
         when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -221,7 +222,7 @@ class PaymentServiceTest {
 
         // Given
         Order order = openOrder();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(order));
         when(orderCheckService.buildCheck(order)).thenReturn(check(2, 0, "48.54", "1.46", "50.00"));
         when(paymentRepository.save(any(Payment.class))).thenReturn(testPayment);
 
@@ -243,7 +244,7 @@ class PaymentServiceTest {
         // Given
         Order order = openOrder();
         testPayment.setTipAmount(null);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(order));
         when(orderCheckService.buildCheck(order)).thenReturn(check(2, 0, "48.54", "1.46", "50.00"));
         when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -466,7 +467,7 @@ class PaymentServiceTest {
         table.setStatus("occupied");
         
         when(paymentRepository.save(any(Payment.class))).thenReturn(testPayment);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(order));
         when(orderCheckService.buildCheck(order)).thenReturn(check(2, 0, "48.54", "1.46", "50.00"));
         when(tableRepository.findById(5L)).thenReturn(Optional.of(table));
         when(orderRepository.save(any(com.notapos.entity.Order.class))).thenReturn(order);
@@ -498,7 +499,7 @@ class PaymentServiceTest {
         order.setStatus("open");
         
         when(paymentRepository.save(any(Payment.class))).thenReturn(testPayment);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(order));
         when(orderCheckService.buildCheck(order)).thenReturn(check(2, 0, "48.54", "1.46", "50.00"));
         when(tableRepository.findById(5L)).thenReturn(Optional.empty());
         when(orderRepository.save(any(com.notapos.entity.Order.class))).thenReturn(order);

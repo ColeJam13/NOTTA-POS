@@ -275,6 +275,10 @@ class OrderRepositoryTest extends BaseRepositoryTest {
 
         // Given - A fresh open order on each of two tables, and a closed one
         orderRepository.deleteAll();
+        // flush() sends the deletes to the database now. Hibernate otherwise holds deletes
+        // back and runs new inserts first, and the database would refuse a second open
+        // order on table 1 while the one from setUp is still there.
+        orderRepository.flush();
         Order openOnTable1 = new Order();
         openOnTable1.setTableId(table1.getTableId());
         openOnTable1.setStatus("open");
@@ -365,5 +369,74 @@ class OrderRepositoryTest extends BaseRepositoryTest {
 
         // And the ends of the range are included: asking for exactly noon to noon finds it
         assertEquals(1, orderRepository.findByStatusAndClosedAtBetween("closed", noon, noon).size());
+    }
+
+    @Test
+    void testSecondOpenOrderOnATable_ShouldBeRejectedByTheDatabaseItself() {
+        // WHAT: Test saving a second open order on a table that already has one
+        // WHY: "One open check per table" was only a rule in service code. Two terminals
+        //      opening a table at the same instant could both get past it. Now the
+        //      database refuses the second row, whoever asks and however they ask.
+
+        // Given - one open order on table 3 (and nothing else there)
+        orderRepository.deleteAll();
+        Order first = new Order();
+        first.setTableId(table3.getTableId());
+        first.setStatus("open");
+        orderRepository.saveAndFlush(first);
+
+        // When & Then - a second open order on the same table is refused
+        Order second = new Order();
+        second.setTableId(table3.getTableId());
+        second.setStatus("open");
+        assertThrows(org.springframework.dao.DataIntegrityViolationException.class,
+                () -> orderRepository.saveAndFlush(second));
+    }
+
+    @Test
+    void testClosedOrders_ShouldNotCountAgainstTheOneOpenOrderRule() {
+        // WHAT: Test that a table can have any number of closed orders, and a new open one after them
+        // WHY: The rule is about OPEN checks only. A table serves many parties in a day.
+
+        // Given - two closed orders on table 3
+        orderRepository.deleteAll();
+        for (int i = 0; i < 2; i++) {
+            Order closed = new Order();
+            closed.setTableId(table3.getTableId());
+            closed.setStatus("closed");
+            orderRepository.saveAndFlush(closed);
+        }
+
+        // When - the next party is seated
+        Order next = new Order();
+        next.setTableId(table3.getTableId());
+        next.setStatus("open");
+        Order saved = orderRepository.saveAndFlush(next);
+
+        // Then
+        assertNotNull(saved.getOrderId());
+        assertEquals(3, orderRepository.findByTableId(table3.getTableId()).size());
+    }
+
+    @Test
+    void testSave_ShouldStartAnOrderAtVersionZeroAndCountEachChange() {
+        // WHAT: Test the version number on an order
+        // WHY: It is how the database spots two terminals changing the same check: each
+        //      save must start from the latest version, and bumps it by one.
+
+        // Given
+        orderRepository.deleteAll();
+        Order order = new Order();
+        order.setTableId(table3.getTableId());
+        order.setStatus("open");
+        order = orderRepository.saveAndFlush(order);
+        assertEquals(0L, order.getVersion());
+
+        // When - the order is changed and saved
+        order.setServerName("Sarah");
+        order = orderRepository.saveAndFlush(order);
+
+        // Then
+        assertEquals(1L, order.getVersion());
     }
 }

@@ -1,4 +1,4 @@
-import { apiFetch, getJson } from '../../services/api';
+import { apiFetch, getJson, ORDER_NOT_OPEN } from '../../services/api';
 
 /**
  * Backend calls used by the Create Order screen.
@@ -114,7 +114,9 @@ export const loadModifierGroupsByMenuItem = async () => {
 // The code the backend puts on its answer when an order is no longer open
 // (the check was closed, usually on another terminal). Screens check for this
 // code, never for the wording of the message.
-export const ORDER_NOT_OPEN = 'ORDER_NOT_OPEN';
+// It is defined in services/api.js and passed on from here, so the order screen
+// can keep importing everything it needs from this one file.
+export { ORDER_NOT_OPEN };
 
 /**
  * Turn a refused response into an Error that says why.
@@ -273,16 +275,24 @@ export const sendOrderNow = async (orderId) => {
  * Delete a saved order item.
  *
  * @param {number} orderItemId - The saved item to remove
- * @returns {Promise<{deleted: boolean, locked: boolean}>} - deleted is true only if the
- *          backend confirmed the delete. locked is true when the backend refused because
- *          the item already went to the prep station (409 Conflict).
+ * @returns {Promise<{deleted: boolean, locked: boolean, closed: boolean}>} - deleted is true
+ *          only if the backend confirmed the delete. locked is true when the backend refused
+ *          because the item already went to the prep station (409 Conflict). closed is true
+ *          when it refused because the whole check was closed, usually on another terminal.
  */
 export const deleteOrderItem = async (orderItemId) => {
   const deleteResponse = await apiFetch(`/api/order-items/${orderItemId}`, {
     method: 'DELETE'
   });
   console.log('Delete response status:', deleteResponse.status);
-  return { deleted: deleteResponse.ok, locked: deleteResponse.status === 409 };
+
+  // Both refusals are a 409. The code in the body tells them apart.
+  if (deleteResponse.status === 409) {
+    const refusal = await refusalFrom(deleteResponse, 'The item could not be removed');
+    const closed = refusal.code === ORDER_NOT_OPEN;
+    return { deleted: false, locked: !closed, closed };
+  }
+  return { deleted: deleteResponse.ok, locked: false, closed: false };
 };
 
 /**

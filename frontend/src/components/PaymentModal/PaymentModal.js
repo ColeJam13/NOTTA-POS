@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Banknote, CreditCard, Gift } from 'lucide-react';
 import './PaymentModal.css';
-import { apiFetch, getJson } from '../../services/api';
+import { apiFetch, getJson, ORDER_NOT_OPEN } from '../../services/api';
 
 /**
  * The pop-up for closing a check: shows what is owed, takes a tip and a
@@ -12,8 +12,13 @@ import { apiFetch, getJson } from '../../services/api';
  * saved and sent, so the number shown here is the number that gets charged.
  * (This used to add up whatever the screen was holding, including items that
  * were never saved.)
+ *
+ * onCheckClosedElsewhere (optional) is called instead of showing an alert when
+ * the backend says the check was already paid, which happens when two terminals
+ * have the same check up and the other one pressed first. The screen that opened
+ * this window knows how to catch up with the table; this window does not.
  */
-function PaymentModal({ order, onClose, onPaymentSuccess }) {
+function PaymentModal({ order, onClose, onPaymentSuccess, onCheckClosedElsewhere }) {
   const [paymentMethod, setPaymentMethod] = useState('credit_card');
   const [tipAmount, setTipAmount] = useState('');
   const [tipPercent, setTipPercent] = useState('');
@@ -81,6 +86,13 @@ function PaymentModal({ order, onClose, onPaymentSuccess }) {
         // The backend says why in "message" (unsent items, check already closed,
         // the order changed since this window opened, ...). Show that to the server.
         const error = await response.json().catch(() => null);
+
+        // Paid on another terminal a moment ago: hand over to the screen behind this window
+        if (error?.code === ORDER_NOT_OPEN && onCheckClosedElsewhere) {
+          onCheckClosedElsewhere();
+          return;
+        }
+
         alert(error?.message || 'Payment failed. Please try again.');
         setIsProcessing(false);
       }

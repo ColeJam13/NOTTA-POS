@@ -236,7 +236,10 @@ useEffect(() => {
   //
   // Items this screen had not saved yet are kept. They were never part of the closed
   // check, so the server can press Send again to start a new one with them.
-  const handleCheckClosedElsewhere = async () => {
+  //
+  // whatDidNotHappen finishes the message with what the server was trying to do:
+  // adding or sending (the default), removing an item, or taking payment.
+  const handleCheckClosedElsewhere = async (whatDidNotHappen = 'Nothing was added or sent.') => {
     const unsentItems = orderItems.filter(item => !item.orderItemId);
 
     timer.reset();
@@ -246,8 +249,8 @@ useEffect(() => {
     setOrderItems(unsentItems);
 
     alert(unsentItems.length > 0
-      ? 'This check was already closed on another terminal. Nothing was added or sent. Your unsent items are still here: press SEND ORDER to start a new check for them.'
-      : 'This check was already closed on another terminal. Nothing was added or sent.');
+      ? `This check was already closed on another terminal. ${whatDidNotHappen} Your unsent items are still here: press SEND ORDER to start a new check for them.`
+      : `This check was already closed on another terminal. ${whatDidNotHappen}`);
 
     // The table may have been seated again since. If it has an open order now, load it.
     if (currentTable) {
@@ -369,7 +372,14 @@ useEffect(() => {
     if (item.orderItemId) {
       console.log('Item has orderItemId, attempting delete:', item.orderItemId);
       try {
-        const { deleted, locked } = await deleteOrderItem(item.orderItemId);
+        const { deleted, locked, closed } = await deleteOrderItem(item.orderItemId);
+
+        if (closed) {
+          // The whole check was paid on another terminal a moment ago. The item was
+          // paid for, so it stays on that check; this screen catches up with the table.
+          await handleCheckClosedElsewhere('Nothing was removed.');
+          return;
+        }
 
         if (locked) {
           // The edit window closed before this arrived. Show what is true: everything
@@ -698,6 +708,7 @@ useEffect(() => {
           order={{ orderId: currentOrderId }}
           onClose={() => setShowPaymentModal(false)}
           onPaymentSuccess={startOver}
+          onCheckClosedElsewhere={() => handleCheckClosedElsewhere('Nothing was charged.')}
         />
       )}
     </div>

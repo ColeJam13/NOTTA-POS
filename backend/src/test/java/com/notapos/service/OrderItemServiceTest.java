@@ -61,7 +61,7 @@ class OrderItemServiceTest {
         // Order 1 (the order testItem is on) exists and is open. "lenient" because the tests
         // that never send anything do not look the order up, and Mockito would otherwise
         // complain about a stub that was not used.
-        lenient().when(orderRepository.findById(1L)).thenReturn(Optional.of(order(1L, "open")));
+        lenient().when(orderRepository.findByIdLockedForShare(1L)).thenReturn(Optional.of(order(1L, "open")));
     }
 
     private com.notapos.entity.Order order(Long orderId, String status) {
@@ -105,7 +105,7 @@ class OrderItemServiceTest {
         // WHY: Server B closed it on another terminal while server A still had it on screen.
         //      Becomes a 409 with a code the order screen recognizes.
 
-        when(orderRepository.findById(2L)).thenReturn(Optional.of(order(2L, "closed")));
+        when(orderRepository.findByIdLockedForShare(2L)).thenReturn(Optional.of(order(2L, "closed")));
 
         com.notapos.exception.OrderNotOpenException exception = assertThrows(
                 com.notapos.exception.OrderNotOpenException.class, () -> orderItemService.requireOpenOrder(2L));
@@ -118,7 +118,7 @@ class OrderItemServiceTest {
         // WHY: Tables are linked by plain ID columns, so nothing else would stop an item
         //      being attached to an order that does not exist
 
-        when(orderRepository.findById(99L)).thenReturn(Optional.empty());
+        when(orderRepository.findByIdLockedForShare(99L)).thenReturn(Optional.empty());
 
         assertThrows(com.notapos.exception.ResourceNotFoundException.class, () -> orderItemService.requireOpenOrder(99L));
     }
@@ -128,7 +128,7 @@ class OrderItemServiceTest {
         // WHAT: Test pressing Send for a check that was already paid
         // WHY: Items sent on a closed check were never billed and never seen by the kitchen
 
-        when(orderRepository.findById(2L)).thenReturn(Optional.of(order(2L, "closed")));
+        when(orderRepository.findByIdLockedForShare(2L)).thenReturn(Optional.of(order(2L, "closed")));
 
         assertThrows(com.notapos.exception.OrderNotOpenException.class, () -> orderItemService.sendItemsForOrder(2L));
         verify(orderItemRepository, never()).findByOrderIdAndStatus(any(), any());
@@ -140,7 +140,7 @@ class OrderItemServiceTest {
         // WHAT: Test pressing Send Now for a check that was already paid
         // WHY: Same rule as Send
 
-        when(orderRepository.findById(2L)).thenReturn(Optional.of(order(2L, "closed")));
+        when(orderRepository.findByIdLockedForShare(2L)).thenReturn(Optional.of(order(2L, "closed")));
 
         assertThrows(com.notapos.exception.OrderNotOpenException.class, () -> orderItemService.sendOrderNow(2L));
         verify(orderItemRepository, never()).saveAll(any());
@@ -153,7 +153,7 @@ class OrderItemServiceTest {
 
         testItem.setOrderId(2L);
         when(orderItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
-        when(orderRepository.findById(2L)).thenReturn(Optional.of(order(2L, "closed")));
+        when(orderRepository.findByIdLockedForShare(2L)).thenReturn(Optional.of(order(2L, "closed")));
 
         assertThrows(com.notapos.exception.OrderNotOpenException.class, () -> orderItemService.sendItemNow(1L));
         assertEquals("draft", testItem.getStatus());
@@ -283,6 +283,25 @@ class OrderItemServiceTest {
         // Then
         assertNotNull(sent.getSentAt());
         assertTrue(sent.getIsLocked());
+    }
+
+    @Test
+    void testDeleteOrderItem_OnAClosedOrder_ShouldThrowAndDeleteNothing() {
+        // WHAT: Test removing an item from a check that was already paid
+        // WHY: Removing an item now holds the order open while it runs (requireOpenOrder).
+        //      If the check was paid on another terminal first, the item was paid for and
+        //      must stay on the check.
+
+        // Given - the item belongs to order 2, which is closed
+        testItem.setOrderId(2L);
+        testItem.setIsLocked(false);
+        when(orderItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
+        when(orderRepository.findByIdLockedForShare(2L)).thenReturn(Optional.of(order(2L, "closed")));
+
+        // When & Then
+        assertThrows(com.notapos.exception.OrderNotOpenException.class, () -> orderItemService.deleteOrderItem(1L));
+        verify(orderItemRepository, never()).deleteById(any());
+        verify(orderItemModifierRepository, never()).deleteByOrderItemId(any());
     }
 
     @Test

@@ -75,17 +75,38 @@ public class OrderService {
      * servers opened the same table within a few seconds of each other - that
      * order is returned instead of starting a second check, so both servers
      * ring items onto the same check.
+     *
+     * The table row is locked for the length of this method, so two terminals
+     * opening the same table at the same instant go one after the other: the
+     * second waits, then finds the order the first one opened. Without the lock
+     * both would look, both would find nothing, and both would open a check.
+     * Behind that, the database has its own rule (the index
+     * orders_one_open_per_table, added in migration V3) and refuses a second
+     * open order on a table whatever the code does.
+     *
+     * Only the table, order type, and server are taken from the request. A new
+     * Order is built here and the rest starts fresh. Saving the request's own
+     * object would be wrong: an object that carries an ID means "update that
+     * row" to the database layer, so a request naming an existing order's ID
+     * used to overwrite it - a paid check could be turned back into an open one.
      */
     @Transactional
-    public Order createOrder(Order order) {                 // create new order
-        RestaurantTable table = tableRepository.findById(order.getTableId())
-                .orElseThrow(() -> new ResourceNotFoundException("Table not found with id: " + order.getTableId()));
+    public Order createOrder(Order request) {                 // create new order
+        RestaurantTable table = tableRepository.findByIdLockedForUpdate(request.getTableId())
+                .orElseThrow(() -> new ResourceNotFoundException("Table not found with id: " + request.getTableId()));
 
-        List<Order> alreadyOpen = orderRepository.findByTableIdAndStatus(order.getTableId(), OrderStatus.OPEN.getValue());
+        List<Order> alreadyOpen = orderRepository.findByTableIdAndStatus(request.getTableId(), OrderStatus.OPEN.getValue());
         if (!alreadyOpen.isEmpty()) {
             return alreadyOpen.get(0);
         }
 
+        Order order = new Order();                              // No ID: this is always a new row
+        order.setTableId(request.getTableId());
+        if (request.getOrderType() != null) {
+            order.setOrderType(request.getOrderType());         // Otherwise the entity's default (dine_in) stands
+        }
+        order.setServerName(request.getServerName());
+        order.setStaffId(request.getStaffId());
         order.setStatus(OrderStatus.OPEN.getValue());
         Order saved = orderRepository.save(order);
 
@@ -134,10 +155,15 @@ public class OrderService {
      * Only an OPEN order with NO items can be cleared. A closed order is part of
      * the sales history, and an order with items has to be paid (or its items
      * removed first), so both are refused with a 409.
+     *
+     * The order is held alone while this runs ("for update", see OrderRepository),
+     * so another terminal cannot ring an item onto it between the "is it empty?"
+     * check and the delete. That item would have been left pointing at an order
+     * that no longer exists.
      */
     @Transactional
     public void deleteOrder(Long id) {                          // delete an order
-        Order order = orderRepository.findById(id)
+        Order order = orderRepository.findByIdLockedForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
 
         if (!OrderStatus.OPEN.matches(order.getStatus())) {
