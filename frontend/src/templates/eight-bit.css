@@ -1,0 +1,343 @@
+/*
+ * THE 8-BIT TEMPLATE: every color, font, size, corner, border, glow, and gap the app uses.
+ *
+ * WHAT A TOKEN IS
+ *   A token is a named value. The line
+ *
+ *       --color-surface: #16213e;
+ *
+ *   gives the name "--color-surface" to that dark blue, and a stylesheet uses it with
+ *
+ *       background: var(--color-surface);
+ *
+ *   (The browser's own name for this is a "CSS custom property" or "CSS variable".)
+ *
+ * WHY
+ *   No other stylesheet in the app contains a color, a font, or a size of its own. They
+ *   all read their look from the names in this file. So a different look for the whole
+ *   app (the Plain, Coffee Shop, and Nightclub templates in the plan) is a second file
+ *   like this one with other values, and not one screen's stylesheet has to change.
+ *   src/templates/tokens.test.js fails if a stylesheet goes back to a literal value.
+ *
+ * THESE VALUES ARE THE LOOK THE APP HAD BEFORE TOKENS EXISTED (step B4a of the plan).
+ *   Nothing was redesigned here. Where two screens disagreed (two nearly identical
+ *   yellows, white text on one purple button and dark text on another), both values
+ *   were kept, each under its own name, so that not one pixel changed. Those are
+ *   gathered at the end under "One-off values" as candidates to merge later.
+ *
+ * HOW THE NAMES ARE BUILT
+ *   --color-...     a color, named for its JOB (text, a surface, a border), not its hue
+ *   --status-...    a color that carries a MEANING: an item's state, a late ticket,
+ *                   86'd, an error. A template may restyle these but must keep each one
+ *                   unmistakable.
+ *   --font-...      fonts, sizes, weights, letter and line spacing
+ *   --space-N       a gap or padding. N is its size in pixels IN THIS TEMPLATE.
+ *   --font-size-N   likewise. Another template may make every step larger or smaller
+ *                   (a plain font reads smaller than this pixel font at the same size),
+ *                   but step 10 always stays smaller than step 12.
+ *   --radius-...    how round a corner is
+ *   --border-width-...
+ *   --glow-... , --shadow-... , --ring-...   whole shadows. A flat template sets the
+ *                   glows to "none".
+ *
+ *   A token may be defined from another one, e.g. --status-wait-late: var(--color-danger).
+ *   That says "a late ticket is drawn in the danger color" once, in one place.
+ *
+ * ":root" is the page itself, so a name defined here can be used by every element on it.
+ */
+
+:root {
+  /* ====================================================================== */
+  /* FONTS                                                                  */
+  /* ====================================================================== */
+
+  /* The pixel font everything is set in, and the gothic one for the NOTTA-POS logo.
+     The fonts themselves are loaded in index.html and App.css. */
+  --font-body: 'Press Start 2P', monospace;
+  --font-logo: 'GothicByte', monospace;
+  /* Set on the outermost box only; every element inside takes --font-body, so this one
+     is never seen. Kept because it was there. */
+  --font-fallback: 'Courier New', monospace;
+
+  --font-weight-normal: normal;
+  --font-weight-bold: bold;
+
+  /* Type sizes. The number is the size in pixels in this template. */
+  --font-size-8: 8px;
+  --font-size-9: 9px;
+  --font-size-10: 10px;
+  --font-size-11: 11px;
+  --font-size-12: 12px;
+  --font-size-13: 13px;
+  --font-size-14: 14px;
+  --font-size-15: 15px;
+  --font-size-16: 16px;
+  --font-size-18: 18px;
+  --font-size-20: 20px;
+  --font-size-22: 22px;
+  --font-size-24: 24px;
+  --font-size-28: 28px;
+  --font-size-30: 30px;
+  --font-size-32: 32px;
+  --font-size-36: 36px;
+  --font-size-50: 50px;
+
+  /* Space between letters: a little on labels and buttons, more on headings, and a lot
+     on the logo */
+  --letter-spacing: 1px;
+  --letter-spacing-wide: 2px;
+  --letter-spacing-logo: 6px;
+
+  /* Space between lines of running text (a multiple of the type size) */
+  --line-height-tight: 1;
+  --line-height: 1.5;
+  --line-height-relaxed: 1.6;
+  --line-height-loose: 1.8;
+
+  /* ====================================================================== */
+  /* SHAPE                                                                  */
+  /* ====================================================================== */
+
+  /* Corners. Most things are --radius-md; panels and pop-ups are --radius-xl. */
+  --radius-xs: 5px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-pill: 25px;          /* The search box: fully rounded ends */
+  --radius-round: 50%;          /* Circles: the avatar, PIN dots, round tables */
+
+  /* Border thickness. Almost every box has the middle one. */
+  --border-width-thin: 1px;
+  --border-width: 2px;
+  --border-width-thick: 3px;
+
+  /* Gaps and padding. The number is the size in pixels in this template. */
+  --space-2: 2px;
+  --space-3: 3px;
+  --space-4: 4px;
+  --space-5: 5px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-14: 14px;
+  --space-15: 15px;
+  --space-16: 16px;
+  --space-18: 18px;
+  --space-20: 20px;
+  --space-22: 22px;
+  --space-24: 24px;
+  --space-25: 25px;
+  --space-30: 30px;
+  --space-40: 40px;
+  --space-60: 60px;
+  --space-75: 75px;
+
+  /* ====================================================================== */
+  /* COLORS: SURFACES (what things are drawn on)                            */
+  /* ====================================================================== */
+
+  --color-bg: #1a1a2e;                    /* The page behind everything */
+  --color-bg-deep: #0f0f1e;               /* Sunk below the page: the top bar, text boxes, list rows, the floor */
+  --color-surface: #16213e;               /* Cards, panels, and plain buttons */
+  --color-surface-hover: #1f2d50;         /* A card or plain button under the pointer */
+  --color-control: #2a2a4a;               /* Neutral buttons that sit ON a panel (SAVE, CANCEL) */
+  --color-control-hover: #3a3a5a;
+  --color-overlay: rgba(0, 0, 0, 0.8);    /* The dimming behind a pop-up */
+
+  /* ====================================================================== */
+  /* COLORS: TEXT                                                           */
+  /* ====================================================================== */
+
+  --color-text: #e0e0e0;                  /* Ordinary text */
+  --color-text-muted: #9ca3af;            /* Explanations and form labels */
+  --color-text-subtle: #888;              /* Secondary labels */
+  --color-text-faint: #666;               /* Placeholders, times, "nothing here" messages */
+  --color-text-hint: #999;                /* The rule under a modifier group ("choose 1") */
+
+  /* ====================================================================== */
+  /* COLORS: THE FRAME AND THE ACCENT (purple)                              */
+  /* The same purple does three jobs today. They are three names so that a  */
+  /* template can have quiet borders and still a strong accent.             */
+  /* ====================================================================== */
+
+  --color-border: #b026ff;                /* The line around almost every box */
+  --color-accent: #b026ff;                /* Accent TEXT: small labels, the server's name on a card */
+  --color-accent-fill: #b026ff;           /* Accent BACKGROUND: a button under the pointer, a selected tab */
+  --color-on-accent: #1a1a2e;             /* Text on an accent background */
+  --color-accent-soft: #c9a6ff;           /* The modifiers listed under an item */
+  --color-accent-surface: #2a1a3e;        /* A row picked out in the accent color (your own leaderboard row) */
+  --color-subheading: #b026ff;            /* Section headings inside a screen */
+
+  /* ====================================================================== */
+  /* COLORS: PRIMARY (green): headings, money, and the main action          */
+  /* ====================================================================== */
+
+  --color-heading: #39ff14;               /* Screen and panel headings */
+  --color-primary: #39ff14;               /* Primary TEXT: amounts, names, the value that matters on a card */
+  --color-primary-fill: #39ff14;          /* Primary BACKGROUND: SEND, PROCESS PAYMENT, the selected choice */
+  --color-primary-fill-hover: #2ee00f;
+  --color-on-primary: #1a1a2e;            /* Text on a primary background */
+  --color-border-primary: #39ff14;        /* The border of a primary button, a focused text box, a selected thing */
+
+  /* A payment that went through */
+  --color-success: #00ff00;
+  --color-success-fill: #00ff00;
+  --color-on-success: #0a0e27;
+
+  /* ====================================================================== */
+  /* COLORS: DANGER (red): destructive actions and refusals                 */
+  /* ====================================================================== */
+
+  --color-danger: #ff3366;                /* Danger TEXT: CANCEL, remove, a close button under the pointer */
+  --color-danger-hover: #ff0044;
+  --color-danger-fill: #ff3366;           /* Danger BACKGROUND: CLOSE ORDER, the notification count */
+  --color-danger-fill-hover: #ff0044;
+  --color-on-danger: #fff;                /* Text on a danger background */
+  --color-border-danger: #ff3366;
+  --color-danger-surface: #3a1020;        /* A dark red panel */
+  --color-danger-surface-hover: #4d1529;
+
+  /* ====================================================================== */
+  /* COLORS: ATTENTION (gold): look here, but nothing is wrong              */
+  /* ====================================================================== */
+
+  --color-attention: #ffd700;             /* How a check was paid, on its card */
+  --color-border-attention: #ffd700;
+  --color-attention-surface: #2a2419;     /* A dark gold panel */
+  --color-note: #ffd700;                  /* A kitchen note, wherever it is shown or typed */
+
+  /* ====================================================================== */
+  /* COLORS: NEUTRAL AND SWITCHED OFF                                       */
+  /* ====================================================================== */
+
+  --color-border-muted: #666;             /* The border of something finished, closed, or switched off */
+  --color-border-neutral: #888;           /* The SHOW DONE button on the kitchen display */
+  --color-neutral-fill: #888;
+  --color-on-neutral: #1a1a2e;
+  --color-border-subtle: #333;            /* Hairlines between the rows of a check */
+  --color-disabled-fill: #666;            /* A button that cannot be pressed */
+  --color-on-disabled: #333;
+
+  /* The Challenges leaderboard: first, second, and third place */
+  --color-rank-gold: #ffd700;
+  --color-rank-silver: #c0c0c0;
+  --color-rank-bronze: #cd7f32;
+
+  /* The grid drawn on the floor while its layout is being edited */
+  --color-grid-line: rgba(176, 38, 255, 0.12);
+
+  /* ====================================================================== */
+  /* STATUS: colors that carry a meaning                                    */
+  /* A template may change every one of these. It must keep each state      */
+  /* unmistakable: a locked item, an 86'd item, and a late ticket are the   */
+  /* three a busy floor depends on.                                         */
+  /* ====================================================================== */
+
+  /* --- An item on the order screen --- */
+  /* A saved draft: rung in and saved, not sent yet */
+  --status-draft-border: var(--color-border-attention);
+  --status-draft-surface: var(--color-attention-surface);
+  --status-draft-text: var(--color-attention);
+  /* Locked: the edit window has closed and the kitchen has it */
+  --status-locked-border: var(--color-border-muted);
+  --status-locked-surface: var(--color-bg-deep);
+  --status-locked-text: var(--color-text-subtle);
+  --status-locked-icon: var(--color-danger);
+
+  /* --- A table's card on Tables and Quick Orders, by what its items are doing --- */
+  --status-limbo-border: var(--color-border);                 /* Something is still in its edit window */
+  --status-in-kitchen-border: var(--color-border-attention);  /* The kitchen is working on it */
+  --status-all-done-border: var(--color-border-primary);      /* Everything has been made */
+
+  /* --- The kitchen display --- */
+  --status-item-label: var(--color-primary);                  /* PENDING / FIRED / COMPLETED beside an item */
+  --status-wait-ok: var(--color-primary);                     /* How long a ticket has waited: fine */
+  --status-wait-warning: #ffd60a;                             /* ...10 minutes */
+  --status-wait-late: var(--color-danger);                    /* ...15 minutes */
+  --status-ticket-done-border: var(--color-border-muted);     /* A ticket with nothing left to make */
+  --status-ticket-done-text: var(--color-text-subtle);
+
+  /* --- 86'd: out for now --- */
+  --status-86-text: var(--color-danger);
+  --status-86-border: var(--color-border-danger);
+  --status-86-surface: var(--color-danger-surface);
+  --status-86-surface-hover: var(--color-danger-surface-hover);
+  /* On the order screen an 86'd item is greyed out and marked, so it cannot be mistaken
+     for one that can be rung in */
+  --status-86-card-border: var(--color-border-muted);
+  --status-86-card-text: var(--color-text-subtle);
+  --status-86-label: var(--color-danger);
+
+  /* --- An error or refusal shown to the person at the screen --- */
+  --status-error-text: var(--color-danger);
+  --status-error-border: var(--color-border-danger);
+  --status-error-surface: var(--color-danger-surface);
+
+  /* --- A table on the Floor Map --- */
+  --status-table-available-border: var(--color-border-primary);
+  --status-table-occupied-border: var(--color-border-danger);
+  --status-table-occupied-surface: #2a1a1e;
+
+  /* --- A terminal paused for wrong PINs (Staff screen) --- */
+  --status-paused-border: var(--color-border-attention);
+  --status-paused-text: var(--color-attention);
+
+  /* ====================================================================== */
+  /* GLOWS AND SHADOWS                                                      */
+  /* A glow is a soft colored light around a box, mostly under the pointer. */
+  /* "tight" is a smaller glow, "wide" a larger one, "soft" a fainter one.  */
+  /* ====================================================================== */
+
+  --glow-accent: 0 0 20px rgba(176, 38, 255, 0.6);
+  --glow-accent-soft: 0 0 20px rgba(176, 38, 255, 0.5);
+  --glow-accent-tight: 0 0 15px rgba(176, 38, 255, 0.6);
+  --glow-accent-tight-soft: 0 0 15px rgba(176, 38, 255, 0.5);
+  --glow-accent-wide: 0 0 30px rgba(176, 38, 255, 0.6);
+
+  --glow-primary: 0 0 20px rgba(57, 255, 20, 0.5);
+  --glow-primary-soft: 0 0 20px rgba(57, 255, 20, 0.4);
+  --glow-primary-tight: 0 0 15px rgba(57, 255, 20, 0.6);
+
+  --glow-danger: 0 0 20px rgba(255, 51, 102, 0.5);
+  --glow-danger-tight: 0 0 15px rgba(255, 51, 102, 0.4);
+
+  --shadow-navbar: 0 4px 20px rgba(176, 38, 255, 0.3);        /* Under the top bar */
+  --glow-logo: 0 0 10px #b026ff, 0 0 20px #b026ff;            /* Around the letters of the logo */
+  /* The ring around the table selected in the Floor Map editor: a gap, then a line */
+  --ring-selected: 0 0 0 3px #1a1a2e, 0 0 0 6px #ffd60a;
+
+  /* The fill of a Challenges progress bar: accent on the left, primary on the right */
+  --gradient-progress: linear-gradient(90deg, #b026ff, #39ff14);
+
+  /* ====================================================================== */
+  /* ONE-OFF VALUES                                                         */
+  /* Each of these is used in one or two places and differs a little from   */
+  /* the token it sits beside. They are here so that adding tokens changed  */
+  /* nothing on screen. Merging one into its neighbor is a small visible    */
+  /* change, and the owner's call.                                          */
+  /* ====================================================================== */
+
+  /* White text on an accent or danger background, where --color-on-accent is dark.
+     The ACTIVE / CLOSED buttons on Tables and the period buttons on Financials use
+     this; the same buttons on Active Orders use the dark one. */
+  --color-on-accent-alt: #fff;
+  /* Dark text on a danger background (CANCEL under the pointer in the Payment
+     window), where --color-on-danger is white */
+  --color-on-danger-alt: #1a1a2e;
+  /* The close button of a closed check's pop-up under the pointer: a purer red than
+     --color-danger */
+  --color-danger-alt: #ff0000;
+  /* The kitchen note on a closed check: a hair away from --color-note */
+  --color-note-alt: #ffd60a;
+  /* The dimming behind a closed check's pop-up: a little darker than --color-overlay */
+  --color-overlay-strong: rgba(0, 0, 0, 0.85);
+  /* The "custom tip" box in the Payment window has a palette of its own. Every other
+     text box uses --color-bg-deep or --color-surface, --color-border, and --color-text. */
+  --tip-input-surface: #1e293b;
+  --tip-input-border: #7c3aed;
+  --tip-input-border-focus: #a78bfa;
+  --tip-input-text: #ffffff;
+  --tip-input-placeholder: #64748b;
+}

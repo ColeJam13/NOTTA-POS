@@ -1,15 +1,15 @@
 .navbar {
-  background: #0f0f1e;
-  border-bottom: 3px solid #b026ff;
-  box-shadow: 0 4px 20px rgba(176, 38, 255, 0.3);
+  background: var(--color-bg-deep);
+  border-bottom: var(--border-width-thick) solid var(--color-border);
+  box-shadow: var(--shadow-navbar);
 }
 
 .navbar-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 15px 30px;
-  gap: 30px;
+  padding: var(--space-15) var(--space-30);
+  gap: var(--space-30);
 }
 
 .navbar-search {
@@ -19,149 +19,148 @@
 
 .navbar-search input {
   width: 100%;
-  padding: 12px 20px;
-  background: #1a1a2e;
-  border: 2px solid #b026ff;
-  border-radius: 25px;
-  color: #e0e0e0;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 10px;
+  padding: var(--space-12) var(--space-20);
+  background: var(--color-bg);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-10);
 }
 
 .navbar-search input::placeholder {
-  color: #666;
+  color: var(--color-text-faint);
 }
 
 .navbar-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: var(--space-20);
 }
 
 .notifications-btn {
   position: relative;
   background: transparent;
-  border: 2px solid #b026ff;
-  color: #e0e0e0;
-  padding: 10px 15px;
-  border-radius: 8px;
+  border: var(--border-width) solid var(--color-border);
+  color: var(--color-text);
+  padding: var(--space-10) var(--space-15);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 18px;
+  font-size: var(--font-size-18);
   transition: all 0.3s;
 }
 
 .notifications-btn:hover {
-  background: #b026ff;
+  background: var(--color-accent-fill);
 }
 
 .notifications-badge {
   position: absolute;
   top: -5px;
   right: -5px;
-  background: #ff3366;
-  color: #fff;
-  font-size: 10px;
-  font-family: 'Press Start 2P', monospace;
-  padding: 3px 6px;
+  background: var(--color-danger-fill);
+  color: var(--color-on-danger);
+  font-size: var(--font-size-10);
+  font-family: var(--font-body);
+  padding: var(--space-3) var(--space-6);
   border-radius: 50%
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .user-avatar {
   width: 40px;
   height: 40px;
-  background: #b026ff;
-  border-radius: 50%;
+  background: var(--color-accent-fill);
+  border-radius: var(--radius-round);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 10px;
-  color: #1a1a2e;
-  font-weight: bold;
+  font-family: var(--font-body);
+  font-size: var(--font-size-10);
+  color: var(--color-on-accent);
+  font-weight: var(--font-weight-bold);
 }
 
 .user-details {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-4);
 }
 
 .user-name {
-  color: #e0e0e0;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 10px;
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-10);
 }
 
 .user-role {
-  color: #39ff14;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 8px;
+  color: var(--color-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-8);
 }
 
 .navbar-bottom {
   display: flex;
   justify-content: center;
-  gap: 15px;
-  padding: 15px 30px;
-  background: #16213e;
+  gap: var(--space-15);
+  padding: var(--space-15) var(--space-30);
+  background: var(--color-surface);
 }
 
 .navbar-bottom button {
-  padding: 10px 18px;
+  padding: var(--space-10) var(--space-18);
   background: transparent;
-  border: 2px solid #39ff14;
-  color: #39ff14;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 9px;
-  border-radius: 8px;
+  border: var(--border-width) solid var(--color-border-primary);
+  color: var(--color-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-9);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .navbar-bottom button:hover {
-  background: #39ff14;
-  color: #1a1a2e;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
 }
 
 .navbar-bottom button.active {
-  background: #39ff14;
-  color: #1a1a2e;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
 }
 
 .navbar-logo {
-  font-family: 'GothicByte', monospace;
-  font-size: 28px;
-  color: #b026ff;
+  font-family: var(--font-logo);
+  font-size: var(--font-size-28);
+  color: var(--color-accent);
   text-shadow:
-    0 0 10px #b026ff,
-    0 0 20px #b026ff;
-  letter-spacing: 6px;
+    var(--glow-logo);
+  letter-spacing: var(--letter-spacing-logo);
   margin: 0;
 }
 /* SIGN OUT, beside the signed-in person's name */
 .sign-out-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-6);
   background: transparent;
-  border: 2px solid #b026ff;
-  color: #e0e0e0;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 10px;
-  font-weight: bold;
-  letter-spacing: 1px;
+  border: var(--border-width) solid var(--color-border);
+  color: var(--color-text);
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-10);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing);
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .sign-out-btn:hover {
-  background: #b026ff;
-  color: #1a1a2e;
+  background: var(--color-accent-fill);
+  color: var(--color-on-accent);
 }

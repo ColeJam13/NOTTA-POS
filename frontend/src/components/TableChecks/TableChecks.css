@@ -1,6 +1,6 @@
 /* A line on a closed check: the item row, then its modifiers and kitchen note underneath */
 .check-line {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-8);
 }
 
 .check-line .modal-item {
@@ -9,24 +9,24 @@
 
 .check-line-modifiers {
   list-style: none;
-  margin: 4px 0 0 0;
-  padding: 0 12px 0 24px;
-  color: #9ca3af;
-  font-size: 12px;
+  margin: var(--space-4) 0 0 0;
+  padding: 0 var(--space-12) 0 var(--space-24);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-12);
 }
 
 .check-line-modifiers li {
-  padding: 2px 0;
+  padding: var(--space-2) 0;
 }
 
 .check-line-modifiers small {
-  margin-left: 8px;
-  color: #39ff14;
+  margin-left: var(--space-8);
+  color: var(--color-primary);
 }
 
 .check-line-note {
-  margin: 4px 0 0 0;
-  padding: 0 12px 0 24px;
-  color: #ffd60a;
-  font-size: 12px;
+  margin: var(--space-4) 0 0 0;
+  padding: 0 var(--space-12) 0 var(--space-24);
+  color: var(--color-note-alt);
+  font-size: var(--font-size-12);
 }

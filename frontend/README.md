@@ -25,6 +25,10 @@ CI runs `lint`, `build`, and `test` on every pull request.
 - **Where the backend is.** Under `npm start`, with no setting, `http://localhost:8080`. A built app with no setting uses the address it was loaded from, which is what the packaged build needs (`../package.sh`; the backend then serves these screens itself). To point somewhere else, create `.env.local` in this folder containing `VITE_API_URL=http://192.168.1.50:8080` and restart `npm start`. Only settings whose names start with `VITE_` reach the app, and the app reads them from `import.meta.env` (`src/services/api.js`).
 - **Another port.** `PORT=3001 npm start`. The backend must allow that address (`notta.cors.allowed-origins`).
 
+## How the app gets its look
+
+`src/templates/eight-bit.css` gives a name (a "token") to every color, font, size, corner, border width, glow, and gap. Every other stylesheet uses those names (`var(--color-surface)`, `var(--space-10)`) and holds no values of its own, so a different look for the whole app is a second template file with other values. The top of that file explains how the names are built. `npm test` fails if a stylesheet goes back to a literal value (`src/templates/tokens.test.js`).
+
 ## Things that differ from Create React App
 
 - **A file that contains JSX is named `.jsx`.** Vite reads a `.js` file as plain JavaScript. Screens, components, and the tests that draw them are `.jsx`; plain logic stays `.js`. An import does not name the ending (`import NavBar from './NavBar'`), so either works.

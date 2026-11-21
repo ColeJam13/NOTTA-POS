@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--color-overlay);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -12,9 +12,9 @@
 }
 
 .modal-content {
-  background: #1a1a2e;
-  border: 3px solid #b026ff;
-  border-radius: 12px;
+  background: var(--color-bg);
+  border: var(--border-width-thick) solid var(--color-border);
+  border-radius: var(--radius-xl);
   width: 90%;
   max-width: 600px;
   max-height: 90vh;
@@ -25,22 +25,22 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 30px;
-  border-bottom: 2px solid #b026ff;
+  padding: var(--space-20) var(--space-30);
+  border-bottom: var(--border-width) solid var(--color-border);
 }
 
 .modal-header h2 {
-  color: #39ff14;
-  font-size: 24px;
+  color: var(--color-heading);
+  font-size: var(--font-size-24);
   margin: 0;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-body);
 }
 
 .modal-close {
   background: transparent;
   border: none;
-  color: #e0e0e0;
-  font-size: 32px;
+  color: var(--color-text);
+  font-size: var(--font-size-32);
   cursor: pointer;
   padding: 0;
   width: 40px;
@@ -52,148 +52,148 @@
 }
 
 .modal-close:hover {
-  color: #ff3366;
+  color: var(--color-danger);
   transform: scale(1.2);
 }
 
 .modal-body {
-  padding: 30px;
+  padding: var(--space-30);
 }
 
 .order-summary {
-  background: #16213e;
-  border: 2px solid #b026ff;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 30px;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-20);
+  margin-bottom: var(--space-30);
 }
 
 .summary-row {
   display: flex;
   justify-content: space-between;
-  padding: 10px 0;
-  color: #e0e0e0;
-  font-size: 14px;
+  padding: var(--space-10) 0;
+  color: var(--color-text);
+  font-size: var(--font-size-14);
 }
 
 .summary-row.total {
-  border-top: 2px solid #b026ff;
-  margin-top: 10px;
-  padding-top: 15px;
-  font-size: 18px;
-  font-weight: bold;
-  color: #39ff14;
+  border-top: var(--border-width) solid var(--color-border);
+  margin-top: var(--space-10);
+  padding-top: var(--space-15);
+  font-size: var(--font-size-18);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
 }
 
 .form-group {
-  margin-bottom: 25px;
+  margin-bottom: var(--space-25);
 }
 
 .form-group label {
   display: block;
-  color: #b026ff;
-  font-size: 12px;
-  font-weight: bold;
+  color: var(--color-accent);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-bold);
   text-transform: uppercase;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-10);
 }
 
 .payment-methods {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: var(--space-10);
 }
 
 .payment-method-btn {
-  padding: 15px;
-  background: #16213e;
-  border: 2px solid #b026ff;
-  color: #e0e0e0;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 10px;
-  border-radius: 8px;
+  padding: var(--space-15);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-10);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .payment-method-btn:hover {
-  background: #2a2a4a;
+  background: var(--color-control);
 }
 
 .payment-method-btn.active {
-  background: #b026ff;
-  color: #1a1a2e;
+  background: var(--color-accent-fill);
+  color: var(--color-on-accent);
 }
 
 .tip-buttons {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: var(--space-10);
+  margin-bottom: var(--space-10);
 }
 
 .tip-btn {
-  padding: 12px;
-  background: #16213e;
-  border: 2px solid #39ff14;
-  color: #39ff14;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 10px;
-  border-radius: 8px;
+  padding: var(--space-12);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-primary);
+  color: var(--color-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-10);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .tip-btn:hover {
-  background: #2a2a4a;
+  background: var(--color-control);
 }
 
 .tip-btn.active {
-  background: #39ff14;
-  color: #1a1a2e;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
 }
 
 .tip-input {
   width: 100%;
-  padding: 12px;
-  background: #16213e;
-  border: 2px solid #b026ff;
-  color: #e0e0e0;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 10px;
-  border-radius: 8px;
+  padding: var(--space-12);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-10);
+  border-radius: var(--radius-md);
 }
 
 .tip-input::placeholder {
-  color: #666;
+  color: var(--color-text-faint);
 }
 
 .grand-total {
   display: flex;
   justify-content: space-between;
-  padding: 20px;
-  background: #16213e;
-  border: 2px solid #39ff14;
-  border-radius: 8px;
-  margin-bottom: 30px;
-  font-size: 24px;
-  font-weight: bold;
-  color: #39ff14;
-  font-family: 'Press Start 2P', monospace;
+  padding: var(--space-20);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-30);
+  font-size: var(--font-size-24);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  font-family: var(--font-body);
 }
 
 .modal-actions {
   display: flex;
-  gap: 15px;
+  gap: var(--space-15);
 }
 
 .btn-cancel,
 .btn-process {
   flex: 1;
-  padding: 15px;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 12px;
-  border-radius: 8px;
+  padding: var(--space-15);
+  font-family: var(--font-body);
+  font-size: var(--font-size-12);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.3s;
   border: none;
@@ -201,24 +201,24 @@
 
 .btn-cancel {
   background: transparent;
-  border: 2px solid #ff3366;
-  color: #ff3366;
+  border: var(--border-width) solid var(--color-border-danger);
+  color: var(--color-danger);
 }
 
 .btn-cancel:hover {
-  background: #ff3366;
-  color: #1a1a2e;
+  background: var(--color-danger-fill);
+  color: var(--color-on-danger-alt);
 }
 
 .btn-process {
-  background: #39ff14;
-  color: #1a1a2e;
-  border: 2px solid #39ff14;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
+  border: var(--border-width) solid var(--color-border-primary);
 }
 
 .btn-process:hover:not(:disabled) {
-  background: #2ee00f;
-  box-shadow: 0 0 20px rgba(57, 255, 20, 0.5);
+  background: var(--color-primary-fill-hover);
+  box-shadow: var(--glow-primary);
 }
 
 .btn-process:disabled {
@@ -231,22 +231,22 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: var(--space-60) var(--space-20);
   text-align: center;
 }
 
 .success-icon {
   width: 80px;
   height: 80px;
-  border-radius: 50%;
-  background-color: #00ff00;
-  color: #0a0e27;
-  font-size: 50px;
+  border-radius: var(--radius-round);
+  background-color: var(--color-success-fill);
+  color: var(--color-on-success);
+  font-size: var(--font-size-50);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  margin-bottom: 20px;
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-20);
   animation: successPop 0.5s ease-out;
 }
 
@@ -265,21 +265,21 @@
 }
 
 .payment-success-message h3 {
-  color: #00ff00;
-  font-size: 24px;
-  margin-bottom: 10px;
+  color: var(--color-success);
+  font-size: var(--font-size-24);
+  margin-bottom: var(--space-10);
 }
 
 .payment-success-message p {
-  color: #9ca3af;
-  font-size: 16px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-16);
 }
 
 .payment-method-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-8);
   flex-direction: row;
 }
 
@@ -289,28 +289,28 @@
 
 .tip-input {
   width: 100%;
-  padding: 12px 16px;
-  font-size: 16px;
-  border: 2px solid #7c3aed;
-  background-color: #1e293b;
-  color: #ffffff;
-  border-radius: 8px;
-  margin-top: 12px;
+  padding: var(--space-12) var(--space-16);
+  font-size: var(--font-size-16);
+  border: var(--border-width) solid var(--tip-input-border);
+  background-color: var(--tip-input-surface);
+  color: var(--tip-input-text);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-12);
   min-height: 48px;
 }
 
 .tip-input:focus {
   outline: none;
-  border-color: #a78bfa;
+  border-color: var(--tip-input-border-focus);
 }
 
 .tip-input::placeholder {
-  color: #64748b;
+  color: var(--tip-input-placeholder);
 }
 /* Shown in place of the form while the check is loading, or if it could not be loaded */
 .payment-check-message {
-  color: #9ca3af;
-  font-size: 16px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-16);
   text-align: center;
-  padding: 40px 20px;
+  padding: var(--space-40) var(--space-20);
 }

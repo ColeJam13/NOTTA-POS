@@ -4,11 +4,11 @@
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: #1a1a2e;
+  background: var(--color-bg);
 }
 
 .logo-container {
-  margin-bottom: 60px;
+  margin-bottom: var(--space-60);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -27,28 +27,28 @@
 .home-buttons {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 30px;
+  gap: var(--space-30);
   max-width: 1200px;
 }
 
 .landing-btn {
-  padding: 20px 40px;
-  font-size: 16px;
-  font-family: 'Press Start 2P', monospace;
-  font-weight: normal;
+  padding: var(--space-20) var(--space-40);
+  font-size: var(--font-size-16);
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-normal);
   background: transparent;
-  border: 3px solid #b026ff;
-  color: #e0e0e0;
-  border-radius: 12px;
+  border: var(--border-width-thick) solid var(--color-border);
+  color: var(--color-text);
+  border-radius: var(--radius-xl);
   cursor: pointer;
   transition: all 0.3s;
-  letter-spacing: 2px;
+  letter-spacing: var(--letter-spacing-wide);
 }
 
 .landing-btn:hover {
-  background: #b026ff;
-  color: #1a1a2e;
-  box-shadow: 0 0 30px rgba(176, 38, 255, 0.6);
+  background: var(--color-accent-fill);
+  color: var(--color-on-accent);
+  box-shadow: var(--glow-accent-wide);
   transform: translateY(-3px);
 }
 
@@ -59,29 +59,29 @@
   right: 30px;
   display: flex;
   align-items: center;
-  gap: 15px;
-  color: #9ca3af;
-  font-size: 12px;
+  gap: var(--space-15);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-12);
 }
 
 .home-signed-in strong {
-  color: #39ff14;
+  color: var(--color-primary);
 }
 
 .home-sign-out {
   background: transparent;
-  border: 2px solid #b026ff;
-  color: #e0e0e0;
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-size: 10px;
-  font-weight: bold;
-  letter-spacing: 1px;
+  border: var(--border-width) solid var(--color-border);
+  color: var(--color-text);
+  padding: var(--space-8) var(--space-14);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-10);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing);
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .home-sign-out:hover {
-  background: #b026ff;
-  color: #1a1a2e;
+  background: var(--color-accent-fill);
+  color: var(--color-on-accent);
 }

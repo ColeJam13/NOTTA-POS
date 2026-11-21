@@ -39,8 +39,8 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 8 | P2. One thing to start, and the home test host | Done (#286) |
 | 8a | A6. Two follow-ups from the review: tips on closed checks, and releasing a paused terminal | Done (#288) |
 | 8b | U1. Spring Boot 3.5 to 4.1 (the 3.5 line no longer gets security fixes) | Done (#289) |
-| 9 | **B4a. Design tokens: every screen reads its look from named values** | Next |
-| 10 | B4b and B4c. Template system, then the new templates | D9 (default decided) |
+| 9 | B4a. Design tokens: every screen reads its look from named values | Done (#290) |
+| 10 | **B4b and B4c. Template system, then the new templates** | B4b is next. D9 (default decided) |
 | 11 | P3. Phone-sized screens | |
 | 12 | P4. HTTPS on a private network, and the installable app | D8 |
 | 13 | B5, then B1, B2, B3 (features, in that order) | D4 (decided), D5, D6 |
@@ -381,6 +381,17 @@ The owner wants a list of default templates a manager can switch between: **Plai
 
 **B4a. Design tokens, with no visible change.**
 
+**Done 2026-11-21 (#290).** `frontend/src/templates/eight-bit.css` defines 166 tokens and the 18 stylesheets use them for all 1,371 values that were literals. Nothing on screen changed. What was decided along the way, beyond the text below:
+
+- **Proven, not eyeballed.** The conversion was done by a script. A second script put every token's value back and compared each stylesheet with the one on `main`: identical, character for character, comments included. Then both frontends were run side by side against one backend through 46 screens and states (every screen, the pop-ups, hover states, three roles): zero pixels and zero computed styles differ across 4,609 elements. A control run with one token changed by one shade was reported in 29 scenes.
+- **Tokens are named for their job.** Today's purple is three tokens (border, accent text, accent background) and today's green is four (heading, primary text, primary background, primary border), so a template can make a border quiet without losing its accent. Text on a filled background has its own "on" token.
+- **Status tokens** cover an item's state on the order screen (saved draft, locked), a table card's border (edit window, in the kitchen, all made), the kitchen display (item label, the 10 and 15 minute warnings, a finished ticket), 86'd on both screens, errors, a table on the Floor Map, and a paused terminal. In the 8-Bit template each is defined from a base token (`--status-wait-late: var(--color-danger)`).
+- **Sizes are steps named by their 8-Bit pixel size** (`--font-size-12`, `--space-10`). There are 18 type sizes and 20 gaps in use today; inventing names for each would have hidden that. Another template may make every step larger or smaller.
+- **Ten one-off values were kept, each under its own token,** in a section at the end of the template. Merging them is a visible change and yours to decide (see the known gaps in `CLAUDE.md`).
+- **Not tokens:** layout sizes (widths, heights, positions, grid columns), motion (`transition`, `animation`, `transform`), and `opacity`. The plan's list did not include them. Motion may want tokens when Nightclub is designed.
+- **A test keeps it this way:** `src/templates/tokens.test.js` fails on a literal color, font, size, corner, border width, shadow, or gap in any stylesheet outside `src/templates`, on an undefined token, and on an unused one.
+- **Found on the way, not changed:** `Tables.css` and `QuickOrders.css` style the same elements with small differences; the "custom tip" box has a palette nothing else uses; the font comes from the internet (B4b).
+
 - A token is a named value (for example `--color-surface`, `--font-heading`, `--radius-card`) that stylesheets use in place of a literal color, font, or size. Changing a template then means changing the values, not the stylesheets.
 - Go through every CSS file and replace hardcoded colors, fonts, corner sizes, border widths, shadows, and spacing steps with tokens. The token list must cover fonts and shapes, not only colors: 8-Bit has a pixel font and hard square borders, and Nightclub will want glow on dark surfaces.
 - Status meanings get their own tokens (item states, the kitchen display's wait warnings, 86'd, errors) so a template can restyle them without losing the meaning.
@@ -425,7 +436,7 @@ Owner actions still open unless already done: turn on Dependabot alerts (U3), tu
 
 ## How to continue
 
-1. Start B4a. It needs no decision from the owner. U2 (Node 24 in CI and the frontend tool bumps) and the rest of U3 (the Maven Wrapper) can go in at any gap. Part A (A1 to A6), P1, P2, and U1 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
+1. Start B4b (the template system). It needs no decision from the owner: the default template is 8-Bit (D9). B4c, the new templates, needs the owner's eye on each proposal. U2 (Node 24 in CI and the frontend tool bumps) and the rest of U3 (the Maven Wrapper) can go in at any gap. Part A (A1 to A6), P1, P2, and U1 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
 2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 
 ## Completed

@@ -1,4 +1,7 @@
 import ReactDOM from 'react-dom/client';
+// The template comes first: it gives a name ("token") to every color, font, and size, and
+// every other stylesheet in the app reads its look from those names. See the top of the file.
+import './templates/eight-bit.css';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';

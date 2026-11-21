@@ -8,10 +8,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
-  background: #1a1a2e;
-  color: #e0e0e0;
-  padding: 20px;
+  gap: var(--space-18);
+  background: var(--color-bg);
+  color: var(--color-text);
+  padding: var(--space-20);
 }
 
 .change-pin-logo {
@@ -22,33 +22,33 @@
 /* Why this screen is here instead of the app */
 .change-pin-why {
   max-width: 340px;
-  color: #e0e0e0;
-  font-size: 11px;
-  line-height: 1.8;
+  color: var(--color-text);
+  font-size: var(--font-size-11);
+  line-height: var(--line-height-loose);
   text-align: center;
 }
 
 .change-pin-page h2 {
-  color: #39ff14;
-  font-size: 16px;
-  letter-spacing: 2px;
+  color: var(--color-heading);
+  font-size: var(--font-size-16);
+  letter-spacing: var(--letter-spacing-wide);
   text-align: center;
 }
 
 .change-pin-sign-out {
-  margin-top: 6px;
-  padding: 12px 20px;
+  margin-top: var(--space-6);
+  padding: var(--space-12) var(--space-20);
   background: transparent;
-  color: #9ca3af;
-  border: 2px solid #666;
-  border-radius: 8px;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 10px;
+  color: var(--color-text-muted);
+  border: var(--border-width) solid var(--color-border-muted);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-10);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .change-pin-sign-out:hover {
-  border-color: #ff3366;
-  color: #ff3366;
+  border-color: var(--color-border-danger);
+  color: var(--color-danger);
 }
