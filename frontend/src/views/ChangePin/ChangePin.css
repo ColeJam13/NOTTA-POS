@@ -1,0 +1,54 @@
+/* The page around the PIN pad on the choose-a-new-PIN screen. It looks like the
+   sign-in page on purpose: same place, same pad, one more line of explanation.
+   The pad itself is styled in components/PinPad/PinPad.css. */
+
+.change-pin-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  padding: 20px;
+}
+
+.change-pin-logo {
+  max-width: 240px;
+  width: 45%;
+}
+
+/* Why this screen is here instead of the app */
+.change-pin-why {
+  max-width: 340px;
+  color: #e0e0e0;
+  font-size: 11px;
+  line-height: 1.8;
+  text-align: center;
+}
+
+.change-pin-page h2 {
+  color: #39ff14;
+  font-size: 16px;
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+.change-pin-sign-out {
+  margin-top: 6px;
+  padding: 12px 20px;
+  background: transparent;
+  color: #9ca3af;
+  border: 2px solid #666;
+  border-radius: 8px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.change-pin-sign-out:hover {
+  border-color: #ff3366;
+  color: #ff3366;
+}

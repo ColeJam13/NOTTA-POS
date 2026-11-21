@@ -12,7 +12,9 @@ import { createContext, useContext } from 'react';
  * App.js provides the real value. The default below is what a component gets
  * when it is drawn on its own (in a test): nobody signed in, nothing restricted.
  *
- *   staff:   { staffId, name, role } or null
+ *   staff:   { staffId, name, role, mustChangePin } or null
+ *            (mustChangePin is always false by the time a screen reads it: App.js
+ *            shows only the choose-a-new-PIN screen until it is)
  *   signOut: call it to sign the current person out
  */
 export const StaffContext = createContext({ staff: null, signOut: () => {} });

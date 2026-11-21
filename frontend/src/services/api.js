@@ -70,8 +70,9 @@ export const apiFetch = (path, options) => {
   };
 
   return fetch(`${API_BASE_URL}${path}`, withToken).then(response => {
-    // 401 = the backend no longer knows this token (it was restarted, the session timed
-    // out, or a manager changed this person's PIN or role). Go back to the PIN screen.
+    // 401 = the backend no longer knows this token (the session was not used for 12 hours,
+    // it was signed out, or a manager changed this person's PIN or role). Go back to the
+    // PIN screen. A backend restart does not cause this: sessions are kept in the database.
     if (response.status === 401 && sessionToken === tokenAtSend && onSessionEnded) {
       onSessionEnded();
     }
