@@ -56,6 +56,15 @@ public class Order {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
+    // How many times this order has been saved. Hibernate looks after it (there is no setter):
+    // every UPDATE it writes ends "... WHERE order_id = ? AND version = ?" and adds one.
+    // If another terminal saved the order in between, the version no longer matches, the
+    // UPDATE changes no rows, and Hibernate throws instead of overwriting their change.
+    // This is called optimistic locking: nobody waits, and a conflict is caught at save time.
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     public Order() {}
 
     public Long getOrderId() {
@@ -136,6 +145,10 @@ public class Order {
 
     public Long getStaffId() {
         return staffId;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public void setStaffId(Long staffId) {

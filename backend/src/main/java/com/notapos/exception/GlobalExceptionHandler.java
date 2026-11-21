@@ -2,6 +2,8 @@ package com.notapos.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -34,6 +36,10 @@ import java.util.Map;
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    // The name of the database index that allows one open order per table (migration V3).
+    // PostgreSQL names the broken rule in its error message, which is how it is recognised below.
+    static final String ONE_OPEN_ORDER_PER_TABLE_INDEX = "orders_one_open_per_table";
 
     @ExceptionHandler(ResourceNotFoundException.class)                          // Record does not exist -> 404
     public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException ex) {
@@ -78,6 +84,29 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ItemUnavailableException.class)                           // Menu item is 86'd -> 409
     public ResponseEntity<ApiError> handleItemUnavailable(ItemUnavailableException ex) {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), null);
+    }
+
+    // Two terminals saved the same order, each starting from the same copy -> 409.
+    // Hibernate throws this when the version number on the row is not the one the save started
+    // from (see the version field on Order). Nothing from the losing request is saved.
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiError> handleChangedElsewhere(OptimisticLockingFailureException ex) {
+        return buildResponse(HttpStatus.CONFLICT,
+                "This check was just changed on another terminal. Reopen it and try again.", null);
+    }
+
+    // The database refused a row because it breaks one of its own rules.
+    // The one rule a person at a screen can run into is "one open order per table" (the index
+    // orders_one_open_per_table from migration V3) -> 409 with words they can act on.
+    // Anything else is a defect in the code, not something the user did -> 500, as before.
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDatabaseRule(DataIntegrityViolationException ex) {
+        String detail = ex.getMostSpecificCause().getMessage();
+        if (detail != null && detail.contains(ONE_OPEN_ORDER_PER_TABLE_INDEX)) {
+            return buildResponse(HttpStatus.CONFLICT,
+                    "This table already has an open check. Reopen the table to see it.", null);
+        }
+        return handleUnexpected(ex);
     }
 
     @ExceptionHandler(InvalidModifierSelectionException.class)                  // Chosen modifiers break the menu's rules -> 400

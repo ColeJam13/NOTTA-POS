@@ -92,10 +92,20 @@ public class PaymentService {
      *   - it must have something on it (409)
      *   - the amount must equal the check the backend works out (409) - if another
      *     screen added an item after this one loaded, the guest was shown an old total
+     *
+     * The order is held alone from the first line to the commit ("for update", see
+     * OrderRepository). Those checks are only worth something if nothing changes
+     * between making them and saving the payment:
+     *   - a second payment for the same check waits here, and when its turn comes it
+     *     reads the order as closed and is refused. (Before, two payments pressed at
+     *     the same instant both read "open" and both were saved.)
+     *   - an item being rung in, sent, or removed on another terminal either finishes
+     *     before this starts, and is then part of the check that is added up below, or
+     *     waits until this is done, and is then refused because the check is closed.
      */
     @Transactional
     public Payment createPayment(Payment payment) {
-        Order order = orderRepository.findById(payment.getOrderId())
+        Order order = orderRepository.findByIdLockedForUpdate(payment.getOrderId())
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + payment.getOrderId()));
 
         if (!OrderStatus.OPEN.matches(order.getStatus())) {

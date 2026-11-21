@@ -291,4 +291,77 @@ class DatabaseMigrationTest {
         assertFalse(existingStructure.isEmpty());
         assertEquals(existingStructure, structureOf(brandNew));
     }
+
+    // ------------------------------------------------------------------
+    // V3: one open order per table
+    // ------------------------------------------------------------------
+
+    @Test
+    void testV3_ShouldMergeTwoOpenOrdersOnOneTableIntoTheOlderOne() throws Exception {
+        // WHAT: Test V3 against a database where a table has two open orders
+        // WHY: Older versions of the app could leave a table like that. V3 adds a database
+        //      rule against it, and a rule cannot be added while rows break it: the
+        //      migration would fail and the backend would not start. So V3 first folds the
+        //      newer order's items into the older order, which is how the order screen has
+        //      always shown such a table (all the items together, added to the first order).
+
+        // Given - the helper gives table 1 one open order (order 1) with one item.
+        //         Add a second open order on the same table with two items of its own.
+        String jdbcUrl = databaseFromBeforeFlyway("v3_merge");
+        run(jdbcUrl, "INSERT INTO orders (table_id, order_type, status, server_name, subtotal, tax, total, created_at) "
+                + "VALUES (1, 'dine_in', 'open', 'Sarah', 0, 0, 0, now())");
+        run(jdbcUrl, "INSERT INTO order_items (order_id, menu_item_id, quantity, price, status, delay_seconds, is_locked, created_at) "
+                + "VALUES (2, 1, 1, 17.00, 'pending', 15, true, now()), (2, 1, 1, 17.00, 'draft', 15, false, now())");
+        // And a closed order on the same table, which must be left alone
+        run(jdbcUrl, "INSERT INTO orders (table_id, order_type, status, subtotal, tax, total, created_at, closed_at) "
+                + "VALUES (1, 'dine_in', 'closed', 17.00, 0.51, 17.51, now(), now())");
+
+        // When
+        migrate(jdbcUrl);
+
+        // Then - one open order is left on the table (the older one), holding all three items
+        assertEquals("1", value(jdbcUrl, "SELECT count(*) FROM orders WHERE table_id = 1 AND status = 'open'"));
+        assertEquals("1", value(jdbcUrl, "SELECT order_id FROM orders WHERE table_id = 1 AND status = 'open'"));
+        assertEquals("3", value(jdbcUrl, "SELECT count(*) FROM order_items WHERE order_id = 1"));
+        assertEquals("3", value(jdbcUrl, "SELECT count(*) FROM order_items"));           // No item was lost
+        // The closed order is untouched
+        assertEquals("17.51", value(jdbcUrl, "SELECT total FROM orders WHERE status = 'closed'"));
+    }
+
+    @Test
+    void testV3_ShouldMakeTheDatabaseRefuseASecondOpenOrderOnATable() throws Exception {
+        // WHAT: Test the rule V3 adds
+        // WHY: After V3 the database itself guarantees one open check per table
+
+        // Given - table 1 has one open order (from the helper)
+        String jdbcUrl = databaseFromBeforeFlyway("v3_rule");
+        migrate(jdbcUrl);
+
+        // When & Then - a second open order on table 1 is refused...
+        SQLException refused = assertThrows(SQLException.class, () -> run(jdbcUrl,
+                "INSERT INTO orders (table_id, order_type, status, created_at) VALUES (1, 'dine_in', 'open', now())"));
+        assertTrue(refused.getMessage().contains("orders_one_open_per_table"), refused.getMessage());
+
+        // ...but closed orders on that table, and an open order on another table, are fine
+        run(jdbcUrl, "INSERT INTO orders (table_id, order_type, status, created_at) VALUES (1, 'dine_in', 'closed', now())");
+        run(jdbcUrl, "INSERT INTO orders (table_id, order_type, status, created_at) VALUES (2, 'dine_in', 'open', now())");
+    }
+
+    @Test
+    void testV3_ShouldGiveEveryExistingOrderVersionZero() throws Exception {
+        // WHAT: Test the version column V3 adds
+        // WHY: Orders that existed before need a starting version, or the first save of an
+        //      old order would fail
+
+        // Given
+        String jdbcUrl = databaseFromBeforeFlyway("v3_version");
+
+        // When
+        migrate(jdbcUrl);
+
+        // Then
+        assertEquals("0", value(jdbcUrl, "SELECT version FROM orders WHERE order_id = 1"));
+        assertEquals("NO", value(jdbcUrl, "SELECT is_nullable FROM information_schema.columns "
+                + "WHERE table_name = 'orders' AND column_name = 'version'"));
+    }
 }

@@ -1,7 +1,9 @@
 package com.notapos.repository;
 
 import com.notapos.entity.RestaurantTable;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.util.List;
@@ -31,4 +33,16 @@ public interface TableRepository extends JpaRepository<RestaurantTable, Long> {
 
     @Query("SELECT t FROM RestaurantTable t WHERE t.isQuickOrder = false OR t.isQuickOrder IS NULL")     // Find regular tables. NULL counts as regular: rows inserted by older seed files never set the flag
     List<RestaurantTable> findRegularTables();
+
+    /**
+     * Read a table and hold it alone until this transaction ends.
+     *
+     * Opening an order uses this so that two terminals opening the same table at the
+     * same instant go one after the other: the second waits for the first to finish,
+     * and then finds the order the first one opened. (See OrderRepository for how
+     * row locks work.) Must be called inside a @Transactional method that writes.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)                                               // SQL: SELECT ... FOR UPDATE
+    @Query("SELECT t FROM RestaurantTable t WHERE t.tableId = :tableId")
+    Optional<RestaurantTable> findByIdLockedForUpdate(Long tableId);
 }

@@ -77,7 +77,7 @@ class OrderServiceTest {
         
         // Given - The table exists and has no open order; mock returns our test order
         RestaurantTable table = table("available");
-        when(tableRepository.findById(1L)).thenReturn(Optional.of(table));
+        when(tableRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(table));
         when(orderRepository.findByTableIdAndStatus(1L, "open")).thenReturn(List.of());
         when(orderRepository.save(any(Order.class))).thenReturn(testOrder);
 
@@ -86,7 +86,48 @@ class OrderServiceTest {
 
         // Then - Verify it starts as "open"
         assertEquals("open", created.getStatus());
-        verify(orderRepository, times(1)).save(testOrder);
+        verify(orderRepository, times(1)).save(any(Order.class));
+    }
+
+    @Test
+    void testCreateOrder_ShouldBuildANewOrderAndTakeOnlyTheTableTypeAndServerFromTheRequest() {
+        // WHAT: Test what is saved when the request carries more than it should
+        // WHY: Saving the request's own object means "update that row" when it has an ID.
+        //      A request naming a paid check's ID overwrote it and turned it back into an
+        //      open one. Now a new order is always built, and an ID, status, totals, or
+        //      closing time sent in the request are left behind.
+
+        // Given - a request dressed up as an existing, closed, paid order
+        Order request = new Order();
+        request.setOrderId(55L);
+        request.setTableId(1L);
+        request.setOrderType("takeout");
+        request.setServerName("CJ");
+        request.setStaffId(7L);
+        request.setStatus("closed");
+        request.setSubtotal(new BigDecimal("99.00"));
+        request.setTax(new BigDecimal("2.97"));
+        request.setTotal(new BigDecimal("101.97"));
+        request.setClosedAt(LocalDateTime.now());
+        when(tableRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(table("available")));
+        when(orderRepository.findByTableIdAndStatus(1L, "open")).thenReturn(List.of());
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        Order created = orderService.createOrder(request);
+
+        // Then - a different object, with no ID (so the database inserts a new row)...
+        assertNotSame(request, created);
+        assertNull(created.getOrderId());
+        // ...that kept the table, the type, and who opened it...
+        assertEquals(1L, created.getTableId());
+        assertEquals("takeout", created.getOrderType());
+        assertEquals("CJ", created.getServerName());
+        assertEquals(7L, created.getStaffId());
+        // ...and nothing else
+        assertEquals("open", created.getStatus());
+        assertEquals(0, BigDecimal.ZERO.compareTo(created.getTotal()));
+        assertNull(created.getClosedAt());
     }
 
     @Test
@@ -97,7 +138,7 @@ class OrderServiceTest {
 
         // Given
         RestaurantTable table = table("available");
-        when(tableRepository.findById(1L)).thenReturn(Optional.of(table));
+        when(tableRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(table));
         when(orderRepository.findByTableIdAndStatus(1L, "open")).thenReturn(List.of());
         when(orderRepository.save(any(Order.class))).thenReturn(testOrder);
 
@@ -121,7 +162,7 @@ class OrderServiceTest {
         alreadyOpen.setOrderId(9L);
         alreadyOpen.setTableId(1L);
         alreadyOpen.setStatus("open");
-        when(tableRepository.findById(1L)).thenReturn(Optional.of(table("occupied")));
+        when(tableRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(table("occupied")));
         when(orderRepository.findByTableIdAndStatus(1L, "open")).thenReturn(List.of(alreadyOpen));
 
         // When
@@ -138,7 +179,7 @@ class OrderServiceTest {
         // WHY: An order must belong to a real table
 
         // Given
-        when(tableRepository.findById(1L)).thenReturn(Optional.empty());
+        when(tableRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.empty());
 
         // When & Then
         assertThrows(ResourceNotFoundException.class, () -> orderService.createOrder(testOrder));
@@ -293,7 +334,7 @@ class OrderServiceTest {
         
         // Given - An open order with no items on it
         RestaurantTable table = table("occupied");
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(testOrder));
         when(orderItemRepository.findByOrderId(1L)).thenReturn(List.of());
         when(tableRepository.findById(1L)).thenReturn(Optional.of(table));
         when(orderRepository.findByTableIdAndStatus(1L, "open")).thenReturn(List.of());
@@ -314,7 +355,7 @@ class OrderServiceTest {
         //      rung in (maybe already cooked) would vanish from the check
 
         // Given
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(testOrder));
         when(orderItemRepository.findByOrderId(1L)).thenReturn(List.of(new OrderItem()));
 
         // When & Then
@@ -330,7 +371,7 @@ class OrderServiceTest {
 
         // Given
         testOrder.setStatus("closed");
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(testOrder));
 
         // When & Then
         assertThrows(OrderStateException.class, () -> orderService.deleteOrder(1L));
@@ -343,7 +384,7 @@ class OrderServiceTest {
         // WHY: The screen should hear about it (404) instead of thinking the table was cleared
 
         // Given
-        when(orderRepository.findById(1L)).thenReturn(Optional.empty());
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.empty());
 
         // When & Then
         assertThrows(ResourceNotFoundException.class, () -> orderService.deleteOrder(1L));

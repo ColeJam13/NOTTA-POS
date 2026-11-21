@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -124,6 +125,12 @@ class TwoTerminalsIntegrationTest extends BaseIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":" + order.getOrderId() + ",\"menuItemId\":" + chickenCutty.getMenuItemId()
                         + ",\"quantity\":1,\"modifierIds\":[]}"))
+                .andReturn().getResponse().getStatus();
+    }
+
+    // The request a terminal sends to remove an item that is still in its edit window
+    private Callable<Integer> remove(OrderItem item) {
+        return () -> mockMvc.perform(delete("/api/order-items/" + item.getOrderItemId()))
                 .andReturn().getResponse().getStatus();
     }
 
@@ -262,6 +269,64 @@ class TwoTerminalsIntegrationTest extends BaseIntegrationTest {
     }
 
     // ------------------------------------------------------------------
+    // Removing an item racing a payment
+    // ------------------------------------------------------------------
+
+    @Test
+    void testRemovingAnItemRacingAPayment_ShouldNeverChargeForAnItemThatWasRemoved() throws Exception {
+        // WHAT: One terminal pays a check at the same instant another removes an item that
+        //       is still in its edit window
+        // WHY: The payment adds up the check and the removal deletes a line from it. If both
+        //      go through, the guest has paid for a dish that is no longer on the check and
+        //      will never be made.
+        //
+        // Either order of events is fine. What must never happen is both succeeding.
+
+        for (int round = 0; round < ROUNDS; round++) {
+            // Given - one item the kitchen has, and a second one still counting down
+            Order order = openOrderWithOneSentItem("W" + round);
+            OrderItem inEditWindow = new OrderItem();
+            inEditWindow.setOrderId(order.getOrderId());
+            inEditWindow.setMenuItemId(chickenCutty.getMenuItemId());
+            inEditWindow.setQuantity(1);
+            inEditWindow.setPrice(new BigDecimal("17.00"));
+            inEditWindow.setStatus("limbo");
+            inEditWindow.setIsLocked(false);
+            inEditWindow.setSentAt(LocalDateTime.now());
+            inEditWindow.setDelayExpiresAt(LocalDateTime.now().plusSeconds(16));
+            OrderItem saved = orderItemRepository.save(inEditWindow);
+
+            // The check for both items: 34.00 + 3% tax = 35.02
+            Callable<Integer> payForBoth = () -> mockMvc.perform(post("/api/payments")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"orderId\":" + order.getOrderId() + ",\"amount\":35.02,\"tipAmount\":0,\"paymentMethod\":\"cash\"}"))
+                    .andReturn().getResponse().getStatus();
+
+            // When
+            List<Integer> statuses = atTheSameMoment(payForBoth, remove(saved));
+            int payStatus = statuses.get(0);
+            int removeStatus = statuses.get(1);
+
+            // Then
+            int itemsOnOrder = orderItemRepository.findByOrderId(order.getOrderId()).size();
+            assertFalse(payStatus == 201 && removeStatus == 204,
+                    "round " + round + ": the payment AND the removal both went through");
+
+            if (payStatus == 201) {
+                // The payment won: both items are on the paid check, and the removal was refused
+                assertEquals(409, removeStatus, "round " + round);
+                assertEquals(2, itemsOnOrder, "round " + round + ": an item was removed from a paid check");
+            } else {
+                // The removal won: the payment was for an old total, so it was refused
+                assertEquals(204, removeStatus, "round " + round + ": statuses were " + statuses);
+                assertEquals(409, payStatus, "round " + round);
+                assertEquals(1, itemsOnOrder, "round " + round);
+                assertEquals(0, paymentRepository.findByOrderId(order.getOrderId()).size(), "round " + round);
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
     // Opening an order must never touch an existing one
     // ------------------------------------------------------------------
 
@@ -290,5 +355,38 @@ class TwoTerminalsIntegrationTest extends BaseIntegrationTest {
         assertEquals("closed", stillPaid.getStatus());
         assertEquals(0, new BigDecimal("17.51").compareTo(stillPaid.getTotal()));
         assertEquals(2, orderRepository.findByTableId(paid.getTableId()).size());
+    }
+
+    // ------------------------------------------------------------------
+    // The version number: a save from an out-of-date copy is refused
+    // ------------------------------------------------------------------
+
+    @Test
+    void testSavingAnOrderFromAnOutOfDateCopy_ShouldBeRefused() {
+        // WHAT: Two copies of the same order are read, then both are saved
+        // WHY: This is the general safety net under the locks above. Any code, now or
+        //      later, that reads an order, changes it, and saves it, cannot silently
+        //      overwrite a change made by another terminal in between: the second save
+        //      started from version 0, the row is at version 1, and the database layer
+        //      refuses it. (GlobalExceptionHandler turns that into a 409.)
+
+        // Given - the same order read twice, as two terminals would have it
+        Order order = openOrderWithOneSentItem("W1");
+        Order copyOnTerminalA = orderRepository.findById(order.getOrderId()).orElseThrow();
+        Order copyOnTerminalB = orderRepository.findById(order.getOrderId()).orElseThrow();
+
+        // When - A saves first
+        copyOnTerminalA.setServerName("Sarah");
+        orderRepository.save(copyOnTerminalA);
+
+        // Then - B's save, from the copy it read before A's change, is refused...
+        copyOnTerminalB.setServerName("Morgan");
+        assertThrows(org.springframework.orm.ObjectOptimisticLockingFailureException.class,
+                () -> orderRepository.save(copyOnTerminalB));
+
+        // ...and A's change is what the database holds
+        Order after = orderRepository.findById(order.getOrderId()).orElseThrow();
+        assertEquals("Sarah", after.getServerName());
+        assertEquals(1L, after.getVersion());
     }
 }

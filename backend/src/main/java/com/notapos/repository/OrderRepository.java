@@ -1,12 +1,15 @@
 package com.notapos.repository;
 
 import com.notapos.entity.Order;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository for Order entity.
@@ -32,4 +35,40 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findOrdersBetween(LocalDateTime start, LocalDateTime end);
 
     List<Order> findByStatusAndClosedAtBetween(String status, LocalDateTime start, LocalDateTime end);     // Find orders with a status that were closed within a time range (start and end included)
+
+    // ------------------------------------------------------------------
+    // Row locks: how two terminals are kept from acting on one check at the same instant
+    // ------------------------------------------------------------------
+    //
+    // A plain read ("is this order open?") tells you what was true when you read it.
+    // Another terminal can close the order a millisecond later, before you act on the answer.
+    // A row lock makes the answer stay true until your transaction ends.
+    //
+    // There are two kinds, and they work like a meeting room:
+    //   - "for share": many requests can hold it at once (several items being rung in
+    //     together). While anyone holds it, nobody can take the "for update" lock.
+    //   - "for update": one holder at a time, and only when nobody holds "for share".
+    //     Taken by a request that is about to close or remove the order.
+    // A request that cannot get its lock yet simply waits (a few milliseconds) for the
+    // other transaction to finish, and then reads the row as it is NOW.
+    //
+    // Both must be called inside a transaction that is allowed to write (@Transactional,
+    // not the read-only default): the lock lasts until that transaction commits.
+
+    /**
+     * Read an order and keep it from being closed or removed until this transaction ends.
+     * Used by everything that adds to, sends, or changes the order's items.
+     */
+    @Lock(LockModeType.PESSIMISTIC_READ)                                                    // SQL: SELECT ... FOR SHARE
+    @Query("SELECT o FROM Order o WHERE o.orderId = :orderId")
+    Optional<Order> findByIdLockedForShare(Long orderId);
+
+    /**
+     * Read an order and hold it alone until this transaction ends: no other request can
+     * add to it, send it, pay it, or remove it in the meantime.
+     * Used by paying a check and by clearing an empty order.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)                                                   // SQL: SELECT ... FOR UPDATE
+    @Query("SELECT o FROM Order o WHERE o.orderId = :orderId")
+    Optional<Order> findByIdLockedForUpdate(Long orderId);
 }
