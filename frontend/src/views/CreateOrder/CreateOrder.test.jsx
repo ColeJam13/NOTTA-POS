@@ -120,7 +120,7 @@ beforeEach(() => {
   settingsFail = false;
   backendClockAheadMs = 0;
 
-  global.fetch = jest.fn(async (url, options = {}) => {
+  global.fetch = vi.fn(async (url, options = {}) => {
     const method = options.method || 'GET';
     const path = url.replace('http://localhost:8080', '');
     const body = options.body ? JSON.parse(options.body) : null;
@@ -215,13 +215,13 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 // Render the screen and wait for the menu to load
 const renderScreen = async (selectedTable = null) => {
   const view = render(
-    <CreateOrder setCurrentView={jest.fn()} selectedTable={selectedTable} setSelectedTable={jest.fn()} />
+    <CreateOrder setCurrentView={vi.fn()} selectedTable={selectedTable} setSelectedTable={vi.fn()} />
   );
   await screen.findByRole('heading', { name: 'Chicken Cutty' });
   return view;
@@ -610,7 +610,7 @@ test('changing modifiers during the edit window saves the change and keeps the i
 });
 
 test('a change that arrives after the item locked is refused and the item shows as locked', async () => {
-  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
   const { container } = await renderScreen();
   await userEvent.click(menuCard('Combo Plate'));
   await userEvent.click(choice(pickerFor('Combo Plate'), 'White Toast'));
@@ -637,8 +637,8 @@ test('a change that arrives after the item locked is refused and the item shows 
 });
 
 test('when the backend refuses an item, nothing is sent and the server is told', async () => {
-  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
-  jest.spyOn(console, 'error').mockImplementation(() => {});    // The failure is logged on purpose - keep the test output clean
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  vi.spyOn(console, 'error').mockImplementation(() => {});    // The failure is logged on purpose - keep the test output clean
   refuseItemSaves = true;
   const { container } = await renderScreen();
   await userEvent.click(menuCard('Fries'));
@@ -744,7 +744,7 @@ test('reopening a table whose edit window just ran out shows its items as locked
 });
 
 test('removing an item the backend already locked shows it as locked and tells the server', async () => {
-  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
   const { container } = await renderScreen();
   await userEvent.click(menuCard('Chicken Cutty'));
   await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
@@ -765,7 +765,7 @@ test('removing an item the backend already locked shows it as locked and tells t
 });
 
 test('CLOSE ORDER is refused while the order has unsent items', async () => {
-  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
   await renderScreen();
   await userEvent.click(menuCard('Chicken Cutty'));
 
@@ -827,7 +827,7 @@ test('a tip percentage is worked out from the backend check total', async () => 
 });
 
 test('a refused payment shows the reason the backend gave and leaves the order open', async () => {
-  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
   existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
   existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
   paymentRefusal = 'This order has 1 unsent item(s). Send or remove them before closing the check.';
@@ -843,12 +843,12 @@ test('a refused payment shows the reason the backend gave and leaves the order o
 });
 
 test('the payment window says so when the check cannot be loaded', async () => {
-  jest.spyOn(console, 'error').mockImplementation(() => {});    // The failure is logged on purpose - keep the test output clean
+  vi.spyOn(console, 'error').mockImplementation(() => {});    // The failure is logged on purpose - keep the test output clean
   existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
   existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
   orderCheck = null;
   const realFetch = global.fetch;
-  global.fetch = jest.fn(async (url, options = {}) => {
+  global.fetch = vi.fn(async (url, options = {}) => {
     if (url.endsWith('/api/orders/77/check')) return jsonResponse({ message: 'Order not found' }, 404);
     return realFetch(url, options);
   });
@@ -897,10 +897,10 @@ test('an order with every item removed can be cleared off its table', async () =
 });
 
 test('leaving the screen with unsaved items asks first, and staying keeps them', async () => {
-  const setCurrentView = jest.fn();
-  const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);         // The server chooses to stay
+  const setCurrentView = vi.fn();
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);         // The server chooses to stay
   const { container } = render(
-    <CreateOrder setCurrentView={setCurrentView} selectedTable={null} setSelectedTable={jest.fn()} />
+    <CreateOrder setCurrentView={setCurrentView} selectedTable={null} setSelectedTable={vi.fn()} />
   );
   await screen.findByRole('heading', { name: 'Chicken Cutty' });
   await userEvent.click(menuCard('Chicken Cutty'));
@@ -918,9 +918,9 @@ test('leaving the screen with unsaved items asks first, and staying keeps them',
 });
 
 test('leaving the screen is not questioned when everything on the order is saved', async () => {
-  const setCurrentView = jest.fn();
-  const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);
-  render(<CreateOrder setCurrentView={setCurrentView} selectedTable={null} setSelectedTable={jest.fn()} />);
+  const setCurrentView = vi.fn();
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  render(<CreateOrder setCurrentView={setCurrentView} selectedTable={null} setSelectedTable={vi.fn()} />);
   await screen.findByRole('heading', { name: 'Chicken Cutty' });
   await userEvent.click(menuCard('Chicken Cutty'));
   await userEvent.click(screen.getByRole('button', { name: 'SAVE DRAFT' }));
@@ -954,7 +954,7 @@ test('an 86\'d item stays on the menu, greyed out, and cannot be added', async (
 });
 
 test('an item 86\'d after it was added is caught at Send, and the server is told which one', async () => {
-  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
   const { container } = await renderScreen();
   await userEvent.click(menuCard('Fries'));
 
@@ -1006,8 +1006,8 @@ test('the price shown after saving is the one the backend worked out', async () 
 });
 
 test('Send on a check that was closed on another terminal says so and keeps the unsent items for a new check', async () => {
-  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
-  jest.spyOn(console, 'error').mockImplementation(() => {});    // The refusal is logged on purpose - keep the test output clean
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  vi.spyOn(console, 'error').mockImplementation(() => {});    // The refusal is logged on purpose - keep the test output clean
   // Table W3 has an open check with one item the kitchen already has
   existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
   existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
@@ -1045,8 +1045,8 @@ test('Send on a check that was closed on another terminal says so and keeps the 
 });
 
 test('SEND NOW? on a check that was closed on another terminal says so and stops the countdown', async () => {
-  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
-  jest.spyOn(console, 'error').mockImplementation(() => {});
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  vi.spyOn(console, 'error').mockImplementation(() => {});
   const { container } = await renderScreen();
   await userEvent.click(menuCard('Chicken Cutty'));
   await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
@@ -1065,7 +1065,7 @@ test('SEND NOW? on a check that was closed on another terminal says so and stops
 });
 
 test('changing modifiers on a check that was closed on another terminal says the check was closed, not that the item was sent', async () => {
-  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
   const { container } = await renderScreen();
   await userEvent.click(menuCard('Combo Plate'));
   await userEvent.click(choice(pickerFor('Combo Plate'), 'White Toast'));
@@ -1085,7 +1085,7 @@ test('changing modifiers on a check that was closed on another terminal says the
 });
 
 test('removing an item from a check that was closed on another terminal says the check was closed, not that the item was sent', async () => {
-  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
   const { container } = await renderScreen();
   await userEvent.click(menuCard('Chicken Cutty'));
   await userEvent.click(screen.getByRole('button', { name: 'SEND ORDER' }));
@@ -1105,7 +1105,7 @@ test('removing an item from a check that was closed on another terminal says the
 });
 
 test('paying a check that was already paid on another terminal says so and clears it off the screen', async () => {
-  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
   existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
   existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
   const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
@@ -1175,7 +1175,7 @@ test('the running total is worked out with the tax rate the backend gives, not a
 
 test('when the tax rate cannot be loaded, the screen shows no tax or total rather than a guess', async () => {
   settingsFail = true;
-  jest.spyOn(console, 'error').mockImplementation(() => {});      // The failed load is logged; keep the test output quiet
+  vi.spyOn(console, 'error').mockImplementation(() => {});      // The failed load is logged; keep the test output quiet
   const { container } = await renderScreen();
 
   await userEvent.click(menuCard('Chicken Cutty'));

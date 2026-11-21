@@ -38,7 +38,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 test('before any answer has arrived, the backend is assumed to agree with this device', () => {
@@ -83,7 +83,7 @@ test('an answer with no time on it, or one that is not a time, changes nothing',
 
 test('every answer that comes through apiFetch sets the clock, whatever its status', async () => {
   // A refusal carries the time too (the backend puts it on every answer)
-  global.fetch = jest.fn(async () => ({ ...answerFromABackend(TWO_HOURS_MS), ok: false, status: 409 }));
+  global.fetch = vi.fn(async () => ({ ...answerFromABackend(TWO_HOURS_MS), ok: false, status: 409 }));
 
   await apiFetch('/api/anything');
 

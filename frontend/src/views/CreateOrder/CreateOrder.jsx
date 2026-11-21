@@ -40,9 +40,9 @@ const MENU_REFRESH_MS = 5000;
  * taps something. The pieces it used to contain now live next to it:
  *   orderActions.js   - requests to the backend
  *   useEditTimer.js   - the 15-second edit-window countdown
- *   MenuPanel.js      - category tabs + menu item cards
- *   OrderItemsList.js - the list of items on the order
- *   ModifierPicker.js - the pop-up for choosing modifiers and typing a kitchen note
+ *   MenuPanel.jsx      - category tabs + menu item cards
+ *   OrderItemsList.jsx - the list of items on the order
+ *   ModifierPicker.jsx - the pop-up for choosing modifiers and typing a kitchen note
  */
 function CreateOrder({ setCurrentView, selectedTable, setSelectedTable }) {
   const [menuItems, setMenuItems] = useState([]);

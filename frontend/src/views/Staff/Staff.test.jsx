@@ -12,7 +12,7 @@ import { StaffContext } from '../../context/StaffContext';
  *       send only what the manager changed, never send a PIN by accident,
  *       and show the backend's reason when a change is refused.
  *
- * The fake backend works the same way as in CreateOrder.test.js: global.fetch
+ * The fake backend works the same way as in CreateOrder.test.jsx: global.fetch
  * is replaced with a function that returns canned JSON.
  */
 
@@ -29,7 +29,7 @@ beforeEach(() => {
   requests = [];
   refusal = null;
 
-  global.fetch = jest.fn(async (url, options = {}) => {
+  global.fetch = vi.fn(async (url, options = {}) => {
     const method = options.method || 'GET';
     const path = url.replace('http://localhost:8080', '');
     const body = options.body ? JSON.parse(options.body) : null;
@@ -56,11 +56,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 const renderScreen = async () => {
-  render(<Staff setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />);
+  render(<Staff setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
   await screen.findByText('Morgan');
 };
 
@@ -137,7 +137,11 @@ test('changing a role sends no PIN, so the person keeps the one they have', asyn
   await userEvent.selectOptions(within(editor).getByLabelText('Role'), 'bartender');
   await userEvent.click(within(editor).getByRole('button', { name: 'SAVE' }));
 
-  expect(await within(row(1)).findByText('Bartender')).toBeInTheDocument();
+  // The row's role label, by its class. Looking for the text "Bartender" anywhere in the
+  // row can find the editor's own <option>Bartender</option> a moment before the editor
+  // closes, and that element is then no longer on the page. (Which of the two is found
+  // first depends on timing: it passed under Jest and failed under Vitest.)
+  await waitFor(() => expect(row(1).querySelector('.staff-role')).toHaveTextContent('Bartender'));
   expect(changes()).toEqual([
     { method: 'PUT', path: '/api/staff/1', body: { name: 'Sarah', role: 'bartender', isActive: true } }
   ]);
@@ -205,15 +209,15 @@ test('CANCEL closes the editor and sends nothing', async () => {
 const renderScreenAsMorgan = async (signOut) => {
   render(
     <StaffContext.Provider value={{ staff: { staffId: 2, name: 'Morgan', role: 'manager' }, signOut }}>
-      <Staff setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />
+      <Staff setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />
     </StaffContext.Provider>
   );
   await screen.findByText('Sarah');
 };
 
 test('a manager who changes their own PIN is told to sign in again and sent to the PIN pad', async () => {
-  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
-  const signOut = jest.fn();
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  const signOut = vi.fn();
   await renderScreenAsMorgan(signOut);
 
   await userEvent.click(screen.getByRole('button', { name: 'Edit Morgan' }));
@@ -227,7 +231,7 @@ test('a manager who changes their own PIN is told to sign in again and sent to t
 });
 
 test('a manager who only fixes their own name stays signed in', async () => {
-  const signOut = jest.fn();
+  const signOut = vi.fn();
   await renderScreenAsMorgan(signOut);
 
   await userEvent.click(screen.getByRole('button', { name: 'Edit Morgan' }));
@@ -241,7 +245,7 @@ test('a manager who only fixes their own name stays signed in', async () => {
 });
 
 test('changing someone else\'s PIN does not sign the manager out', async () => {
-  const signOut = jest.fn();
+  const signOut = vi.fn();
   await renderScreenAsMorgan(signOut);
 
   await userEvent.click(screen.getByRole('button', { name: 'Edit Sarah' }));

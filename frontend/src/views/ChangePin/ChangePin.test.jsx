@@ -11,7 +11,7 @@ import ChangePin from './ChangePin';
  *       wrong digits, accepting two PINs that differ) would lock the first
  *       manager out of a new restaurant's POS.
  *
- * The fake backend works the same way as in SignIn.test.js: global.fetch is
+ * The fake backend works the same way as in SignIn.test.jsx: global.fetch is
  * replaced with a function that returns canned JSON.
  */
 
@@ -24,7 +24,7 @@ beforeEach(() => {
   changesSent = [];
   answer = { status: 200, body: { ...firstManager, mustChangePin: false } };
 
-  global.fetch = jest.fn(async (url, options = {}) => {
+  global.fetch = vi.fn(async (url, options = {}) => {
     const path = url.replace('http://localhost:8080', '');
     if (options.method === 'PUT' && path === '/api/staff/me/pin') {
       changesSent.push(JSON.parse(options.body));
@@ -36,7 +36,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 // Tap a PIN on the pad, one digit at a time
@@ -49,8 +49,8 @@ const heading = () => screen.getByRole('heading').textContent;
 const filledDots = () => document.querySelectorAll('.pin-dot.filled').length;
 
 test('it asks for the current PIN, the new PIN, and the new PIN again, then sends both', async () => {
-  const onPinChanged = jest.fn();
-  render(<ChangePin staff={firstManager} onPinChanged={onPinChanged} onSignOut={jest.fn()} />);
+  const onPinChanged = vi.fn();
+  render(<ChangePin staff={firstManager} onPinChanged={onPinChanged} onSignOut={vi.fn()} />);
 
   // It says why it is here
   expect(screen.getByText(/You signed in with the starter PIN/)).toBeInTheDocument();
@@ -72,8 +72,8 @@ test('it asks for the current PIN, the new PIN, and the new PIN again, then send
 });
 
 test('when the two new PINs differ, nothing is sent and it asks for a new PIN again', async () => {
-  const onPinChanged = jest.fn();
-  render(<ChangePin staff={firstManager} onPinChanged={onPinChanged} onSignOut={jest.fn()} />);
+  const onPinChanged = vi.fn();
+  render(<ChangePin staff={firstManager} onPinChanged={onPinChanged} onSignOut={vi.fn()} />);
 
   await typePin('1234');
   await waitFor(() => expect(heading()).toBe('CHOOSE A NEW PIN'));
@@ -94,7 +94,7 @@ test('when the two new PINs differ, nothing is sent and it asks for a new PIN ag
 });
 
 test('a new PIN that is the same as the current one is turned away without asking the backend', async () => {
-  render(<ChangePin staff={firstManager} onPinChanged={jest.fn()} onSignOut={jest.fn()} />);
+  render(<ChangePin staff={firstManager} onPinChanged={vi.fn()} onSignOut={vi.fn()} />);
 
   await typePin('1234');
   await waitFor(() => expect(heading()).toBe('CHOOSE A NEW PIN'));
@@ -109,8 +109,8 @@ test('a new PIN that is the same as the current one is turned away without askin
 
 test('when the backend refuses, its message is shown and the screen starts again from the current PIN', async () => {
   answer = { status: 409, body: { message: 'That is not your current PIN.' } };
-  const onPinChanged = jest.fn();
-  render(<ChangePin staff={firstManager} onPinChanged={onPinChanged} onSignOut={jest.fn()} />);
+  const onPinChanged = vi.fn();
+  render(<ChangePin staff={firstManager} onPinChanged={onPinChanged} onSignOut={vi.fn()} />);
 
   await typePin('9999');
   await waitFor(() => expect(heading()).toBe('CHOOSE A NEW PIN'));
@@ -140,9 +140,9 @@ test('when the backend refuses, its message is shown and the screen starts again
 });
 
 test('when the backend cannot be reached, the screen says so and can be tried again', async () => {
-  jest.spyOn(console, 'error').mockImplementation(() => {});    // The failure is logged on purpose - keep the test output clean
+  vi.spyOn(console, 'error').mockImplementation(() => {});    // The failure is logged on purpose - keep the test output clean
   answer = 'offline';
-  render(<ChangePin staff={firstManager} onPinChanged={jest.fn()} onSignOut={jest.fn()} />);
+  render(<ChangePin staff={firstManager} onPinChanged={vi.fn()} onSignOut={vi.fn()} />);
 
   await typePin('1234');
   await waitFor(() => expect(heading()).toBe('CHOOSE A NEW PIN'));
@@ -156,8 +156,8 @@ test('when the backend cannot be reached, the screen says so and can be tried ag
 });
 
 test('SIGN OUT is offered, for someone who is not the person signed in', async () => {
-  const onSignOut = jest.fn();
-  render(<ChangePin staff={firstManager} onPinChanged={jest.fn()} onSignOut={onSignOut} />);
+  const onSignOut = vi.fn();
+  render(<ChangePin staff={firstManager} onPinChanged={vi.fn()} onSignOut={onSignOut} />);
 
   await userEvent.click(screen.getByRole('button', { name: 'SIGN OUT' }));
 

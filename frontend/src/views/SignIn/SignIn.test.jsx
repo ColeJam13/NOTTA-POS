@@ -11,7 +11,7 @@ import SignIn from './SignIn';
  *       on the fourth digit, recover cleanly from a wrong one, and never show
  *       the digits.
  *
- * The fake backend works the same way as in CreateOrder.test.js: global.fetch
+ * The fake backend works the same way as in CreateOrder.test.jsx: global.fetch
  * is replaced with a function that returns canned JSON.
  */
 
@@ -22,7 +22,7 @@ beforeEach(() => {
   pinsSent = [];
   answer = { status: 200, body: { staff: { staffId: 1, name: 'Sarah', role: 'server', isActive: true }, token: 'a-token' } };
 
-  global.fetch = jest.fn(async (url, options = {}) => {
+  global.fetch = vi.fn(async (url, options = {}) => {
     const path = url.replace('http://localhost:8080', '');
     if (options.method === 'POST' && path === '/api/staff/sign-in') {
       pinsSent.push(JSON.parse(options.body).pin);
@@ -34,7 +34,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 const tap = (label) => userEvent.click(screen.getByRole('button', { name: label }));
@@ -42,7 +42,7 @@ const dots = () => screen.getByRole('status');
 const filledDots = () => document.querySelectorAll('.pin-dot.filled').length;
 
 test('the fourth digit sends the PIN and hands back who signed in', async () => {
-  const onSignedIn = jest.fn();
+  const onSignedIn = vi.fn();
   render(<SignIn onSignedIn={onSignedIn} />);
 
   await tap('1');
@@ -61,7 +61,7 @@ test('the fourth digit sends the PIN and hands back who signed in', async () => 
 });
 
 test('the digits are never shown, only how many have been typed', async () => {
-  render(<SignIn onSignedIn={jest.fn()} />);
+  render(<SignIn onSignedIn={vi.fn()} />);
 
   await tap('7');
   await tap('0');
@@ -72,7 +72,7 @@ test('the digits are never shown, only how many have been typed', async () => {
 });
 
 test('the delete key removes one digit and CLEAR removes them all', async () => {
-  render(<SignIn onSignedIn={jest.fn()} />);
+  render(<SignIn onSignedIn={vi.fn()} />);
   await tap('1');
   await tap('2');
   await tap('3');
@@ -92,7 +92,7 @@ test('the delete key removes one digit and CLEAR removes them all', async () => 
 });
 
 test('a keyboard works too: digits type and Backspace removes one', async () => {
-  const onSignedIn = jest.fn();
+  const onSignedIn = vi.fn();
   render(<SignIn onSignedIn={onSignedIn} />);
 
   fireEvent.keyDown(document, { key: '4' });
@@ -111,7 +111,7 @@ test('a keyboard works too: digits type and Backspace removes one', async () => 
 
 test('a wrong PIN shows the backend\'s message and empties the pad for another try', async () => {
   answer = { status: 401, body: { message: 'PIN not recognized.' } };
-  const onSignedIn = jest.fn();
+  const onSignedIn = vi.fn();
   render(<SignIn onSignedIn={onSignedIn} />);
 
   await tap('9');
@@ -130,7 +130,7 @@ test('a wrong PIN shows the backend\'s message and empties the pad for another t
 
 test('after too many wrong PINs the pad shows the wait message', async () => {
   answer = { status: 429, body: { message: 'Too many wrong PINs. Wait 30 seconds and try again.' } };
-  render(<SignIn onSignedIn={jest.fn()} />);
+  render(<SignIn onSignedIn={vi.fn()} />);
 
   await tap('1');
   await tap('1');
@@ -143,9 +143,9 @@ test('after too many wrong PINs the pad shows the wait message', async () => {
 });
 
 test('when the backend cannot be reached, the pad says so instead of doing nothing', async () => {
-  jest.spyOn(console, 'error').mockImplementation(() => {});    // The failure is logged on purpose - keep the test output clean
+  vi.spyOn(console, 'error').mockImplementation(() => {});    // The failure is logged on purpose - keep the test output clean
   answer = 'offline';
-  render(<SignIn onSignedIn={jest.fn()} />);
+  render(<SignIn onSignedIn={vi.fn()} />);
 
   await tap('1');
   await tap('2');
