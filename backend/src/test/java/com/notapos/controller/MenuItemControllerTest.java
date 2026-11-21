@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.notapos.testsupport.ControllerTest;
 import com.notapos.testsupport.SignIn;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
@@ -42,7 +42,7 @@ class MenuItemControllerTest {
     @Autowired
     private SignIn signIn;
 
-    @MockBean
+    @MockitoBean
     private MenuItemService menuItemService;
 
     private MenuItem testItem;

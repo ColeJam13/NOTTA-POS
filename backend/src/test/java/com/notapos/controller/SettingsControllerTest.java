@@ -6,7 +6,7 @@ import com.notapos.testsupport.ControllerTest;
 import com.notapos.testsupport.SignIn;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Tests for SettingsController: the settings a screen needs from the backend.
  *
  * Uses @ControllerTest (see testsupport) - only the web layer is started and
- * the service is faked with @MockBean.
+ * the service is faked with @MockitoBean.
  *
  * @author CJ
  */
@@ -34,7 +34,7 @@ class SettingsControllerTest {
     @Autowired
     private SignIn signIn;              // Says who a request comes from: .with(signIn.asServer())
 
-    @MockBean
+    @MockitoBean
     private OrderCheckService orderCheckService;
 
     @Test
