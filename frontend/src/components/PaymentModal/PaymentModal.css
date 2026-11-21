@@ -14,7 +14,8 @@
 .modal-content {
   background: var(--color-bg);
   border: var(--border-width-thick) solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-popup);
+  box-shadow: var(--shadow-popup);
   width: 90%;
   max-width: 600px;
   max-height: 90vh;
@@ -63,7 +64,7 @@
 .order-summary {
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   padding: var(--space-20);
   margin-bottom: var(--space-30);
 }
@@ -111,7 +112,8 @@
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: var(--font-size-10);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -139,7 +141,8 @@
   color: var(--color-primary);
   font-family: var(--font-body);
   font-size: var(--font-size-10);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -161,7 +164,7 @@
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: var(--font-size-10);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-field);
 }
 
 .tip-input::placeholder {
@@ -174,7 +177,7 @@
   padding: var(--space-20);
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border-primary);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   margin-bottom: var(--space-30);
   font-size: var(--font-size-24);
   font-weight: var(--font-weight-bold);
@@ -193,7 +196,8 @@
   padding: var(--space-15);
   font-family: var(--font-body);
   font-size: var(--font-size-12);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
   transition: all 0.3s;
   border: none;
@@ -294,7 +298,7 @@
   border: var(--border-width) solid var(--tip-input-border);
   background-color: var(--tip-input-surface);
   color: var(--tip-input-text);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-field);
   margin-top: var(--space-12);
   min-height: 48px;
 }

@@ -41,7 +41,8 @@
   background: transparent;
   color: var(--color-text-muted);
   border: var(--border-width) solid var(--color-border-muted);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
   font-family: var(--font-body);
   font-size: var(--font-size-10);
   cursor: pointer;

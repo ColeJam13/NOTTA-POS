@@ -13,7 +13,7 @@
   background: var(--color-surface);
   padding: var(--space-15);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   font-size: var(--font-size-18);
   letter-spacing: var(--letter-spacing-wide);
   margin-bottom: var(--space-20);
@@ -29,7 +29,7 @@
 .settings-section {
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   padding: var(--space-20);
 }
 
@@ -56,7 +56,7 @@
   gap: var(--space-20);
   background: var(--color-bg-deep);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   padding: var(--space-15);
 }
 
@@ -105,7 +105,8 @@
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--letter-spacing);
   padding: var(--space-10) var(--space-20);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.3s;
@@ -127,7 +128,7 @@
   color: var(--color-text);
   font-family: var(--font-body);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   padding: var(--space-12);
   display: flex;
   flex-direction: column;
@@ -142,7 +143,7 @@
   color: var(--color-heading);
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   padding: var(--space-6);
   text-align: center;
   font-size: var(--font-size-10);
@@ -155,7 +156,7 @@
   gap: var(--space-8);
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   padding: var(--space-6) var(--space-8);
   font-size: var(--font-size-8);
 }
@@ -198,7 +199,8 @@
   text-align: center;
   background: var(--color-control);
   color: var(--color-text);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
   padding: var(--space-6) var(--space-4);
   font-size: var(--font-size-8);
   font-weight: var(--font-weight-bold);

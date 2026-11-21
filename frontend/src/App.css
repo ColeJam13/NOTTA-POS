@@ -7,6 +7,47 @@
   font-family: var(--font-body);
 }
 
+/* How the browser draws its own controls (date pickers, drop-downs, scroll bars) on a
+   page, or in a box, drawn in a template. See --color-scheme in the templates. */
+:root,
+[data-template] {
+  color-scheme: var(--color-scheme);
+}
+
+/* THE OTHER FONTS A TEMPLATE CAN SET. Every element takes the body font from the rule
+   above; these give a template's display, heading, and numbers fonts to the things they
+   are for. In 8-Bit all of them are the one pixel font, so nothing here changes it.
+
+   Titles of screens and pop-ups, then section headings and the names on cards. (The
+   logo in the top bar is an h1 with its own font, set in NavBar.css.) */
+h1, h2 {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-heading);
+}
+
+h3, h4 {
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-heading);
+}
+
+/* Amounts and timers: the totals of an order, a check, and the Payment window; the
+   amount on a table's card; how long a ticket has waited; the time left on a pause;
+   the big numbers on Financials. "X *" as well as "X", because the rule at the top
+   gives every element inside X the body font directly. */
+.total-row, .total-row *,
+.summary-row, .summary-row *,
+.grand-total, .grand-total *,
+.modal-total-row, .modal-total-row *,
+.table-card-total,
+.ticket-wait,
+.notification-timer,
+.staff-paused-left,
+.stat-value,
+.payment-amount,
+.transaction-total {
+  font-family: var(--font-numbers);
+}
+
 .app {
 display: flex;
 height: 100vh;

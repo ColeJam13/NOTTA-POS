@@ -1,7 +1,11 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { cwd } from 'node:process';
 import { TEMPLATES } from './index';
+import {
+  all, screens, read, withoutComments, declarationsIn, tokensDefinedIn, tokensUsedIn,
+  templateFiles, templateNamesIn, defined, DEFAULT_TEMPLATE_FILE
+} from './testSupport';
 
 /**
  * Keeps the design tokens honest.
@@ -24,73 +28,12 @@ import { TEMPLATES } from './index';
  * was checked once, when they were introduced, by putting every value back and comparing
  * with the stylesheets as they were.
  *
+ * The reading of the files is in testSupport.js, shared with contrast.test.js.
+ *
  * WHEN THIS FAILS on a new stylesheet: use an existing token. If the design really
  * needs a value no token has, add a token to the template (named for its job, not its
  * color) and use that.
  */
-
-// The src/ folder. The tests are started from frontend/ (npm test), which is what cwd() answers.
-const SRC = join(cwd(), 'src');
-const TEMPLATES_FOLDER = `templates${sep}`;
-
-// Every .css file under src/, as paths relative to src/
-const stylesheetsUnder = (folder) => readdirSync(folder).flatMap(name => {
-  const path = join(folder, name);
-  if (statSync(path).isDirectory()) return stylesheetsUnder(path);
-  return name.endsWith('.css') ? [relative(SRC, path)] : [];
-});
-
-const withoutComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '');
-
-// One stylesheet as a list of { selector, property, value }, skipping @font-face
-// blocks (a font's own name and file have to be written out) and @keyframes.
-const declarationsIn = (css) => {
-  const found = [];
-  const open = [];                                    // the selectors of the blocks we are inside
-  let start = 0;
-  const text = withoutComments(css);
-  // Whatever sits between the last ";" (or "{") and here is one declaration
-  const readDeclaration = (end) => {
-    const [property, ...rest] = text.slice(start, end).split(':');
-    const inside = open.join(' ');
-    if (rest.length > 0 && open.length > 0 && !inside.includes('@font-face') && !inside.includes('@keyframes')) {
-      found.push({ selector: inside, property: property.trim(), value: rest.join(':').trim() });
-    }
-  };
-  for (let i = 0; i < text.length; i++) {
-    const character = text[i];
-    if (character === '{') { open.push(text.slice(start, i).trim()); start = i + 1; }
-    else if (character === ';') { readDeclaration(i); start = i + 1; }
-    else if (character === '}') {
-      readDeclaration(i);             // The last line of a block may have no ";" after it. It still counts.
-      open.pop(); start = i + 1;
-    }
-  }
-  return found;
-};
-
-const all = stylesheetsUnder(SRC);
-const inTemplatesFolder = all.filter(file => file.startsWith(TEMPLATES_FOLDER));
-const screens = all.filter(file => !file.startsWith(TEMPLATES_FOLDER));
-const read = (file) => readFileSync(join(SRC, file), 'utf8');
-
-// The tokens one stylesheet defines: { '--color-surface': '#16213e', ... }
-const tokensDefinedIn = (file) => Object.fromEntries(
-  declarationsIn(read(file))
-    .filter(declaration => declaration.property.startsWith('--'))
-    .map(declaration => [declaration.property, declaration.value])
-);
-
-// The template stylesheets: the files in src/templates that define tokens (fonts.css does not)
-const templateFiles = inTemplatesFolder.filter(file => Object.keys(tokensDefinedIn(file)).length > 0);
-const DEFAULT_TEMPLATE_FILE = `templates${sep}eight-bit.css`;
-
-// The tokens of the default template. Every other template must define the same names.
-const defined = tokensDefinedIn(DEFAULT_TEMPLATE_FILE);
-
-// The template names a stylesheet gives its values to: [data-template="8-bit"] -> '8-bit'
-const templateNamesIn = (file) => [...withoutComments(read(file)).matchAll(/\[data-template="([^"]+)"\]/g)].map(match => match[1]);
-const tokensUsedIn = (text) => [...text.matchAll(/var\((--[a-z0-9-]+)\)/g)].map(match => match[1]);
 
 // What a value may still contain once its tokens are taken out
 const stripTokens = (value) => value.replace(/var\(--[a-z0-9-]+\)/g, '');

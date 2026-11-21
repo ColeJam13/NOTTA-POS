@@ -16,7 +16,8 @@
 .modifier-picker {
   background: var(--color-bg);
   border: var(--border-width-thick) solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-popup);
+  box-shadow: var(--shadow-popup);
   width: 92%;
   max-width: 720px;
   max-height: 92vh;
@@ -115,7 +116,8 @@
   padding: var(--space-12) var(--space-14);
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
   color: var(--color-text);
   font-size: var(--font-size-12);
   text-align: left;
@@ -163,7 +165,7 @@
   padding: var(--space-12);
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-field);
   color: var(--color-note);
   font-size: var(--font-size-13);
   resize: vertical;
@@ -218,7 +220,8 @@
   font-family: var(--font-body);
   font-size: var(--font-size-12);
   font-weight: var(--font-weight-bold);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
   transition: all 0.3s;
 }

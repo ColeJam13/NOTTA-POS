@@ -32,7 +32,8 @@
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--letter-spacing);
   padding: var(--space-10) var(--space-15);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
   white-space: nowrap;
 }

@@ -13,7 +13,7 @@
   background: var(--color-surface);
   padding: var(--space-15);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   font-size: var(--font-size-18);
   letter-spacing: var(--letter-spacing-wide);
   margin-bottom: var(--space-20);
@@ -30,7 +30,7 @@
 .staff-add {
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   padding: var(--space-20);
   margin-bottom: var(--space-30);
 }
@@ -56,7 +56,7 @@
   background: var(--color-bg-deep);
   color: var(--color-text);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-field-small);
   padding: var(--space-10);
   font-size: var(--font-size-14);
   min-width: 160px;
@@ -78,7 +78,8 @@
   font-size: var(--font-size-12);
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--letter-spacing);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
   transition: all 0.3s;
   white-space: nowrap;
@@ -117,7 +118,7 @@
   gap: var(--space-20);
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   padding: var(--space-15) var(--space-20);
 }
 
@@ -159,7 +160,7 @@
 .staff-paused {
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   padding: var(--space-20);
   margin-bottom: var(--space-30);
 }
@@ -186,7 +187,7 @@
   padding: var(--space-12) var(--space-15);
   background: var(--color-bg-deep);
   border: var(--border-width) solid var(--status-paused-border);                /* Yellow: something here needs a look */
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
 }
 
 .staff-paused-device {
