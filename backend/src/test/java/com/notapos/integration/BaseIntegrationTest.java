@@ -3,6 +3,8 @@ package com.notapos.integration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import com.notapos.testsupport.SignIn;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -36,6 +38,16 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * These tests are slower than the others (the application starts once, a few
  * seconds). Use them for rules that cross layers, not for every method.
  *
+ * SIGNING IN: every request needs a signed-in person (step A3b of the plan).
+ * A test says who is asking the same way a controller test does, with the
+ * SignIn helper:
+ *
+ *     mockMvc.perform(post("/api/orders").with(signIn.asServer()) ...)
+ *
+ * That starts a real session without going through the PIN pad. Tests ABOUT
+ * signing in (SignInRulesIntegrationTest, RoleMatrixIntegrationTest) create
+ * real staff and sign in with real PINs instead.
+ *
  * Tests are NOT wrapped in a transaction that rolls back, because the request
  * runs in its own transactions like it does in production. Each test class
  * cleans the tables it uses in a @BeforeEach.
@@ -44,6 +56,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(SignIn.class)                   // The test helper is not part of the app, so it is added here
 public abstract class BaseIntegrationTest {
 
     private static final PostgreSQLContainer<?> postgres;
@@ -70,4 +83,7 @@ public abstract class BaseIntegrationTest {
 
     @Autowired
     protected MockMvc mockMvc;
+
+    @Autowired
+    protected SignIn signIn;            // Says who a request comes from: .with(signIn.asServer())
 }

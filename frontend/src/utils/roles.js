@@ -5,8 +5,18 @@
  *      buttons all need the same answers. If each kept its own list they
  *      would drift apart.
  *
- * The backend enforces the important ones again (see @PreAuthorize there):
- * hiding a button here is for a tidy screen, not for security.
+ * THE BACKEND IS THE SOURCE. Every rule that matters is enforced there, on the
+ * request itself (see Permissions.java and @PreAuthorize): hiding a button here
+ * is for a tidy screen, not for security. This file repeats the backend's
+ * matrix so that a screen never offers something the backend would refuse.
+ * If the two ever disagree, the backend is right and this file is the one to
+ * correct. The matrix:
+ *
+ *   read the menu, tables, orders         anyone signed in
+ *   open orders, ring in, send, take pay  server, bartender, host, manager
+ *   start and complete items              kitchen, bartender, manager
+ *   86 and un-86                          kitchen, bartender, manager
+ *   menu, staff, Financials, floor layout manager
  *
  * A role of null means "nobody is signed in". In the running app that never
  * reaches these functions, because the PIN screen comes first. It does happen
@@ -31,14 +41,17 @@ const SCREENS_BY_ROLE = {
   manager: [...FLOOR_SCREENS, 'financials', 'staff'],     // Managers see everything
   server: FLOOR_SCREENS,
   bartender: FLOOR_SCREENS,
-  host: ['floorMap', 'activeTables'],                     // Hosts seat guests; they do not ring in orders
+  // Hosts seat guests, and may also open a check, ring in, and take payment (owner's
+  // decision D2): the takeout order at the host stand, the check paid at the door.
+  host: ['floorMap', 'activeTables', 'quickOrders', 'createOrder'],
   kitchen: ['activeOrders', 'eightySix']                  // The kitchen display and the 86 board
 };
 
 // Restricted things inside a screen, and the roles that may do them
 const ROLES_BY_ACTION = {
   'edit-layout': ['manager'],                             // Rearranging the Floor Map
-  'change-86': ['manager', 'kitchen', 'bartender']        // 86'ing an item or putting it back on
+  'change-86': ['manager', 'kitchen', 'bartender'],       // 86'ing an item or putting it back on
+  'make-items': ['manager', 'kitchen', 'bartender']       // START and COMPLETE on the kitchen display
 };
 
 /**
@@ -53,7 +66,7 @@ export const canOpenScreen = (role, view) => {
 
 /**
  * @param {string|null} role - The signed-in person's role
- * @param {string} action - 'edit-layout' or 'change-86'
+ * @param {string} action - 'edit-layout', 'change-86', or 'make-items'
  * @returns {boolean} - Whether that role may do it
  */
 export const canDo = (role, action) => {

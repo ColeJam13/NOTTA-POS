@@ -65,6 +65,26 @@ class TableServiceTest {
     }
 
     @Test
+    void testCreateTable_WithAnIdInTheRequest_ShouldStillSaveANewRow() {
+        // WHAT: Create a table from a request that carries the ID of an existing table
+        // WHY: save() on an object with an ID means "update that row". A request naming an
+        //      existing table used to rewrite it. The service clears the ID, so creating
+        //      always creates.
+
+        // Given - a "new" table that names table 1
+        testTable.setTableId(1L);
+        when(tableRepository.save(any(RestaurantTable.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        tableService.createTable(testTable);
+
+        // Then - what reached the repository has no ID
+        org.mockito.ArgumentCaptor<RestaurantTable> saved = org.mockito.ArgumentCaptor.forClass(RestaurantTable.class);
+        verify(tableRepository).save(saved.capture());
+        assertNull(saved.getValue().getTableId());
+    }
+
+    @Test
     void testGetAllTables_ShouldReturnAllTables() {
         // WHAT: Test retrieving all tables in restaurant
         // WHY: Floor manager needs to see all tables

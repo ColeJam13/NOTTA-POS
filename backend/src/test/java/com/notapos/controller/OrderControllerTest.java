@@ -75,7 +75,7 @@ class OrderControllerTest {
         when(orderService.getAllOrders()).thenReturn(orders);
 
         // When/Then - GET request should return 200 OK with orders
-        mockMvc.perform(get("/api/orders"))
+        mockMvc.perform(get("/api/orders").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].orderId").value(1))
                 .andExpect(jsonPath("$[0].status").value("open"));
@@ -93,7 +93,7 @@ class OrderControllerTest {
         when(orderService.getOrdersByStatus("open")).thenReturn(openOrders);
 
         // When/Then - GET with status param should return filtered orders
-        mockMvc.perform(get("/api/orders").param("status", "open"))
+        mockMvc.perform(get("/api/orders").with(signIn.asServer()).param("status", "open"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("open"));
 
@@ -109,7 +109,7 @@ class OrderControllerTest {
         when(orderService.getOrderById(1L)).thenReturn(Optional.of(testOrder));
 
         // When/Then - GET request should return 200 OK with order
-        mockMvc.perform(get("/api/orders/1"))
+        mockMvc.perform(get("/api/orders/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderId").value(1))
                 .andExpect(jsonPath("$.status").value("open"));
@@ -126,7 +126,7 @@ class OrderControllerTest {
         when(orderService.getOrderById(999L)).thenReturn(Optional.empty());
 
         // When/Then - GET request should return 404 Not Found
-        mockMvc.perform(get("/api/orders/999"))
+        mockMvc.perform(get("/api/orders/999").with(signIn.asServer()))
                 .andExpect(status().isNotFound());
 
         verify(orderService, times(1)).getOrderById(999L);
@@ -142,7 +142,7 @@ class OrderControllerTest {
         when(orderService.getOrdersByTable(1L)).thenReturn(tableOrders);
 
         // When/Then - GET request should return 200 OK with orders
-        mockMvc.perform(get("/api/orders/table/1"))
+        mockMvc.perform(get("/api/orders/table/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].tableId").value(1));
 
@@ -159,7 +159,7 @@ class OrderControllerTest {
         when(orderService.getOpenOrdersByTable(1L)).thenReturn(openTableOrders);
 
         // When/Then - GET with status=open should return open orders
-        mockMvc.perform(get("/api/orders/table/1").param("status", "open"))
+        mockMvc.perform(get("/api/orders/table/1").with(signIn.asServer()).param("status", "open"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("open"));
 
@@ -175,7 +175,7 @@ class OrderControllerTest {
         when(orderService.createOrder(any(Order.class))).thenReturn(testOrder);
 
         // When/Then - POST request should return 201 Created
-        mockMvc.perform(post("/api/orders")
+        mockMvc.perform(post("/api/orders").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tableId\":1,\"orderType\":\"dine_in\"}"))
                 .andExpect(status().isCreated())
@@ -183,46 +183,6 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.status").value("open"));
 
         verify(orderService, times(1)).createOrder(any(Order.class));
-    }
-
-    @Test
-    void testUpdateOrderTotals_ShouldReturnUpdated() throws Exception {
-        // WHAT: Test PUT /api/orders/{id}/totals to update order totals
-        // WHY: Recalculate totals when items are added/removed
-        
-        // Given - Service returns updated order
-        testOrder.setSubtotal(new BigDecimal("60.00"));
-        testOrder.setTax(new BigDecimal("4.80"));
-        testOrder.setTotal(new BigDecimal("64.80"));
-        when(orderService.updateOrderTotals(eq(1L), any(BigDecimal.class), any(BigDecimal.class)))
-                .thenReturn(testOrder);
-
-        // When/Then - PUT request should return 200 OK
-        mockMvc.perform(put("/api/orders/1/totals")
-                .param("subtotal", "60.00")
-                .param("taxRate", "0.08"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.subtotal").value(60.00))
-                .andExpect(jsonPath("$.total").value(64.80));
-
-        verify(orderService, times(1)).updateOrderTotals(eq(1L), any(BigDecimal.class), any(BigDecimal.class));
-    }
-
-    @Test
-    void testCloseOrder_ShouldReturnClosed() throws Exception {
-        // WHAT: Test PUT /api/orders/{id}/close to close check
-        // WHY: Mark order as closed when guest pays
-        
-        // Given - Service returns closed order
-        testOrder.setStatus("closed");
-        when(orderService.closeOrder(1L)).thenReturn(testOrder);
-
-        // When/Then - PUT request should return 200 OK
-        mockMvc.perform(put("/api/orders/1/close"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("closed"));
-
-        verify(orderService, times(1)).closeOrder(1L);
     }
 
     @Test
@@ -234,7 +194,7 @@ class OrderControllerTest {
         doNothing().when(orderService).deleteOrder(1L);
 
         // When/Then - DELETE request should return 204 No Content
-        mockMvc.perform(delete("/api/orders/1"))
+        mockMvc.perform(delete("/api/orders/1").with(signIn.asServer()))
                 .andExpect(status().isNoContent());
 
         verify(orderService, times(1)).deleteOrder(1L);
@@ -248,7 +208,7 @@ class OrderControllerTest {
         doThrow(new OrderStateException("Order #1 still has items on it. Remove them or close the check."))
                 .when(orderService).deleteOrder(1L);
 
-        mockMvc.perform(delete("/api/orders/1"))
+        mockMvc.perform(delete("/api/orders/1").with(signIn.asServer()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Order #1 still has items on it. Remove them or close the check."));
     }
@@ -262,7 +222,7 @@ class OrderControllerTest {
                 1L, "open", 2, 1,
                 new BigDecimal("33.00"), new BigDecimal("0.99"), new BigDecimal("33.99"), new BigDecimal("0.03")));
 
-        mockMvc.perform(get("/api/orders/1/check"))
+        mockMvc.perform(get("/api/orders/1/check").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderId").value(1))
                 .andExpect(jsonPath("$.itemCount").value(2))
@@ -280,7 +240,7 @@ class OrderControllerTest {
 
         when(orderCheckService.getCheck(99L)).thenThrow(new ResourceNotFoundException("Order not found with id: 99"));
 
-        mockMvc.perform(get("/api/orders/99/check"))
+        mockMvc.perform(get("/api/orders/99/check").with(signIn.asServer()))
                 .andExpect(status().isNotFound());
     }
 
@@ -301,17 +261,33 @@ class OrderControllerTest {
     }
 
     @Test
-    void testCreateOrder_WhenNobodyIsSignedIn_ShouldKeepTheNameThatWasSent() throws Exception {
+    void testCreateOrder_WhenNobodyIsSignedIn_ShouldBeRefused() throws Exception {
         // WHAT: Test POST /api/orders with no sign-in
-        // WHY: Opening an order is not restricted, so older screens keep working
-
-        when(orderService.createOrder(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        // WHY: Every order belongs to a signed-in person. (Until step A3b of the plan this
+        //      was allowed, and the order kept whatever name the request sent.)
 
         mockMvc.perform(post("/api/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tableId\":1,\"orderType\":\"dine_in\",\"serverName\":\"CJ\"}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.serverName").value("CJ"))
-                .andExpect(jsonPath("$.staffId").value(org.hamcrest.Matchers.nullValue()));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Sign in to do that."));
+
+        verify(orderService, never()).createOrder(any(Order.class));
+    }
+
+    @Test
+    void testCreateOrder_AsTheKitchen_ShouldBeRefused() throws Exception {
+        // WHAT: Test POST /api/orders as a role that does not take orders
+        // WHY: Opening a check is for servers, bartenders, hosts, and managers
+        //      (Permissions.TAKE_ORDERS). Every row of the role matrix is checked against
+        //      the whole backend in RoleMatrixIntegrationTest; this is the one-controller version.
+
+        mockMvc.perform(post("/api/orders").with(signIn.asKitchen())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"tableId\":1,\"orderType\":\"dine_in\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Your role (kitchen) is not allowed to do that."));
+
+        verify(orderService, never()).createOrder(any(Order.class));
     }
 }

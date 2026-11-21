@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ActiveOrders from './ActiveOrders';
+import { StaffContext } from '../../context/StaffContext';
 
 /**
  * Behavior tests for the Active Orders screen (the kitchen ticket).
@@ -270,4 +271,49 @@ test('with no open orders at all, the kitchen view says so', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'BOH VIEW' }));
 
   expect(screen.getByText('NO ACTIVE ORDERS')).toBeInTheDocument();
+});
+
+// ----------------------------------------------------------------------------
+// Who is offered START and COMPLETE
+// ----------------------------------------------------------------------------
+// The tests above draw the screen with nobody signed in, which is unrestricted.
+// These draw it for a particular role, the way App.js provides it.
+
+const renderKitchenViewAs = async (role) => {
+  activeOrders = [
+    { orderId: 1, tableId: 1, tableNumber: 'W1', isQuickOrder: false, serverName: 'Sarah', items: [
+      ticketItem(11, 'Chicken Cutty', 'pending', 1, 5),
+      ticketItem(12, 'Garden Toast', 'fired', 1, 5)
+    ] }
+  ];
+  const view = render(
+    <StaffContext.Provider value={{ staff: { staffId: 1, name: 'Test', role }, signOut: jest.fn() }}>
+      <ActiveOrders setCurrentView={jest.fn()} setSelectedTable={jest.fn()} />
+    </StaffContext.Provider>
+  );
+  await screen.findByText(/Table W1 - Order #1/);
+  await userEvent.click(screen.getByRole('button', { name: 'BOH VIEW' }));
+  return view;
+};
+
+test('the kitchen, the bar, and managers are offered START and COMPLETE', async () => {
+  for (const role of ['kitchen', 'bartender', 'manager']) {
+    const view = await renderKitchenViewAs(role);
+
+    expect(screen.getByRole('button', { name: 'START' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'COMPLETE' })).toBeInTheDocument();
+
+    view.unmount();                   // Take the screen down before drawing it for the next role
+  }
+});
+
+test('a server can watch the kitchen view but is not offered START or COMPLETE', async () => {
+  // The backend refuses a server who starts or completes an item (403), so the buttons
+  // are not drawn. The tickets and their statuses still are.
+  await renderKitchenViewAs('server');
+
+  expect(screen.getByText('Chicken Cutty')).toBeInTheDocument();
+  expect(screen.getByText('Garden Toast')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'START' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'COMPLETE' })).not.toBeInTheDocument();
 });

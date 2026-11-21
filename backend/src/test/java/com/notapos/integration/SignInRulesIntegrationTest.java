@@ -17,39 +17,33 @@ import com.notapos.service.StaffService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import java.math.BigDecimal;
 import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
-import java.util.function.Supplier;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Integration tests for who may do what, asked from the outside.
+ * Integration tests for how signing in behaves, asked from the outside.
  *
  * WHAT: One real staff member per role signs in with a real PIN and gets a
- *       real token. Each restricted endpoint is then called by nobody, by a
- *       made-up token, and by every role, and the answer is checked.
- * WHY:  The controller tests check these rules one controller at a time, with
- *       the services faked. This test checks all of them through the whole
- *       backend, and it knows nothing about HOW the backend decides. It was
- *       written against the home-built sign-in check and passed, and then had
- *       to keep passing, unchanged, when sign-in moved onto Spring Security.
- *       It is the proof that the move changed nothing a screen can see.
+ *       real token. The tests then check the mechanics around that token:
+ *       what a request with no sign-in is told, who-am-I, signing out, a role
+ *       change ending sessions, whose name goes on an order, the browser's
+ *       cross-origin checks (CORS), and the things this sign-in must NOT have
+ *       (a password prompt, a cookie, a login page).
+ * WHY:  These are answers the frontend depends on, and they come from the
+ *       whole backend working together: the filter chain, the controllers, and
+ *       the error handling. This test knows nothing about HOW the backend
+ *       decides. Most of it was written against the home-built sign-in check
+ *       and had to keep passing when sign-in moved onto Spring Security.
  *
- * The table of rules (RULES below) is the same list CLAUDE.md gives under
- * "Restricted on the backend". If a rule is added or changed, add it there.
+ * WHO MAY DO WHAT, endpoint by endpoint and role by role, is in
+ * RoleMatrixIntegrationTest.
  *
  * @author CJ
  */
@@ -68,22 +62,13 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
     @Autowired private PaymentRepository paymentRepository;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private ApplicationContext applicationContext;
-    @Autowired @Qualifier("requestMappingHandlerMapping") private RequestMappingHandlerMapping handlerMapping;     // Every endpoint the backend has
 
     // A token for one signed-in person of each role, and who they are
     private final Map<StaffRole, String> tokens = new EnumMap<>(StaffRole.class);
     private final Map<StaffRole, Long> staffIds = new EnumMap<>(StaffRole.class);
 
-    private Long someoneElseId;         // A staff member the tests change (so nobody's own session is touched)
     private RestaurantTable table;
     private MenuItem menuItem;
-    private int nextPin = 5000;         // PINs for staff created during a test: each must be unused
-
-    // One restricted endpoint: what to call it, how to build a valid request, and who is allowed
-    private record Rule(String name, Supplier<MockHttpServletRequestBuilder> request, Set<StaffRole> allowed) {
-    }
-
-    private final Map<String, Rule> rules = new LinkedHashMap<>();
 
     @BeforeEach
     void setUp() throws Exception {
@@ -104,7 +89,7 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
             staffIds.put(role, id);
             tokens.put(role, signIn(pinText));
         }
-        someoneElseId = staffService.createStaff(new StaffCreateRequest("Someone Else", "server", "2999")).staffId();
+        staffService.createStaff(new StaffCreateRequest("Someone Else", "server", "2999"));       // Someone who never signs in
 
         table = new RestaurantTable();
         table.setTableNumber("W1");
@@ -119,35 +104,11 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
         menuItem.setIsActive(true);
         menuItem = menuItemRepository.save(menuItem);
 
-        // ------------------------------------------------------------------
-        // The seven restricted endpoints and who may use each
-        // ------------------------------------------------------------------
-        Set<StaffRole> managerOnly = EnumSet.of(StaffRole.MANAGER);
-        Set<StaffRole> whoKnowsWhatRanOut = EnumSet.of(StaffRole.MANAGER, StaffRole.KITCHEN, StaffRole.BARTENDER);
-
-        addRule("list staff", managerOnly, () -> get("/api/staff"));
-        addRule("add a staff member", managerOnly, () -> post("/api/staff")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"New Person\",\"role\":\"server\",\"pin\":\"" + (nextPin++) + "\"}"));
-        addRule("change a staff member", managerOnly, () -> put("/api/staff/" + someoneElseId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Renamed\"}"));
-        addRule("Financials report", managerOnly, () -> get("/api/reports/financials")
-                .param("from", "2026-11-18T00:00:00").param("to", "2026-11-19T00:00:00"));
-        addRule("save the floor layout", managerOnly, () -> put("/api/tables/layout")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"tables\":[{\"tableId\":" + table.getTableId() + ",\"x\":100,\"y\":120,\"rotation\":0}]}"));
-        addRule("86 an item", whoKnowsWhatRanOut, () -> put("/api/menu-items/" + menuItem.getMenuItemId() + "/86"));
-        addRule("un-86 an item", whoKnowsWhatRanOut, () -> put("/api/menu-items/" + menuItem.getMenuItemId() + "/un-86"));
     }
 
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
-
-    private void addRule(String name, Set<StaffRole> allowed, Supplier<MockHttpServletRequestBuilder> request) {
-        rules.put(name, new Rule(name, request, allowed));
-    }
 
     // Sign in with a PIN through the real endpoint and return the token it hands back
     private String signIn(String pin) throws Exception {
@@ -160,93 +121,62 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
     }
 
     // ------------------------------------------------------------------
-    // The seven rules
+    // Every request needs a signed-in person
     // ------------------------------------------------------------------
 
     @Test
-    void testEveryRestrictedEndpoint_WithNoSignIn_ShouldAnswer401() throws Exception {
-        // WHAT: Call each restricted endpoint with no token at all
-        // WHY: 401 means "we do not know who you are". The frontend answers a 401 by
-        //      showing the PIN pad, and shows this exact message.
+    void testARequestWithNoSignIn_ShouldBeAnswered401InTheUsualErrorShape() throws Exception {
+        // WHAT: Call an ordinary endpoint with no token, with a made-up token, and with a real one
+        // WHY: 401 means "we do not know who you are". The frontend answers a 401 by showing
+        //      the PIN pad. A token only counts if the backend handed it out: a stale one
+        //      (the backend was restarted, the person was signed out) is the same as none.
+        //      Until step A3b of the plan, this endpoint answered all three.
 
-        for (Rule rule : rules.values()) {
-            mockMvc.perform(rule.request().get())
-                    .andExpect(result -> assertEquals(401, result.getResponse().getStatus(), rule.name()))
-                    .andExpect(jsonPath("$.status").value(401))
-                    .andExpect(jsonPath("$.error").value("Unauthorized"))
-                    .andExpect(jsonPath("$.message").value("Sign in to do that."))
-                    .andExpect(jsonPath("$.timestamp").exists());
-        }
-    }
+        mockMvc.perform(get("/api/tables"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message").value("Sign in to do that."))
+                .andExpect(jsonPath("$.timestamp").exists());
+        mockMvc.perform(get("/api/tables").header(TOKEN_HEADER, "not-a-real-token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Sign in to do that."));
 
-    @Test
-    void testEveryRestrictedEndpoint_WithATokenNobodyWasGiven_ShouldAnswer401() throws Exception {
-        // WHAT: Call each restricted endpoint with a made-up token
-        // WHY: A token only counts if the backend handed it out. A stale one (the backend
-        //      was restarted, the person was signed out) is the same as none.
-
-        for (Rule rule : rules.values()) {
-            mockMvc.perform(rule.request().get().header(TOKEN_HEADER, "not-a-real-token"))
-                    .andExpect(result -> assertEquals(401, result.getResponse().getStatus(), rule.name()))
-                    .andExpect(jsonPath("$.message").value("Sign in to do that."));
-        }
-    }
-
-    @Test
-    void testEveryRestrictedEndpoint_ForARoleThatIsNotAllowed_ShouldAnswer403AndNameTheRole() throws Exception {
-        // WHAT: Call each restricted endpoint as every role that is not on its list
-        // WHY: 403 means "we know who you are, and no". The message names the role so the
-        //      person at the screen knows why.
-
-        for (Rule rule : rules.values()) {
-            for (StaffRole role : StaffRole.values()) {
-                if (rule.allowed().contains(role)) continue;
-
-                String who = rule.name() + " as " + role.getValue();
-                mockMvc.perform(rule.request().get().header(TOKEN_HEADER, tokens.get(role)))
-                        .andExpect(result -> assertEquals(403, result.getResponse().getStatus(), who))
-                        .andExpect(jsonPath("$.status").value(403))
-                        .andExpect(jsonPath("$.error").value("Forbidden"))
-                        .andExpect(jsonPath("$.message").value("Your role (" + role.getValue() + ") is not allowed to do that."));
-            }
-        }
-    }
-
-    @Test
-    void testEveryRestrictedEndpoint_ForARoleThatIsAllowed_ShouldGoThrough() throws Exception {
-        // WHAT: Call each restricted endpoint as every role on its list
-        // WHY: A rule that refuses everyone would pass the three tests above
-
-        for (Rule rule : rules.values()) {
-            for (StaffRole role : rule.allowed()) {
-                String who = rule.name() + " as " + role.getValue();
-                mockMvc.perform(rule.request().get().header(TOKEN_HEADER, tokens.get(role)))
-                        .andExpect(result -> assertTrue(result.getResponse().getStatus() / 100 == 2,
-                                who + " answered " + result.getResponse().getStatus()));
-            }
-        }
-    }
-
-    // ------------------------------------------------------------------
-    // Everything else is open (until step A3b of the plan locks it)
-    // ------------------------------------------------------------------
-
-    @Test
-    void testAnEndpointWithNoRule_ShouldAnswerWithOrWithoutAToken() throws Exception {
-        // WHAT: Call an unrestricted endpoint with no token, a made-up token, and a real one
-        // WHY: A bad token on an open endpoint is treated as "nobody", not refused. The order
-        //      screen keeps working for the moment between a session ending and the next request
-        //      that needs one.
-
-        mockMvc.perform(get("/api/tables")).andExpect(status().isOk());
-        mockMvc.perform(get("/api/tables").header(TOKEN_HEADER, "not-a-real-token")).andExpect(status().isOk());
+        // An endpoint with no role rule is for anyone who IS signed in
         mockMvc.perform(get("/api/tables").header(TOKEN_HEADER, tokens.get(StaffRole.HOST))).andExpect(status().isOk());
+        mockMvc.perform(get("/api/tables").header(TOKEN_HEADER, tokens.get(StaffRole.KITCHEN))).andExpect(status().isOk());
+    }
 
-        // A request that changes data, with no token and nothing else special about it
-        mockMvc.perform(post("/api/orders")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"tableId\":" + table.getTableId() + ",\"orderType\":\"dine_in\"}"))
-                .andExpect(status().isCreated());
+    @Test
+    void testSignIn_ShouldBeTheOneThingOpenToARequestWithNoSignIn() throws Exception {
+        // WHAT: Sign in with a right PIN and a wrong one, with no token on either request
+        // WHY: You cannot be asked to sign in before signing in. A wrong PIN is also a 401,
+        //      but with its own message, which the PIN pad shows.
+
+        mockMvc.perform(post("/api/staff/sign-in").contentType(MediaType.APPLICATION_JSON).content("{\"pin\":\"2001\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").exists());
+        mockMvc.perform(post("/api/staff/sign-in").contentType(MediaType.APPLICATION_JSON).content("{\"pin\":\"0000\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("PIN not recognized."));
+
+        // Only POST is open. Another method on the same address is refused like anything else.
+        mockMvc.perform(get("/api/staff/sign-in")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void testAnAddressThatDoesNotExist_ShouldBe401ForNobodyAnd404ForStaff() throws Exception {
+        // WHAT: Ask for an address the backend does not have
+        // WHY: A request with no sign-in is refused before the backend works out whether the
+        //      address exists, so an outsider cannot map the API by trying addresses. A
+        //      signed-in person gets the honest answer, 404, not a misleading "sign in".
+
+        mockMvc.perform(get("/api/no-such-thing")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/somewhere/else")).andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/no-such-thing").header(TOKEN_HEADER, tokens.get(StaffRole.SERVER)))
+                .andExpect(status().isNotFound());
     }
 
     // ------------------------------------------------------------------
@@ -266,7 +196,7 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
 
         mockMvc.perform(get("/api/staff/me"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("Sign in to continue."));
+                .andExpect(jsonPath("$.message").value("Sign in to do that."));
         mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, "not-a-real-token"))
                 .andExpect(status().isUnauthorized());
     }
@@ -283,9 +213,11 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
 
         mockMvc.perform(get("/api/staff").header(TOKEN_HEADER, token)).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/staff/me").header(TOKEN_HEADER, token)).andExpect(status().isUnauthorized());
-        // Signing out twice, or with no token, is not an error
-        mockMvc.perform(post("/api/staff/sign-out").header(TOKEN_HEADER, token)).andExpect(status().isNoContent());
-        mockMvc.perform(post("/api/staff/sign-out")).andExpect(status().isNoContent());
+        // Signing out twice, or with no token: there is no session left to end, so it is
+        // answered like any other request from nobody. (The frontend forgets the token
+        // whatever the answer is.)
+        mockMvc.perform(post("/api/staff/sign-out").header(TOKEN_HEADER, token)).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/staff/sign-out")).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -315,29 +247,32 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
     @Test
     void testOpenOrder_ShouldBeStampedWithTheSignedInPersonNotTheNameInTheRequest() throws Exception {
         // WHAT: Open an order while signed in, sending someone else's name in the request
-        // WHY: The order belongs to whoever is at the screen. The name a request carries is
-        //      only used when nobody is signed in.
+        // WHY: The order belongs to whoever is at the screen. A name or staff ID the request
+        //      carries is ignored: otherwise a check could be opened in someone else's name.
 
         mockMvc.perform(post("/api/orders")
                 .header(TOKEN_HEADER, tokens.get(StaffRole.BARTENDER))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"tableId\":" + table.getTableId() + ",\"orderType\":\"dine_in\",\"serverName\":\"Not Me\"}"))
+                .content("{\"tableId\":" + table.getTableId() + ",\"orderType\":\"dine_in\",\"serverName\":\"Not Me\",\"staffId\":"
+                        + staffIds.get(StaffRole.MANAGER) + "}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.serverName").value("The bartender"))
                 .andExpect(jsonPath("$.staffId").value(staffIds.get(StaffRole.BARTENDER)));
     }
 
     @Test
-    void testOpenOrder_WithNobodySignedIn_ShouldKeepTheNameInTheRequest() throws Exception {
+    void testOpenOrder_WithNobodySignedIn_ShouldBeRefusedAndOpenNothing() throws Exception {
         // WHAT: Open an order with no token
-        // WHY: Still allowed until step A3b of the plan; the request's own name is all there is
+        // WHY: Every order belongs to a signed-in person. (Until step A3b of the plan this
+        //      was allowed, and the order kept whatever name the request sent.)
 
         mockMvc.perform(post("/api/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tableId\":" + table.getTableId() + ",\"orderType\":\"dine_in\",\"serverName\":\"CJ\"}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.serverName").value("CJ"))
-                .andExpect(jsonPath("$.staffId").doesNotExist());
+                .andExpect(status().isUnauthorized());
+
+        assertEquals(0, orderRepository.count());
+        assertEquals("available", tableRepository.findById(table.getTableId()).orElseThrow().getStatus());
     }
 
     // ------------------------------------------------------------------
@@ -345,32 +280,35 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
     // ------------------------------------------------------------------
 
     @Test
-    void testARequestThatIsBadlyFormedAndNotAllowed_ShouldBeToldItIsBadlyFormed() throws Exception {
+    void testARequestThatIsBadlyFormedAndNotAllowed_ShouldBe401ForNobodyAnd400ForTheWrongRole() throws Exception {
         // WHAT: Send a request that is wrong twice: the person may not make it, and its body
         //       (or its parameters) would not pass validation either
-        // WHY: This pins down the ONE answer that changed when sign-in moved onto Spring
-        //      Security. The role rules sit on the controller method (@PreAuthorize). Spring
-        //      reads and validates the request before it calls the method, so a badly formed
-        //      request is answered 400 before the rule is reached. Under the home-built check
-        //      the order was the other way round, and these answered 401 and 403.
+        // WHY: Two checks run at two different moments.
         //
-        //      Nothing is let through: the same people sending a WELL formed request are
-        //      refused, which the tests at the top of this class prove for every endpoint.
-        //      What an outsider can learn this way is the wording of validation messages.
-        //      Step A3b of the plan refuses requests with no sign-in before they get this
-        //      far, which puts the 401 back in front for anyone not signed in.
+        //      "Are you signed in?" is asked in the filter chain, before the request is read.
+        //      So nobody gets 401 whatever the request contains, and learns nothing about
+        //      what a valid one looks like.
+        //
+        //      "May your ROLE do this?" is asked at the controller method (@PreAuthorize).
+        //      Spring reads and validates the request before it calls the method, so a
+        //      signed-in person with the wrong role AND a badly formed request is told 400.
+        //      Nothing is let through: the same person sending a WELL formed request is
+        //      refused, which RoleMatrixIntegrationTest proves for every endpoint. What they
+        //      can learn this way is the wording of a validation message.
 
         String badStaff = "{\"name\":\"\",\"role\":\"\",\"pin\":\"12\"}";
 
-        // Nobody signed in
+        // Nobody signed in: 401, before the request is looked at
         mockMvc.perform(post("/api/staff").contentType(MediaType.APPLICATION_JSON).content(badStaff))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/reports/financials"))                             // No from or to
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
         mockMvc.perform(put("/api/tables/layout").contentType(MediaType.APPLICATION_JSON).content("{\"tables\":[]}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content("this is not JSON"))
+                .andExpect(status().isUnauthorized());
 
-        // Signed in with a role that is not allowed
+        // Signed in with a role that is not allowed: 400
         String serverToken = tokens.get(StaffRole.SERVER);
         mockMvc.perform(post("/api/staff").header(TOKEN_HEADER, serverToken).contentType(MediaType.APPLICATION_JSON).content(badStaff))
                 .andExpect(status().isBadRequest());
@@ -460,7 +398,7 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(header().doesNotExist("Set-Cookie"));
         mockMvc.perform(get("/api/tables"))
-                .andExpect(status().isOk())
+                .andExpect(status().isUnauthorized())
                 .andExpect(header().doesNotExist("Set-Cookie"));
     }
 
@@ -469,30 +407,23 @@ class SignInRulesIntegrationTest extends BaseIntegrationTest {
         // WHAT: Ask for the addresses a ready-made login page and logout would live at
         // WHY: The only ways in and out are POST /api/staff/sign-in and /sign-out
 
-        mockMvc.perform(get("/login")).andExpect(status().isNotFound());
-        mockMvc.perform(post("/logout")).andExpect(status().isNotFound());
+        // For a signed-in person they simply do not exist
+        String token = tokens.get(StaffRole.MANAGER);
+        mockMvc.perform(get("/login").header(TOKEN_HEADER, token)).andExpect(status().isNotFound());
+        mockMvc.perform(post("/logout").header(TOKEN_HEADER, token)).andExpect(status().isNotFound());
+
+        // For nobody they are refused like every other address: this app's own 401, not a
+        // page with a form on it and not a redirect to one
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Sign in to do that."))
+                .andExpect(header().doesNotExist("Location"));
+        mockMvc.perform(post("/logout")).andExpect(status().isUnauthorized());
     }
 
     // ------------------------------------------------------------------
-    // Two guards on the set-up itself
+    // A guard on the set-up itself
     // ------------------------------------------------------------------
-
-    @Test
-    void testTheRulesTableInThisTest_ShouldCoverEveryEndpointThatHasARule() {
-        // WHAT: Count the controller methods that carry a @PreAuthorize rule
-        // WHY: The tests above only check the endpoints listed in setUp(). If someone adds a
-        //      rule to another endpoint and forgets this table, that rule would go untested
-        //      here. This fails until the table is brought up to date.
-        //      (This is the one test in this class that looks at how the backend is built.)
-
-        long endpointsWithARule = handlerMapping.getHandlerMethods().values().stream()
-                .filter(method -> method.hasMethodAnnotation(PreAuthorize.class)
-                        || method.getBeanType().isAnnotationPresent(PreAuthorize.class))
-                .count();
-
-        assertEquals(rules.size(), endpointsWithARule,
-                "An endpoint has a @PreAuthorize rule that is not in this test's table (or the other way round)");
-    }
 
     @Test
     void testTheTokenFilter_ShouldNotBeASpringBean() {

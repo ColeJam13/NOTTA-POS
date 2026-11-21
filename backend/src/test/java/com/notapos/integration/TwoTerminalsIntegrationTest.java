@@ -8,6 +8,7 @@ import com.notapos.repository.MenuItemRepository;
 import com.notapos.repository.OrderItemModifierRepository;
 import com.notapos.repository.OrderItemRepository;
 import com.notapos.repository.OrderRepository;
+import com.notapos.entity.Payment;
 import com.notapos.repository.PaymentRepository;
 import com.notapos.repository.TableRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -115,7 +116,7 @@ class TwoTerminalsIntegrationTest extends BaseIntegrationTest {
 
     // The request a terminal sends to pay that order's check: 17.00 + 3% tax = 17.51
     private Callable<Integer> pay(Order order) {
-        return () -> mockMvc.perform(post("/api/payments")
+        return () -> mockMvc.perform(post("/api/payments").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":" + order.getOrderId() + ",\"amount\":17.51,\"tipAmount\":0,\"paymentMethod\":\"cash\"}"))
                 .andReturn().getResponse().getStatus();
@@ -123,7 +124,7 @@ class TwoTerminalsIntegrationTest extends BaseIntegrationTest {
 
     // The request a terminal sends to ring one more Chicken Cutty onto that order
     private Callable<Integer> ringIn(Order order) {
-        return () -> mockMvc.perform(post("/api/order-items")
+        return () -> mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":" + order.getOrderId() + ",\"menuItemId\":" + chickenCutty.getMenuItemId()
                         + ",\"quantity\":1,\"modifierIds\":[]}"))
@@ -132,13 +133,13 @@ class TwoTerminalsIntegrationTest extends BaseIntegrationTest {
 
     // The request a terminal sends to remove an item that is still in its edit window
     private Callable<Integer> remove(OrderItem item) {
-        return () -> mockMvc.perform(delete("/api/order-items/" + item.getOrderItemId()))
+        return () -> mockMvc.perform(delete("/api/order-items/" + item.getOrderItemId()).with(signIn.asServer()))
                 .andReturn().getResponse().getStatus();
     }
 
     // The request a terminal sends to open an order on a table
     private Callable<Integer> openOrderOn(RestaurantTable table) {
-        return () -> mockMvc.perform(post("/api/orders")
+        return () -> mockMvc.perform(post("/api/orders").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tableId\":" + table.getTableId() + ",\"orderType\":\"dine_in\",\"serverName\":\"CJ\"}"))
                 .andReturn().getResponse().getStatus();
@@ -213,7 +214,7 @@ class TwoTerminalsIntegrationTest extends BaseIntegrationTest {
         assertEquals(201, pay(order).call());
 
         // When & Then - the same payment again
-        mockMvc.perform(post("/api/payments")
+        mockMvc.perform(post("/api/payments").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":" + order.getOrderId() + ",\"amount\":17.51,\"tipAmount\":0,\"paymentMethod\":\"cash\"}"))
                 .andExpect(status().isConflict())
@@ -320,7 +321,7 @@ class TwoTerminalsIntegrationTest extends BaseIntegrationTest {
             OrderItem saved = orderItemRepository.save(inEditWindow);
 
             // The check for both items: 34.00 + 3% tax = 35.02
-            Callable<Integer> payForBoth = () -> mockMvc.perform(post("/api/payments")
+            Callable<Integer> payForBoth = () -> mockMvc.perform(post("/api/payments").with(signIn.asServer())
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"orderId\":" + order.getOrderId() + ",\"amount\":35.02,\"tipAmount\":0,\"paymentMethod\":\"cash\"}"))
                     .andReturn().getResponse().getStatus();
@@ -362,13 +363,13 @@ class TwoTerminalsIntegrationTest extends BaseIntegrationTest {
 
         // Given - a check that was paid
         Order paid = openOrderWithOneSentItem("W1");
-        mockMvc.perform(post("/api/payments")
+        mockMvc.perform(post("/api/payments").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":" + paid.getOrderId() + ",\"amount\":17.51,\"tipAmount\":0,\"paymentMethod\":\"cash\"}"));
         assertEquals("closed", orderRepository.findById(paid.getOrderId()).orElseThrow().getStatus());
 
         // When - a new order is "opened" on the same table, naming the paid check's ID
-        mockMvc.perform(post("/api/orders")
+        mockMvc.perform(post("/api/orders").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":" + paid.getOrderId() + ",\"tableId\":" + paid.getTableId()
                         + ",\"orderType\":\"dine_in\",\"serverName\":\"CJ\"}"));
@@ -378,6 +379,40 @@ class TwoTerminalsIntegrationTest extends BaseIntegrationTest {
         assertEquals("closed", stillPaid.getStatus());
         assertEquals(0, new BigDecimal("17.51").compareTo(stillPaid.getTotal()));
         assertEquals(2, orderRepository.findByTableId(paid.getTableId()).size());
+    }
+
+    @Test
+    void testPayment_WithTheIdOfAnEarlierPayment_ShouldNotOverwriteIt() throws Exception {
+        // WHAT: POST /api/payments with a "paymentId" in the body that belongs to another check's payment
+        // WHY: The same defect as the test above, in the payment endpoint. A request that
+        //      named an existing payment replaced it: that payment's row now pointed at the
+        //      new check, and the first check was left closed with no payment on record.
+        //      Taking a payment always adds one.
+
+        // Given - one check paid by card with a tip, and a second check still open
+        Order first = openOrderWithOneSentItem("W1");
+        mockMvc.perform(post("/api/payments").with(signIn.asServer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderId\":" + first.getOrderId() + ",\"amount\":17.51,\"tipAmount\":5.00,\"paymentMethod\":\"credit_card\"}"))
+                .andExpect(status().isCreated());
+        Payment firstPayment = paymentRepository.findByOrderId(first.getOrderId()).get(0);
+
+        Order second = openOrderWithOneSentItem("W2");
+
+        // When - the second check is paid in cash, naming the first payment's ID
+        mockMvc.perform(post("/api/payments").with(signIn.asServer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"paymentId\":" + firstPayment.getPaymentId() + ",\"orderId\":" + second.getOrderId()
+                        + ",\"amount\":17.51,\"tipAmount\":0,\"paymentMethod\":\"cash\"}"))
+                .andExpect(status().isCreated());
+
+        // Then - both payments exist, and the first is exactly as it was
+        assertEquals(2, paymentRepository.count());
+        Payment stillThere = paymentRepository.findById(firstPayment.getPaymentId()).orElseThrow();
+        assertEquals(first.getOrderId(), stillThere.getOrderId());
+        assertEquals("credit_card", stillThere.getPaymentMethod());
+        assertEquals(0, new BigDecimal("5.00").compareTo(stillThere.getTipAmount()));
+        assertEquals(1, paymentRepository.findByOrderId(second.getOrderId()).size());
     }
 
     // ------------------------------------------------------------------

@@ -105,9 +105,9 @@ function App() {
   // kept that table's items and order under a "New Quick Order" heading, and the next
   // items rung in went onto the old table's check.
   const setCurrentView = (view) => {
-    // A screen this person's role may not open is simply not opened. (The nav bar does
-    // not offer it either; this covers every other way of getting there, such as a host
-    // tapping a table on the Floor Map, which would open the order screen.)
+    // A screen this person's role may not open is simply not opened. (The nav bar and the
+    // Home screen do not offer it either; this covers any other way of getting there, such
+    // as a button on one screen that leads to another.)
     if (!canOpenScreen(staff?.role, view)) return;
 
     if (view === 'createOrder') {

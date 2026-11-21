@@ -70,6 +70,9 @@ export const createQuickOrderTable = async () => {
  * If the table already has an open order - another server opened it a moment
  * ago - the backend answers with that order instead of starting a second check.
  *
+ * No server name is sent. The backend puts the signed-in person's name on the
+ * order itself, and ignores a name in the request.
+ *
  * @param {Object} table - The table the order belongs to
  * @returns {Promise<number>} - The order's ID
  * @throws {Error} - If the backend refuses to open the order
@@ -80,9 +83,7 @@ export const openOrderForTable = async (table) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       tableId: table.tableId,
-      orderType: 'dine_in',
-      status: 'open',
-      serverName: table.serverName || 'Unknown'
+      orderType: 'dine_in'
     })
   });
   if (!orderResponse.ok) {

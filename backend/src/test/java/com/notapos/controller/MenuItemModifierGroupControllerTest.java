@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -33,6 +34,9 @@ class MenuItemModifierGroupControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private SignIn signIn;              // Says who a request comes from: .with(signIn.asServer())
+
     @MockBean
     private MenuItemModifierGroupService menuItemModifierGroupService;
 
@@ -54,7 +58,7 @@ class MenuItemModifierGroupControllerTest {
         List<MenuItemModifierGroup> links = Arrays.asList(testLink);
         when(menuItemModifierGroupService.getAllLinks()).thenReturn(links);
 
-        mockMvc.perform(get("/api/menu-item-modifier-groups"))
+        mockMvc.perform(get("/api/menu-item-modifier-groups").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].menuItemId").value(1))
                 .andExpect(jsonPath("$[0].modifierGroupId").value(1));
@@ -69,7 +73,7 @@ class MenuItemModifierGroupControllerTest {
         
         when(menuItemModifierGroupService.getLinkById(1L)).thenReturn(Optional.of(testLink));
 
-        mockMvc.perform(get("/api/menu-item-modifier-groups/1"))
+        mockMvc.perform(get("/api/menu-item-modifier-groups/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.menuItemModifierGroupId").value(1));
 
@@ -83,7 +87,7 @@ class MenuItemModifierGroupControllerTest {
         
         when(menuItemModifierGroupService.getLinkById(999L)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/menu-item-modifier-groups/999"))
+        mockMvc.perform(get("/api/menu-item-modifier-groups/999").with(signIn.asServer()))
                 .andExpect(status().isNotFound());
 
         verify(menuItemModifierGroupService).getLinkById(999L);
@@ -97,7 +101,7 @@ class MenuItemModifierGroupControllerTest {
         List<MenuItemModifierGroup> links = Arrays.asList(testLink);
         when(menuItemModifierGroupService.getModifierGroupsForMenuItem(1L)).thenReturn(links);
 
-        mockMvc.perform(get("/api/menu-item-modifier-groups/menu-item/1"))
+        mockMvc.perform(get("/api/menu-item-modifier-groups/menu-item/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].menuItemId").value(1));
 
@@ -112,7 +116,7 @@ class MenuItemModifierGroupControllerTest {
         List<MenuItemModifierGroup> links = Arrays.asList(testLink);
         when(menuItemModifierGroupService.getMenuItemsForModifierGroup(1L)).thenReturn(links);
 
-        mockMvc.perform(get("/api/menu-item-modifier-groups/modifier-group/1"))
+        mockMvc.perform(get("/api/menu-item-modifier-groups/modifier-group/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].modifierGroupId").value(1));
 
@@ -126,7 +130,7 @@ class MenuItemModifierGroupControllerTest {
         
         when(menuItemModifierGroupService.createLink(any(MenuItemModifierGroup.class))).thenReturn(testLink);
 
-        mockMvc.perform(post("/api/menu-item-modifier-groups")
+        mockMvc.perform(post("/api/menu-item-modifier-groups").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"menuItemId\":1,\"modifierGroupId\":1}"))
                 .andExpect(status().isCreated())
@@ -142,7 +146,7 @@ class MenuItemModifierGroupControllerTest {
         
         doNothing().when(menuItemModifierGroupService).deleteLink(1L);
 
-        mockMvc.perform(delete("/api/menu-item-modifier-groups/1"))
+        mockMvc.perform(delete("/api/menu-item-modifier-groups/1").with(signIn.asManager()))
                 .andExpect(status().isNoContent());
 
         verify(menuItemModifierGroupService).deleteLink(1L);

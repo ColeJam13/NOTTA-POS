@@ -7,6 +7,7 @@ import com.notapos.service.MenuItemService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.notapos.security.Permissions;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -67,12 +68,14 @@ public class MenuItemController {
         return ResponseEntity.ok(items);
     }
 
+    @PreAuthorize(Permissions.MANAGER_ONLY)                                     // Managers only
     @PostMapping                                                                        // Create new menu item
     public ResponseEntity<MenuItem> createMenuItem(@Valid @RequestBody MenuItem menuItem) {
         MenuItem created = menuItemService.createMenuItem(menuItem);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    @PreAuthorize(Permissions.MANAGER_ONLY)                                     // Managers only
     @PutMapping("/{id}")                                                        // Update menu item
     public ResponseEntity<MenuItem> updateMenuItem(
             @PathVariable Long id,
@@ -81,12 +84,14 @@ public class MenuItemController {
         return ResponseEntity.ok(updated);
     }
 
+    @PreAuthorize(Permissions.MANAGER_ONLY)                                     // Managers only
     @PutMapping("/{id}/deactivate")                                                 // Deactivate (mark inactive/soft delete) menu item
     public ResponseEntity<MenuItem> deactivateMenuItem(@PathVariable Long id) {
         MenuItem deactivated = menuItemService.deactivateMenuItem(id);
         return ResponseEntity.ok(deactivated);
     }
 
+    @PreAuthorize(Permissions.MANAGER_ONLY)                                     // Managers only
     @PutMapping("/{id}/activate")                                                   // Reactivate inactive item
     public ResponseEntity<MenuItem> activateMenuItem(@PathVariable Long id) {
         MenuItem activated = menuItemService.activateMenuItem(id);
@@ -98,18 +103,19 @@ public class MenuItemController {
         return ResponseEntity.ok(menuItemService.get86dMenuItems());
     }
 
-    @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN', 'BARTENDER')")             // The people who know what has run out
+    @PreAuthorize(Permissions.CHANGE_86)             // The people who know what has run out
     @PutMapping("/{id}/86")                                                         // 86 an item: out for now, still shown on the menu
     public ResponseEntity<MenuItem> eightySixMenuItem(@PathVariable Long id) {
         return ResponseEntity.ok(menuItemService.set86d(id, true));
     }
 
-    @PreAuthorize("hasAnyRole('MANAGER', 'KITCHEN', 'BARTENDER')")
+    @PreAuthorize(Permissions.CHANGE_86)
     @PutMapping("/{id}/un-86")                                                      // Put an 86'd item back on
     public ResponseEntity<MenuItem> unEightySixMenuItem(@PathVariable Long id) {
         return ResponseEntity.ok(menuItemService.set86d(id, false));
     }
 
+    @PreAuthorize(Permissions.MANAGER_ONLY)                                     // Managers only
     @DeleteMapping("/{id}")                                                         // Delete menu item
     public ResponseEntity<Void> deleteMenuItem(@PathVariable Long id) {
         menuItemService.deleteMenuItem(id);

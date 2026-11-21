@@ -3,6 +3,8 @@ import NavBar from '../../components/NavBar/NavBar';
 import { formatTableName } from '../../utils/formatters';
 import './ActiveOrders.css';
 import { apiFetch, getJson } from '../../services/api';
+import { useStaff } from '../../context/StaffContext';
+import { canDo } from '../../utils/roles';
 
 // A kitchen ticket that has waited this many minutes turns yellow, then red
 const WAITING_WARNING_MINUTES = 10;
@@ -32,6 +34,12 @@ const minutesSince = (timestamp) =>
  */
 function ActiveOrders({ setCurrentView, setSelectedTable }) {
   const [view, setView] = useState('FOH');
+
+  // START and COMPLETE are for the people who make the food and drinks. A server can
+  // open the BOH view to see how a ticket is coming along, but is not offered buttons
+  // the backend would refuse (it allows the kitchen, the bar, and managers).
+  const { staff } = useStaff();
+  const canMakeItems = canDo(staff?.role, 'make-items');
 
   // Kitchen display settings (BOH view only)
   const [stations, setStations] = useState([]);           // Prep stations, e.g. [{ prepStationId: 1, name: 'Kitchen' }, ...]
@@ -220,7 +228,7 @@ function ActiveOrders({ setCurrentView, setSelectedTable }) {
                             <span>{item.name}</span>
                             <span className={`status-${item.status}`}>{item.status}</span>
 
-                            {view === 'BOH' && item.status === 'pending' && (
+                            {view === 'BOH' && canMakeItems && item.status === 'pending' && (
                               <button
                                 className="btn-start"                                                   // changes status from pending to fired
                                 onClick={() => changeItemStatus(item.orderItemId, 'start', 'fired')}
@@ -229,7 +237,7 @@ function ActiveOrders({ setCurrentView, setSelectedTable }) {
                               </button>
                             )}
 
-                            {view === 'BOH' && item.status === 'fired' && (
+                            {view === 'BOH' && canMakeItems && item.status === 'fired' && (
                               <button
                                 className="btn-complete"                                                                  // Complete order button appears when status is fired
                                 onClick={() => changeItemStatus(item.orderItemId, 'complete', 'completed')}             // changed state to completed

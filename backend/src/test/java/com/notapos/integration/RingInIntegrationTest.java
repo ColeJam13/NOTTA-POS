@@ -176,7 +176,7 @@ class RingInIntegrationTest extends BaseIntegrationTest {
         // WHAT: Ring in an item with no modifiers
         // WHY: The everyday case must keep working through the one ring-in path
 
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(ringIn(openOrder, chickenCutty, "", "")))
                 .andExpect(status().isCreated())
@@ -192,7 +192,7 @@ class RingInIntegrationTest extends BaseIntegrationTest {
         // WHY: The plain ring-in path used to save whatever price the browser sent. Anyone
         //      who could reach the backend could ring in a steak for a cent.
 
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(ringIn(openOrder, chickenCutty, "", ",\"price\":0.01")))
                 .andExpect(status().isCreated())
@@ -207,7 +207,7 @@ class RingInIntegrationTest extends BaseIntegrationTest {
         // WHAT: Ring in a Combo Plate ($15.00) with French Toast (+$2.00)
         // WHY: The same path prices items with modifiers: menu price plus upcharges
 
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(ringIn(openOrder, comboPlate, String.valueOf(frenchToast.getModifierId()), ",\"price\":0.01")))
                 .andExpect(status().isCreated())
@@ -226,7 +226,7 @@ class RingInIntegrationTest extends BaseIntegrationTest {
         // WHY: The floor scenario at the top of this file. The screen is told the check was
         //      closed (409, with a code it can recognize) so it can reload the table.
 
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(ringIn(closedOrder, chickenCutty, "", OLD_SCREEN_PRICE)))
                 .andExpect(status().isConflict())
@@ -241,7 +241,7 @@ class RingInIntegrationTest extends BaseIntegrationTest {
         // WHY: Tables are linked by plain ID columns, so the database itself would accept an
         //      item pointing at nothing
 
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":999999,\"menuItemId\":" + chickenCutty.getMenuItemId() + ",\"quantity\":1,\"modifierIds\":[]" + OLD_SCREEN_PRICE + "}"))
                 .andExpect(status().isNotFound());
@@ -261,7 +261,7 @@ class RingInIntegrationTest extends BaseIntegrationTest {
         chickenCutty.setIsActive(false);
         menuItemRepository.save(chickenCutty);
 
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(ringIn(openOrder, chickenCutty, "", OLD_SCREEN_PRICE)))
                 .andExpect(status().isConflict());
@@ -277,7 +277,7 @@ class RingInIntegrationTest extends BaseIntegrationTest {
         chickenCutty.setIs86d(true);
         menuItemRepository.save(chickenCutty);
 
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(ringIn(openOrder, chickenCutty, "", OLD_SCREEN_PRICE)))
                 .andExpect(status().isConflict());
@@ -290,7 +290,7 @@ class RingInIntegrationTest extends BaseIntegrationTest {
         // WHAT: Ring in a menu item ID that is not in the database
         // WHY: The plain path used to save it anyway, leaving a line with no name and a price from the request
 
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\":" + openOrder.getOrderId() + ",\"menuItemId\":999999,\"quantity\":1,\"modifierIds\":[]" + OLD_SCREEN_PRICE + "}"))
                 .andExpect(status().isNotFound());
@@ -304,7 +304,7 @@ class RingInIntegrationTest extends BaseIntegrationTest {
         // WHY: The plain path used to skip modifier rules, so an item with a required choice
         //      could reach the kitchen without it
 
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(ringIn(openOrder, comboPlate, "", OLD_SCREEN_PRICE)))
                 .andExpect(status().isBadRequest());
@@ -323,7 +323,7 @@ class RingInIntegrationTest extends BaseIntegrationTest {
 
         OrderItem straggler = savedItem(closedOrder, chickenCutty, "draft");
 
-        mockMvc.perform(post("/api/order-items/order/" + closedOrder.getOrderId() + "/send"))
+        mockMvc.perform(post("/api/order-items/order/" + closedOrder.getOrderId() + "/send").with(signIn.asServer()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("ORDER_NOT_OPEN"));
 
@@ -337,7 +337,7 @@ class RingInIntegrationTest extends BaseIntegrationTest {
 
         OrderItem straggler = savedItem(closedOrder, chickenCutty, "draft");
 
-        mockMvc.perform(post("/api/order-items/order/" + closedOrder.getOrderId() + "/send-now"))
+        mockMvc.perform(post("/api/order-items/order/" + closedOrder.getOrderId() + "/send-now").with(signIn.asServer()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("ORDER_NOT_OPEN"));
 
@@ -351,7 +351,7 @@ class RingInIntegrationTest extends BaseIntegrationTest {
 
         OrderItem item = savedItem(closedOrder, comboPlate, "draft");
 
-        mockMvc.perform(put("/api/order-items/" + item.getOrderItemId() + "/modifiers")
+        mockMvc.perform(put("/api/order-items/" + item.getOrderItemId() + "/modifiers").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"modifierIds\":[" + frenchToast.getModifierId() + "]}"))
                 .andExpect(status().isConflict())
@@ -366,12 +366,12 @@ class RingInIntegrationTest extends BaseIntegrationTest {
         // WHAT: Ring in on an open order, then Send
         // WHY: The new checks must not get in the way of the normal flow
 
-        mockMvc.perform(post("/api/order-items")
+        mockMvc.perform(post("/api/order-items").with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(ringIn(openOrder, comboPlate, String.valueOf(whiteToast.getModifierId()), "")))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(post("/api/order-items/order/" + openOrder.getOrderId() + "/send"))
+        mockMvc.perform(post("/api/order-items/order/" + openOrder.getOrderId() + "/send").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("limbo"));
 
@@ -391,7 +391,7 @@ class RingInIntegrationTest extends BaseIntegrationTest {
 
         OrderItem item = savedItem(openOrder, chickenCutty, "draft");
 
-        mockMvc.perform(put("/api/order-items/" + item.getOrderItemId())
+        mockMvc.perform(put("/api/order-items/" + item.getOrderItemId()).with(signIn.asServer())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"quantity\":1,\"price\":0.01}"))
                 .andExpect(status().isMethodNotAllowed());

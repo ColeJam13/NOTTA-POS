@@ -102,7 +102,42 @@ class PaymentServiceTest {
         assertEquals(new BigDecimal("50.00"), created.getAmount());
         assertEquals(new BigDecimal("10.00"), created.getTipAmount());
         assertEquals("credit_card", created.getPaymentMethod());
-        verify(paymentRepository, times(1)).save(testPayment);
+        verify(paymentRepository, times(1)).save(any(Payment.class));
+    }
+
+    @Test
+    void testCreatePayment_ShouldSaveANewPaymentBuiltFromTheRequestNotTheRequestItself() {
+        // WHAT: Take a payment where the request carries a payment ID, a status, and its own amount
+        // WHY: save() on an object that carries an ID means "update that row". A request that
+        //      named an earlier payment's ID replaced that payment. The service now builds a new
+        //      Payment and copies over only what a request may say: which order, how it was
+        //      paid, the tip, and the card reference.
+
+        // Given - a request that names payment 1 and calls itself refunded
+        Order order = openOrder();
+        testPayment.setStatus("refunded");
+        when(orderRepository.findByIdLockedForUpdate(1L)).thenReturn(Optional.of(order));
+        when(orderCheckService.buildCheck(order)).thenReturn(check(2, 0, "48.54", "1.46", "50.00"));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        paymentService.createPayment(testPayment);
+
+        // Then - what was saved is a different object, with no ID (so it is always a new row)
+        org.mockito.ArgumentCaptor<Payment> saved = org.mockito.ArgumentCaptor.forClass(Payment.class);
+        verify(paymentRepository).save(saved.capture());
+        assertNotSame(testPayment, saved.getValue());
+        assertNull(saved.getValue().getPaymentId());
+
+        // ...carrying what the request is allowed to say
+        assertEquals(1L, saved.getValue().getOrderId());
+        assertEquals("credit_card", saved.getValue().getPaymentMethod());
+        assertEquals(new BigDecimal("10.00"), saved.getValue().getTipAmount());
+        assertEquals("txn_12345", saved.getValue().getTransactionReference());
+
+        // ...and not what it is not: the amount is the check's, the status is "completed"
+        assertEquals(new BigDecimal("50.00"), saved.getValue().getAmount());
+        assertEquals("completed", saved.getValue().getStatus());
     }
 
     @Test
@@ -400,58 +435,6 @@ class PaymentServiceTest {
     }
 
     @Test
-    void testUpdatePayment_ShouldUpdateFields() {
-        // WHAT: Test updating payment details
-        // WHY: Adjust tips, fix transaction references
-        
-        // Given - Payment exists
-        Payment updatedData = new Payment();
-        updatedData.setAmount(new BigDecimal("55.00"));
-        updatedData.setTipAmount(new BigDecimal("15.00"));
-        updatedData.setStatus("completed");
-
-        when(paymentRepository.findById(1L)).thenReturn(Optional.of(testPayment));
-        when(paymentRepository.save(any(Payment.class))).thenReturn(testPayment);
-
-        // When - Update payment
-        Payment result = paymentService.updatePayment(1L, updatedData);
-
-        // Then - Should update amount and tip
-        assertEquals(new BigDecimal("55.00"), result.getAmount());
-        assertEquals(new BigDecimal("15.00"), result.getTipAmount());
-        verify(paymentRepository, times(1)).save(testPayment);
-    }
-
-    @Test
-    void testUpdatePayment_WhenNotFound_ShouldThrowException() {
-        // WHAT: Test error handling when payment doesn't exist
-        // WHY: Can't update non-existent payment
-        
-        // Given - Payment doesn't exist
-        when(paymentRepository.findById(999L)).thenReturn(Optional.empty());
-
-        // When & Then - Should throw exception
-        assertThrows(RuntimeException.class, () -> {
-            paymentService.updatePayment(999L, new Payment());
-        });
-    }
-
-    @Test
-    void testDeletePayment_ShouldCallRepository() {
-        // WHAT: Test deleting a payment
-        // WHY: Remove test transactions (not recommended for production)
-        
-        // Given - Mock repository
-        doNothing().when(paymentRepository).deleteById(1L);
-
-        // When - Delete payment
-        paymentService.deletePayment(1L);
-
-        // Then - Repository delete should be called
-        verify(paymentRepository, times(1)).deleteById(1L);
-    }
-
-    @Test
     void testCreatePayment_WhenOrderAndTableExist_ShouldCloseOrderAndFreeTable() {
         // WHAT: Test payment processing with order and table closure
         // WHY: When payment is made, close the order and free up the table
@@ -482,7 +465,7 @@ class PaymentServiceTest {
         assertNotNull(order.getClosedAt());
         assertEquals("available", table.getStatus());
         
-        verify(paymentRepository, times(1)).save(testPayment);
+        verify(paymentRepository, times(1)).save(any(Payment.class));
         verify(orderRepository, times(1)).save(order);
         verify(tableRepository, times(1)).save(table);
     }
@@ -512,7 +495,7 @@ class PaymentServiceTest {
         assertEquals("closed", order.getStatus());
         assertNotNull(order.getClosedAt());
         
-        verify(paymentRepository, times(1)).save(testPayment);
+        verify(paymentRepository, times(1)).save(any(Payment.class));
         verify(orderRepository, times(1)).save(order);
         verify(tableRepository, never()).save(any());
     }

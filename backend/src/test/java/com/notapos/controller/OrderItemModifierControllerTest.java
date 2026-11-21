@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.notapos.testsupport.ControllerTest;
+import com.notapos.testsupport.SignIn;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -35,6 +36,9 @@ class OrderItemModifierControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private SignIn signIn;              // Says who a request comes from: .with(signIn.asServer())
+
     @MockBean
     private OrderItemModifierService orderItemModifierService;
 
@@ -57,7 +61,7 @@ class OrderItemModifierControllerTest {
         List<OrderItemModifier> modifiers = Arrays.asList(testModifier);
         when(orderItemModifierService.getAllOrderItemModifiers()).thenReturn(modifiers);
 
-        mockMvc.perform(get("/api/order-item-modifiers"))
+        mockMvc.perform(get("/api/order-item-modifiers").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].orderItemId").value(1))
                 .andExpect(jsonPath("$[0].modifierId").value(2));
@@ -72,7 +76,7 @@ class OrderItemModifierControllerTest {
         
         when(orderItemModifierService.getOrderItemModifierById(1L)).thenReturn(Optional.of(testModifier));
 
-        mockMvc.perform(get("/api/order-item-modifiers/1"))
+        mockMvc.perform(get("/api/order-item-modifiers/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderItemModifierId").value(1))
                 .andExpect(jsonPath("$.priceAdjustment").value(2.00));
@@ -87,7 +91,7 @@ class OrderItemModifierControllerTest {
         
         when(orderItemModifierService.getOrderItemModifierById(999L)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/order-item-modifiers/999"))
+        mockMvc.perform(get("/api/order-item-modifiers/999").with(signIn.asServer()))
                 .andExpect(status().isNotFound());
 
         verify(orderItemModifierService).getOrderItemModifierById(999L);
@@ -101,7 +105,7 @@ class OrderItemModifierControllerTest {
         List<OrderItemModifier> modifiers = Arrays.asList(testModifier);
         when(orderItemModifierService.getModifiersForOrderItem(1L)).thenReturn(modifiers);
 
-        mockMvc.perform(get("/api/order-item-modifiers/order-item/1"))
+        mockMvc.perform(get("/api/order-item-modifiers/order-item/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].orderItemId").value(1));
 
@@ -116,7 +120,7 @@ class OrderItemModifierControllerTest {
         List<OrderItemModifier> modifiers = Arrays.asList(testModifier);
         when(orderItemModifierService.getOrderItemsWithModifier(2L)).thenReturn(modifiers);
 
-        mockMvc.perform(get("/api/order-item-modifiers/modifier/2"))
+        mockMvc.perform(get("/api/order-item-modifiers/modifier/2").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].modifierId").value(2));
 
@@ -130,7 +134,7 @@ class OrderItemModifierControllerTest {
         
         when(orderItemModifierService.createOrderItemModifier(any(OrderItemModifier.class))).thenReturn(testModifier);
 
-        mockMvc.perform(post("/api/order-item-modifiers")
+        mockMvc.perform(post("/api/order-item-modifiers").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderItemId\":1,\"modifierId\":2,\"priceAdjustment\":2.00}"))
                 .andExpect(status().isCreated())
@@ -146,7 +150,7 @@ class OrderItemModifierControllerTest {
         
         doNothing().when(orderItemModifierService).deleteOrderItemModifier(1L);
 
-        mockMvc.perform(delete("/api/order-item-modifiers/1"))
+        mockMvc.perform(delete("/api/order-item-modifiers/1").with(signIn.asManager()))
                 .andExpect(status().isNoContent());
 
         verify(orderItemModifierService).deleteOrderItemModifier(1L);
@@ -162,7 +166,7 @@ class OrderItemModifierControllerTest {
                 new OrderItemModifierView(100L, 14L, "French Toast", new BigDecimal("2.00"))));
 
         // When/Then
-        mockMvc.perform(get("/api/order-item-modifiers/order/77"))
+        mockMvc.perform(get("/api/order-item-modifiers/order/77").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].orderItemId").value(100))

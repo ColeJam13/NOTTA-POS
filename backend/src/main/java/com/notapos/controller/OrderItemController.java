@@ -10,6 +10,8 @@ import com.notapos.service.OrderItemService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.notapos.security.Permissions;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -73,12 +75,14 @@ public class OrderItemController {
     // Ring in one item, with its modifiers and kitchen note if it has any. This is the only
     // way to add an item to an order. The request has no price: the backend works it out
     // (a "price" sent anyway is ignored). See OrderItemModifierService.ringInItem for the rules.
+    @PreAuthorize(Permissions.TAKE_ORDERS)                                      // Anyone who takes orders
     @PostMapping                                                                            // Create new order item, add to order
     public ResponseEntity<OrderItem> ringInItem(@Valid @RequestBody OrderItemRequest request) {
         OrderItem created = orderItemModifierService.ringInItem(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    @PreAuthorize(Permissions.TAKE_ORDERS)                                      // Anyone who takes orders
     @PutMapping("/{id}/modifiers")                                  // Replace an item's modifiers + kitchen note (only if not locked)
     public ResponseEntity<OrderItem> replaceModifiers(
             @PathVariable Long id,
@@ -87,42 +91,51 @@ public class OrderItemController {
         return ResponseEntity.ok(updated);
     }
 
+    @PreAuthorize(Permissions.TAKE_ORDERS)                                      // Anyone who takes orders
     @PostMapping("/order/{orderId}/send")                                                       // Send items, start timer
     public ResponseEntity<List<OrderItem>> sendItemsForOrder(@PathVariable Long orderId) {
         List<OrderItem> sentItems = orderItemService.sendItemsForOrder(orderId);
         return ResponseEntity.ok(sentItems);
     }
 
+    @PreAuthorize(Permissions.TAKE_ORDERS)                                      // Anyone who takes orders
     @PostMapping("/order/{orderId}/send-now")                                                   // Send every draft + limbo item now, bypass timer
     public ResponseEntity<List<OrderItem>> sendOrderNow(@PathVariable Long orderId) {
         List<OrderItem> sentItems = orderItemService.sendOrderNow(orderId);
         return ResponseEntity.ok(sentItems);
     }
 
+    @PreAuthorize(Permissions.TAKE_ORDERS)                                      // Anyone who takes orders
     @PutMapping("/{id}/send-now")                                                   // Send Item Immediately, bypass timer
     public ResponseEntity<OrderItem> sendItemNow(@PathVariable Long id) {
         OrderItem sent = orderItemService.sendItemNow(id);
         return ResponseEntity.ok(sent);
     }
 
+    @PreAuthorize(Permissions.MAKE_ORDERS)                                      // The people who make the orders
     @PutMapping("/{id}/start")                                                    // start item in kitchen
     public ResponseEntity<OrderItem> startItem(@PathVariable Long id) {
         OrderItem started = orderItemService.startItem(id);
         return ResponseEntity.ok(started);
     }
 
+    @PreAuthorize(Permissions.MAKE_ORDERS)                                      // The people who make the orders
     @PutMapping("/{id}/complete")                                               // Mark item as completed
     public ResponseEntity<OrderItem> completeItem(@PathVariable Long id) {
         OrderItem completed = orderItemService.completeItem(id);
         return ResponseEntity.ok(completed);
     }
 
+    @PreAuthorize(Permissions.TAKE_ORDERS)                                      // Anyone who takes orders
     @DeleteMapping("/{id}")                                                     // Delete order item
     public ResponseEntity<Void> deleteOrderItem(@PathVariable Long id) {
         orderItemService.deleteOrderItem(id);
         return ResponseEntity.noContent().build();
     }
 
+    // Runs the "edit window is over" sweep right now. TimerScheduledTask does this by itself
+    // every few seconds; no screen calls this. Managers only.
+    @PreAuthorize(Permissions.MANAGER_ONLY)
     @PostMapping("/lock-expired")                                                       // Lock and fire items when delay timer hits zero
     public ResponseEntity<List<OrderItem>> lockExpiredItems() {
         List<OrderItem> locked = orderItemService.lockAndSendExpiredItems();

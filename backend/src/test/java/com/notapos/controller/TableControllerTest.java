@@ -66,7 +66,7 @@ class TableControllerTest {
         when(tableService.getAllTables()).thenReturn(tables);
 
         // When/Then
-        mockMvc.perform(get("/api/tables"))
+        mockMvc.perform(get("/api/tables").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].tableNumber").value(101))
                 .andExpect(jsonPath("$[0].status").value("available"));
@@ -84,7 +84,7 @@ class TableControllerTest {
         when(tableService.getTablesByQuickOrder(false)).thenReturn(regularTables);
 
         // When/Then
-        mockMvc.perform(get("/api/tables").param("quickOrders", "false"))
+        mockMvc.perform(get("/api/tables").with(signIn.asServer()).param("quickOrders", "false"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].tableNumber").value(101))
                 .andExpect(jsonPath("$[0].status").value("available"));
@@ -110,7 +110,7 @@ class TableControllerTest {
         when(tableService.getTablesByQuickOrder(true)).thenReturn(quickOrders);
 
         // When/Then
-        mockMvc.perform(get("/api/tables").param("quickOrders", "true"))
+        mockMvc.perform(get("/api/tables").with(signIn.asServer()).param("quickOrders", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].tableNumber").value("QO1"));
 
@@ -127,7 +127,7 @@ class TableControllerTest {
         when(tableService.getTableById(1L)).thenReturn(Optional.of(testTable));
 
         // When/Then
-        mockMvc.perform(get("/api/tables/1"))
+        mockMvc.perform(get("/api/tables/1").with(signIn.asServer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tableId").value(1))
                 .andExpect(jsonPath("$.tableNumber").value(101));
@@ -144,7 +144,7 @@ class TableControllerTest {
         when(tableService.getTableById(999L)).thenReturn(Optional.empty());
 
         // When/Then
-        mockMvc.perform(get("/api/tables/999"))
+        mockMvc.perform(get("/api/tables/999").with(signIn.asServer()))
                 .andExpect(status().isNotFound());
 
         verify(tableService).getTableById(999L);
@@ -159,7 +159,7 @@ class TableControllerTest {
         when(tableService.createTable(any(RestaurantTable.class))).thenReturn(testTable);
 
         // When/Then
-        mockMvc.perform(post("/api/tables")
+        mockMvc.perform(post("/api/tables").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"tableNumber\":\"101\",\"section\":\"Main Dining\",\"seatCount\":4}"))
                 .andExpect(status().isCreated())
@@ -167,6 +167,51 @@ class TableControllerTest {
                 .andExpect(jsonPath("$.tableNumber").value(101));
 
         verify(tableService).createTable(any(RestaurantTable.class));
+    }
+
+    @Test
+    void testCreateTable_AQuickOrder_ShouldBeAllowedForAnyoneWhoTakesOrders() throws Exception {
+        // WHAT: Test POST /api/tables with isQuickOrder true, as a server
+        // WHY: A Quick Order is kept as a row in the tables list, so the order screen
+        //      creates one when a server starts a Quick Order.
+
+        when(tableService.createTable(any(RestaurantTable.class))).thenReturn(testTable);
+
+        mockMvc.perform(post("/api/tables").with(signIn.asServer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"tableNumber\":\"QO1\",\"section\":\"Quick Orders\",\"seatCount\":0,\"isQuickOrder\":true}"))
+                .andExpect(status().isCreated());
+
+        verify(tableService).createTable(any(RestaurantTable.class));
+    }
+
+    @Test
+    void testCreateTable_OnTheFloor_ShouldBeRefusedForAnyoneButAManager() throws Exception {
+        // WHAT: Test POST /api/tables for a table that is not a Quick Order, as a server
+        // WHY: Adding a table to the floor changes the floor layout, which is the manager's.
+        //      The role alone cannot decide this one (a server may create SOME tables), so
+        //      the controller checks it after reading the request.
+
+        mockMvc.perform(post("/api/tables").with(signIn.asServer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"tableNumber\":\"101\",\"section\":\"Main Dining\",\"seatCount\":4}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Your role (server) is not allowed to do that."));
+
+        verify(tableService, never()).createTable(any());
+    }
+
+    @Test
+    void testCreateTable_AsTheKitchen_ShouldBeRefusedEvenForAQuickOrder() throws Exception {
+        // WHAT: Test POST /api/tables with isQuickOrder true, as the kitchen
+        // WHY: The kitchen does not take orders (Permissions.TAKE_ORDERS)
+
+        mockMvc.perform(post("/api/tables").with(signIn.asKitchen())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"tableNumber\":\"QO1\",\"section\":\"Quick Orders\",\"seatCount\":0,\"isQuickOrder\":true}"))
+                .andExpect(status().isForbidden());
+
+        verify(tableService, never()).createTable(any());
     }
 
     @Test
@@ -179,7 +224,7 @@ class TableControllerTest {
         when(tableService.updateTableStatus(eq(1L), eq("occupied"))).thenReturn(testTable);
 
         // When/Then
-        mockMvc.perform(put("/api/tables/1/status")
+        mockMvc.perform(put("/api/tables/1/status").with(signIn.asManager())
                 .param("status", "occupied"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("occupied"));
@@ -197,7 +242,7 @@ class TableControllerTest {
                 .thenThrow(new ResourceNotFoundException("Table not found"));
 
         // When/Then
-        mockMvc.perform(put("/api/tables/999/status")
+        mockMvc.perform(put("/api/tables/999/status").with(signIn.asManager())
                 .param("status", "occupied"))
                 .andExpect(status().isNotFound());
 
@@ -215,7 +260,7 @@ class TableControllerTest {
         when(tableService.updateTable(eq(1L), any(RestaurantTable.class))).thenReturn(testTable);
 
         // When/Then
-        mockMvc.perform(put("/api/tables/1")
+        mockMvc.perform(put("/api/tables/1").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"occupied\",\"seatCount\":6}"))
                 .andExpect(status().isOk())
@@ -235,7 +280,7 @@ class TableControllerTest {
                 .thenThrow(new ResourceNotFoundException("Table not found"));
 
         // When/Then
-        mockMvc.perform(put("/api/tables/999")
+        mockMvc.perform(put("/api/tables/999").with(signIn.asManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"occupied\"}"))
                 .andExpect(status().isNotFound());

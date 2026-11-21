@@ -65,6 +65,11 @@ public class TableService {
 
     @Transactional
     public RestaurantTable createTable(RestaurantTable table) {             // Create new table
+        // Creating always creates. save() on an object that carries an ID means "update
+        // that row", so a request naming an existing table used to rewrite it: its number,
+        // its place on the floor, whether it is a Quick Order. Clearing the ID makes this
+        // a new row whatever the request said.
+        table.setTableId(null);
         return tableRepository.save(table);
     }
 
