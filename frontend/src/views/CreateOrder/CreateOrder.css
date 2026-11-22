@@ -1,10 +1,14 @@
+/* The left half: the order. It is as tall as the room under the nav bar (it used to be
+   "height: 100vh", the height of the whole window, so its bottom hung below the window
+   by the height of the nav bar and whatever was down there was cut off). Being exactly
+   as tall as the room it has is what lets the list of items below give way. */
 .order-panel {
   width: 40%;
   padding: var(--space-20);
   border-right: var(--border-width) solid var(--color-border);
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 0;
 }
 
 .order-panel h2 {
@@ -59,13 +63,19 @@
   50% { opacity: 0.7; }
 }
 
+/* The list of items. It is 35% of the window's height when there is room, and it is the
+   one thing in the panel that gives way when there is not: the title, the totals, and
+   the buttons keep their size and the list gets shorter (it scrolls). Before, the list
+   was always 35% and it was CLOSE ORDER, at the bottom, that went off the screen: in a
+   short window, and in any template whose font makes each line a little taller than
+   8-Bit's pixel font does. It never gets shorter than room for about two items. */
 .order-items-list {
   margin-top: var(--space-20);
   flex: 1;
   overflow-y: auto;
   margin-bottom: var(--space-20);
   max-height: 35vh;
-  min-height: 35vh;
+  min-height: 120px;
 }
 
 .order-item {
