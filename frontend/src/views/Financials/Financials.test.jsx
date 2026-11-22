@@ -208,3 +208,66 @@ test('this month asks for the first day of the month through its last day', asyn
   const lastDay = dateBoxValue(new Date(now.getFullYear(), now.getMonth() + 1, 0));
   await waitFor(() => expect(requests).toContain(`/api/reports/financials?from=${firstDay}T00:00:00&to=${lastDay}T23:59:59`));
 });
+
+// ---------------------------------------------------------------------------
+// The period buttons. Written before the buttons moved into a component of their own
+// (components/PeriodPicker, shared with the leaderboard), against the screen as it was,
+// so the move can be shown to have changed nothing.
+// ---------------------------------------------------------------------------
+
+test('this week asks for Sunday through the last second of today', async () => {
+  render(<Financials setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
+  await within(statCard('Orders Closed')).findByText('1');
+
+  await userEvent.click(screen.getByRole('button', { name: 'THIS WEEK' }));
+
+  const now = new Date();
+  const sunday = dateBoxValue(new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()));
+  const today = dateBoxValue(now);
+  await waitFor(() => expect(requests).toContain(`/api/reports/financials?from=${sunday}T00:00:00&to=${today}T23:59:59`));
+});
+
+test('the chosen period is the lit button, and there is always exactly one', async () => {
+  render(<Financials setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
+  await within(statCard('Orders Closed')).findByText('1');
+
+  const lit = () => [...document.querySelectorAll('.period-btn.active')].map(button => button.textContent);
+  expect([...document.querySelectorAll('.period-btn')].map(button => button.textContent)).toEqual(['TODAY', 'THIS WEEK', 'THIS MONTH', 'CUSTOM']);
+  expect(lit()).toEqual(['TODAY']);
+
+  await userEvent.click(screen.getByRole('button', { name: 'THIS MONTH' }));
+  expect(lit()).toEqual(['THIS MONTH']);
+});
+
+test('the two date boxes are only there for a custom period, and start empty', async () => {
+  render(<Financials setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
+  await within(statCard('Orders Closed')).findByText('1');
+  expect(document.querySelectorAll('input[type="date"]')).toHaveLength(0);
+
+  await userEvent.click(screen.getByRole('button', { name: 'CUSTOM' }));
+
+  const boxes = [...document.querySelectorAll('input[type="date"]')];
+  expect(boxes.map(box => box.value)).toEqual(['', '']);
+  expect(screen.getByText('Start Date:')).toBeInTheDocument();
+  expect(screen.getByText('End Date:')).toBeInTheDocument();
+
+  // With no dates picked it asks for everything up to the end of today
+  const today = dateBoxValue(new Date());
+  await waitFor(() => expect(requests).toContain(`/api/reports/financials?from=2000-01-01T00:00:00&to=${today}T23:59:59`));
+
+  // Going back to a named period takes the boxes away again
+  await userEvent.click(screen.getByRole('button', { name: 'TODAY' }));
+  expect(document.querySelectorAll('input[type="date"]')).toHaveLength(0);
+});
+
+test('a custom period with only a start date runs from that day to the end of today', async () => {
+  render(<Financials setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
+  await within(statCard('Orders Closed')).findByText('1');
+  await userEvent.click(screen.getByRole('button', { name: 'CUSTOM' }));
+
+  const [startBox] = document.querySelectorAll('input[type="date"]');
+  fireEvent.change(startBox, { target: { value: '2026-03-05' } });
+
+  const today = dateBoxValue(new Date());
+  await waitFor(() => expect(requests).toContain(`/api/reports/financials?from=2026-03-05T00:00:00&to=${today}T23:59:59`));
+});
