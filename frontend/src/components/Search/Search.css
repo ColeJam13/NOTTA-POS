@@ -146,3 +146,25 @@ button.search-row {
   border-color: var(--color-border-primary);
   color: var(--color-on-primary);
 }
+
+/* ----- On a phone (see App.css) -----
+   The panel hangs under the whole top bar (the search box's row is the bar's second
+   row there), nearly as wide as the screen. */
+@media (max-width: 700px) {
+  .search-panel {
+    left: var(--space-8);
+    right: var(--space-8);
+    max-height: 60dvh;
+  }
+
+  /* The four "closed checks from" buttons, big enough to tap, two to a line if they must */
+  .search-footer {
+    flex-wrap: wrap;
+    gap: var(--space-6);
+  }
+
+  .search-period {
+    min-height: 44px;
+    padding: var(--space-6) var(--space-10);
+  }
+}

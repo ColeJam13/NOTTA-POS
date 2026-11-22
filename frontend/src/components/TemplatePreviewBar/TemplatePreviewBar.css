@@ -63,3 +63,11 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ----- On a phone (see App.css): the words on one line, the two buttons under them ----- */
+@media (max-width: 700px) {
+  .template-preview-bar {
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-10);
+  }
+}

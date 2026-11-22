@@ -1,0 +1,18 @@
+/* Hidden everywhere but on a phone (see WideScreenNote.jsx) */
+.wide-screen-note {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .wide-screen-note {
+    display: block;
+    margin-bottom: var(--space-12);
+    padding: var(--space-10) var(--space-12);
+    background: var(--color-surface);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-box);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-10);
+    line-height: var(--line-height);
+  }
+}

@@ -4,6 +4,7 @@ import { apiFetch } from '../../services/api';
 import { ROLE_LABELS } from '../../utils/roles';
 import PausedTerminalRow from './PausedTerminalRow';
 import { useStaff } from '../../context/StaffContext';
+import WideScreenNote from '../../components/WideScreenNote';
 import './Staff.css';
 
 // An empty "add staff" form
@@ -200,6 +201,8 @@ function Staff({ setCurrentView, setSelectedTable }) {
       <NavBar currentView="staff" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />
       <div className="staff-page">
         <h2>STAFF</h2>
+        {/* Drawn on a phone only */}
+        <WideScreenNote>This screen is laid out for a tablet or a wider screen. On a phone everything is here, one thing under another.</WideScreenNote>
 
         {/* --- Terminals paused for wrong PINs --- */}
         {/* A <section> with a name is a "region": a screen reader can jump to it, and the tests find it by that name */}

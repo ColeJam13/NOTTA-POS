@@ -73,3 +73,29 @@
   outline: none;
   border-color: var(--color-border-primary);
 }
+
+/* ----- On a phone (see App.css): the four buttons share two lines, the two dates one each ----- */
+@media (max-width: 700px) {
+  .time-period-selector {
+    flex-wrap: wrap;
+    gap: var(--space-8);
+    margin-bottom: var(--space-12);
+  }
+
+  .period-btn {
+    flex: 1 1 40%;
+    min-height: 44px;
+    padding: var(--space-8);
+  }
+
+  .custom-date-range {
+    flex-direction: column;
+    gap: var(--space-12);
+    padding: var(--space-12);
+    margin-bottom: var(--space-12);
+  }
+
+  .date-input-group input[type="date"] {
+    min-height: 44px;
+  }
+}

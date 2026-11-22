@@ -258,3 +258,31 @@
   background: var(--color-disabled-fill);
   border-color: var(--color-border-muted);
 }
+
+/* ----- On a phone (see App.css) -----
+   The picker takes the whole screen, so the choices have all the room there is. The
+   list scrolls; the price and the two buttons stay at the bottom. Choices are one to
+   a line: two columns of 150 pixels cut the longer names short. */
+@media (max-width: 700px) {
+  .modifier-picker {
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .modifier-options {
+    grid-template-columns: 1fr;
+  }
+
+  .modifier-picker-actions {
+    flex: 1;
+  }
+
+  .modifier-picker-cancel,
+  .modifier-picker-confirm {
+    flex: 1;
+    min-height: 52px;
+  }
+}

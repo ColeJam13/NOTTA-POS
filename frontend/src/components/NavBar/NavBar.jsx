@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import './NavBar.css';
 import { LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext';
@@ -27,6 +28,19 @@ const NAV_BUTTONS = [
 
 function NavBar({ currentView, setCurrentView, setSelectedTable, confirmLeave }) {  // Add setSelectedTable prop
   const { staff, signOut } = useStaff();          // Who is signed in (null when this bar is drawn on its own in a test)
+
+  // On a phone the row of screen buttons is a strip that scrolls sideways (NavBar.css),
+  // and every screen draws its own bar, so the strip would start at its left end each
+  // time. This brings the button of the screen that is open into view. On a wide screen
+  // every button is already visible and it does nothing.
+  const buttons = useRef(null);
+  useEffect(() => {
+    const active = buttons.current && buttons.current.querySelector('.nav-btn.active');
+    // (A test browser has no scrollIntoView; there is nothing to scroll there either.)
+    if (active && typeof active.scrollIntoView === 'function') {
+      active.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }
+  }, [currentView]);
 
   // Every button in the bar goes through here, so the "unsaved work" question is
   // asked in one place - and asked BEFORE anything about the current screen changes.
@@ -93,15 +107,17 @@ function NavBar({ currentView, setCurrentView, setSelectedTable, confirmLeave })
                 <span className="user-name">{staff.name}</span>
                 <span className="user-role">{ROLE_LABELS[staff.role] || staff.role}</span>
               </div>
-              <button className="sign-out-btn" onClick={() => { if (!confirmLeave || confirmLeave()) signOut(); }}>
-                <LogOut size={16} /> SIGN OUT
+              {/* On a phone only the icon is drawn (NavBar.css), so the button says what it is
+                  in aria-label too */}
+              <button className="sign-out-btn" aria-label="SIGN OUT" onClick={() => { if (!confirmLeave || confirmLeave()) signOut(); }}>
+                <LogOut size={16} aria-hidden="true" /> <span className="sign-out-label">SIGN OUT</span>
               </button>
             </div>
           )}
         </div>
       </div>
       
-      <div className="navbar-bottom">
+      <div className="navbar-bottom" ref={buttons}>
         {/* Only the screens this person's role may open are offered (see utils/roles.js) */}
         {NAV_BUTTONS.filter(button => canOpenScreen(staff?.role, button.view)).map(button => (
           <button

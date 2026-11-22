@@ -197,3 +197,32 @@
 .notification-count {
   color: var(--color-text-muted);
 }
+
+/* ----- On a phone (see App.css) -----
+   The panel is nearly as wide as the screen and hangs under the whole top bar, not
+   under the bell: the bell is near the right edge, and a 400-pixel panel hung from it
+   would start off the left side of the screen. */
+@media (max-width: 700px) {
+  .notifications {
+    position: static;                    /* So the panel is placed against the top bar's row (NavBar.css) */
+  }
+
+  .notification-panel {
+    left: var(--space-8);
+    right: var(--space-8);
+    width: auto;
+    max-width: none;
+    max-height: 70dvh;
+  }
+
+  .notification-dismiss,
+  .notification-dismiss-all,
+  .notification-send {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .notification-write input {
+    min-height: 44px;
+  }
+}

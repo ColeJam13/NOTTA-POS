@@ -53,3 +53,10 @@
   border-color: var(--color-border-danger);
   color: var(--color-danger);
 }
+
+/* ----- On a phone (see App.css): SIGN OUT is big enough to tap ----- */
+@media (max-width: 700px) {
+  .change-pin-sign-out {
+    min-height: 44px;
+  }
+}

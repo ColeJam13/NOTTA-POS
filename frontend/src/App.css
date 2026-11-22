@@ -70,3 +70,43 @@ flex-direction: column;
 height: 100vh;
 background: var(--color-bg);
 }
+
+/* ============================================================================
+   ON A PHONE
+
+   Every stylesheet's phone rules are under one condition, written the same way
+   everywhere: @media (max-width: 700px). "A window up to 700 pixels wide" is any
+   phone held upright, and most held sideways; a tablet is 768 or more and keeps the
+   layout the app has always had. (A media query cannot read a token, so the number
+   is written out; phone.test.js fails if a stylesheet uses another.)
+
+   Three rules for anything drawn on a phone:
+     - a thing to tap is at least 44 pixels in each direction;
+     - the page never scrolls sideways (a strip or a table may, inside itself);
+     - nothing is shown or reachable only by hovering: a finger cannot hover.
+   ============================================================================ */
+@media (max-width: 700px) {
+  /* 100vh on a phone is the height of the screen with the browser's address bar
+     tucked away, so the bottom of the page sits under the bar when it is showing.
+     100dvh ("dynamic viewport height") is the height that is really visible now. */
+  .page-with-nav,
+  .app {
+    height: 100dvh;
+  }
+
+  /* Every screen's own area (tables-page, staff-page, ...) is the part between the
+     top bar and the row of buttons at the bottom. Each sets a wide margin around
+     itself for a tablet; a phone has no room to spare. The selector is written this
+     way ("a class that ends in -page, directly inside the screen") so that it
+     outranks each screen's own rule without naming every screen. */
+  .page-with-nav > [class$="-page"] {
+    padding: var(--space-12);
+    min-height: 0;
+  }
+
+  .page-with-nav > [class$="-page"] h2 {
+    font-size: var(--font-size-14);
+    padding: var(--space-10);
+    margin-bottom: var(--space-12);
+  }
+}

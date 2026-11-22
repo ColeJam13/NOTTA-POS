@@ -551,3 +551,100 @@
   color: var(--color-text);
   font-size: var(--font-size-12);
 }
+
+/* ----- On a phone (see App.css) -----
+   ACTIVE above FINISHED in place of side by side. The leaderboard is a table of seven
+   columns: it scrolls sideways inside its own box (.leaderboard-scroll), the page does not. */
+@media (max-width: 700px) {
+  .challenges-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-12);
+    margin-bottom: var(--space-15);
+  }
+
+  .challenges-section {
+    padding: var(--space-12);
+    min-width: 0;                        /* So the table inside can be narrower than its own contents, and scroll */
+  }
+
+  .section-title {
+    margin-bottom: var(--space-12);
+  }
+
+  .challenge-card {
+    padding: var(--space-12);
+    margin-bottom: var(--space-12);
+  }
+
+  .challenge-header {
+    flex-wrap: wrap;
+  }
+
+  .challenge-footer {
+    flex-wrap: wrap;
+  }
+
+  .challenge-btn {
+    min-height: 44px;
+  }
+
+  .challenges-toolbar {
+    margin-bottom: var(--space-12);
+  }
+
+  .leaderboard-about {
+    line-height: var(--line-height);
+  }
+
+  .leaderboard-row td {
+    padding: var(--space-10);
+  }
+
+  .no-challenges,
+  .leaderboard-empty {
+    padding: var(--space-20);
+  }
+
+  /* The form takes the whole screen; its buttons stay at the bottom while the rest scrolls */
+  .challenge-form {
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    padding: var(--space-15);
+  }
+
+  .challenge-form input,
+  .challenge-form select {
+    min-height: 44px;
+  }
+
+  .challenge-form-row label {
+    flex: 1 1 100%;
+  }
+
+  .challenge-form-buttons {
+    position: sticky;
+    bottom: 0;
+    padding: var(--space-10) 0;
+    background: var(--color-surface);
+  }
+
+  .challenge-form-buttons .challenge-btn {
+    flex: 1;
+    min-height: 52px;
+  }
+
+  .leaderboard-row td.leaderboard-name,
+  .challenge-name,
+  .section-title {
+    line-height: var(--line-height);
+  }
+
+  /* Words that wrap onto a second line here need room between the lines */
+  .challenge-btn,
+  .challenge-form label {
+    line-height: var(--line-height);
+  }
+}

@@ -11,6 +11,12 @@
   min-height: 0;
 }
 
+/* The MENU / order switch is for a phone (see the end of this file). Anywhere wider,
+   both halves are on screen and there is nothing to switch. */
+.order-view-toggle {
+  display: none;
+}
+
 .order-panel h2 {
   text-align: center;
   margin-top: var(--space-10);
@@ -407,4 +413,201 @@
   font-size: var(--font-size-18);
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--letter-spacing-wide);
+}
+
+/* ============================================================================
+   ON A PHONE (see App.css)
+
+   Two halves side by side do not fit, so a phone shows ONE at a time, with a switch
+   at the top to change between them. Top to bottom:
+
+     [ MENU ] [ TABLE W1 (2) ]        the switch (.order-view-toggle)
+     the menu   OR   the order         whichever is chosen; it takes the room that is
+                                       left, and scrolls
+     12 seconds to edit                the message bar: always there, so the countdown
+                                       is seen while more items are rung in
+     TOTAL: $31.93                     always there
+     [SAVE DRAFT] [SEND] [CLOSE]       always there, at the bottom: within a thumb's reach
+
+   None of this moves anything in the markup. ".order-panel { display: contents }"
+   takes the left half's box away and leaves its parts (title, message bar, list,
+   totals, buttons) as direct parts of the screen's column, beside the menu; "order"
+   then says where each one goes.
+   ============================================================================ */
+@media (max-width: 700px) {
+  .app {
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: auto;
+  }
+
+  .order-panel {
+    display: contents;
+  }
+
+  /* ----- The switch ----- */
+  .order-view-toggle {
+    display: flex;
+    order: 0;
+    flex-shrink: 0;
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-10);
+  }
+
+  .order-view-btn {
+    flex: 1;
+    min-height: 44px;
+    padding: var(--space-8);
+    background: transparent;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-button);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    font-size: var(--font-size-12);
+    font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .order-view-btn.active {
+    background: var(--color-accent-fill);
+    color: var(--color-on-accent);
+  }
+
+  /* ----- The middle: one half or the other ----- */
+  .order-panel h2 {
+    order: 1;
+    margin: 0 var(--space-10) var(--space-8);
+    font-size: var(--font-size-12);
+  }
+
+  .order-items-list {
+    order: 2;
+    flex: 1;
+    min-height: 0;
+    max-height: none;                    /* On a phone the list has the whole middle, not 35% of the window */
+    margin: 0 var(--space-10);
+  }
+
+  .menu-panel {
+    order: 2;
+    flex: 1;
+    min-height: 0;
+    width: auto;
+    padding: 0 var(--space-10) var(--space-10);
+    overflow-y: auto;
+  }
+
+  .phone-shows-menu .order-panel h2,
+  .phone-shows-menu .order-items-list,
+  .phone-shows-order .menu-panel {
+    display: none;
+  }
+
+  /* ----- The bottom: the message, the total, the buttons ----- */
+  .notification-bar {
+    order: 3;
+    flex-shrink: 0;
+    margin: var(--space-8) var(--space-10) 0;
+  }
+
+  .order-totals {
+    order: 4;
+    margin: 0 var(--space-10);
+    padding-top: var(--space-4);
+    border-top: none;
+  }
+
+  .total-row {
+    padding: var(--space-4) 0;
+  }
+
+  .total-row.total {
+    font-size: var(--font-size-16);
+    margin-top: 0;
+    padding-top: var(--space-6);
+    border-top: none;
+  }
+
+  /* While ringing in, the one number that matters is the total. Subtotal and tax are
+     on the order half. */
+  .phone-shows-menu .total-row:not(.total) {
+    display: none;
+  }
+
+  /* One row of three in place of two rows: SAVE DRAFT and SEND, then CLOSE ORDER */
+  .order-actions {
+    order: 5;
+    flex-direction: row;
+    flex-shrink: 0;
+    margin: var(--space-6) var(--space-10) var(--space-8);
+  }
+
+  .action-row {
+    flex: 2;
+  }
+
+  .action-row button,
+  .btn-close-order {
+    min-height: 52px;
+    padding: var(--space-8);
+  }
+
+  .btn-close-order {
+    flex: 1;
+    width: auto;
+  }
+
+  /* ----- The menu ----- */
+  /* The categories: one line that scrolls sideways, in place of several wrapped lines */
+  .category-tabs {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    gap: var(--space-8);
+    margin-bottom: var(--space-10);
+    padding-bottom: var(--space-4);
+  }
+
+  .category-tab {
+    flex-shrink: 0;
+    min-height: 44px;
+    padding: var(--space-8) var(--space-14);
+    font-size: var(--font-size-12);
+    white-space: nowrap;
+  }
+
+  .menu-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-8);
+  }
+
+  .menu-item-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 76px;
+    padding: var(--space-10) var(--space-8);
+  }
+
+  .menu-item-card h3 {
+    font-size: var(--font-size-12);
+    line-height: var(--line-height);
+    margin-bottom: var(--space-6);
+    overflow-wrap: anywhere;
+  }
+
+  .menu-item-card .price {
+    font-size: var(--font-size-14);
+  }
+
+  /* ----- An order line: the pencil and the x are big enough to land on ----- */
+  .btn-edit-item,
+  .btn-remove {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+    margin-left: var(--space-4);
+  }
 }
