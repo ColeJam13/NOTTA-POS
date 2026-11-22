@@ -179,6 +179,14 @@ class JsonShapeIntegrationTest extends BaseIntegrationTest {
                 new Case("quick-orders-overview-as-manager", "manager", "/api/tables/overview?quickOrders=true"),
                 // The kitchen display and Active Orders
                 new Case("active-orders", "server", "/api/orders/active"),
+
+                // The search box. Two searches, to record a result of each kind the fixed
+                // rows can give: a table and an open check, then a menu item. (A closed check
+                // in a search answer is the same shape as on the Tables screen, recorded
+                // above; none is found here because search only looks back from the real
+                // "today", and the fixed rows are dated.)
+                new Case("search-table-and-open-check", "server", "/api/search?q=w1"),
+                new Case("search-menu-item", "server", "/api/search?q=toast"),
                 // The order screen reopening a check, and the Payment window
                 new Case("order", "server", "/api/orders/9001"),
                 new Case("orders-for-table", "server", "/api/orders/table/9001"),

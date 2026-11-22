@@ -216,6 +216,9 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
         endpoint("GET /api/tables/{id}", anyoneSignedIn, () -> get("/api/tables/" + busyTable.getTableId()));
         endpoint("GET /api/tables/overview", anyoneSignedIn, () -> get("/api/tables/overview").param("quickOrders", "false"));
 
+        // The search box in the top bar: every role (Permissions.SEARCH, step N2)
+        endpoint("GET /api/search", anyoneSignedIn, () -> get("/api/search").param("q", "w1"));
+
         endpoint("GET /api/table-status-logs", anyoneSignedIn, () -> get("/api/table-status-logs"));
         endpoint("GET /api/table-status-logs/{id}", anyoneSignedIn, () -> get("/api/table-status-logs/" + statusLog.getLogId()));
         endpoint("GET /api/table-status-logs/table/{tableId}", anyoneSignedIn, () -> get("/api/table-status-logs/table/" + busyTable.getTableId()));

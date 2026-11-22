@@ -133,6 +133,31 @@ test('the 86 board, the PIN pad, payment, messages, and paused terminals are all
   expect(piece('BUTTONS').querySelector('.btn-close-order:disabled')).not.toBeNull();
 });
 
+test('the search panel is shown with a result of each kind, one of them under the arrow keys, and its empty state', async () => {
+  renderGallery();
+  const search = piece('SEARCH');
+
+  // One group per kind of thing the box finds, and a word for each state
+  for (const title of ['TABLES', 'OPEN CHECKS', 'CLOSED CHECKS', 'MENU']) {
+    expect(within(search).getByRole('group', { name: title })).toBeInTheDocument();
+  }
+  expect(within(search).getByText('OCCUPIED')).toBeInTheDocument();
+  expect(within(search).getByText("86'D")).toBeInTheDocument();
+  expect(within(search).getByText('Quick Order QO7')).toBeInTheDocument();
+  // The result the arrow keys are on, a group that was cut short, and a result that is
+  // only information (a menu item, for someone who may not change the 86 board)
+  expect(search.querySelector('.search-row.highlighted')).toHaveTextContent('Table W7');
+  expect(within(search).getByText(/Showing the first 2/)).toBeInTheDocument();
+  expect(search.querySelector('div.search-row[aria-disabled="true"]')).not.toBeNull();
+  // ...and what the panel says when nothing matches
+  expect(within(search).getByText('Nothing found for \u201czucchini\u201d.')).toBeInTheDocument();
+
+  // The period buttons really switch (both panels follow), and ask the backend nothing
+  await userEvent.click(within(search).getAllByRole('button', { name: '7 DAYS' })[0]);
+  expect(within(search).getAllByRole('button', { name: '7 DAYS' })[1]).toHaveAttribute('aria-pressed', 'true');
+  expect(global.fetch).not.toHaveBeenCalled();
+});
+
 test('pressing things in the gallery touches no order and asks nothing of the backend', async () => {
   renderGallery();
 

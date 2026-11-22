@@ -192,8 +192,11 @@ public class TableOverviewService {
         return order.getStaffId() != null && order.getStaffId().equals(viewer.staffId());
     }
 
-    // One card per closed order, in the order the query returned them (newest first)
-    private List<ClosedCheckView> buildClosedChecks(List<Order> closedOrders,
+    // One card per closed order, in the order the query returned them (newest first).
+    // Not private: the search box (SearchService, in this package) shows closed checks too,
+    // and must show them under exactly this rule about tips. It hands in the checks it
+    // found and gets back the same views this screen gets; the rule is written once.
+    List<ClosedCheckView> buildClosedChecks(List<Order> closedOrders,
                                                     Map<Long, RestaurantTable> tablesById,
                                                     Map<Long, List<OrderItem>> itemsByOrderId,
                                                     StaffSession viewer) {
