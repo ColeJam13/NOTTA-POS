@@ -17,8 +17,8 @@ import { TEST_LOOK } from '../../templates/testSupport';
  * tested with that component), so these tests replace fetch with one that fails the
  * test if it is ever called.
  *
- * The app has one real template so far. A second, made-up one is added here so there
- * is something to preview.
+ * A made-up template is added to the real ones here, so these tests have one to
+ * preview that does not change when a real template is added, renamed, or dropped.
  */
 
 const onThePage = () => document.documentElement.getAttribute('data-template');
@@ -48,7 +48,8 @@ test('the screen lists every template with its name, what it looks like, light o
   expect(within(card('8-bit')).getByRole('heading', { name: '8-Bit' })).toBeInTheDocument();
   expect(within(card('8-bit')).getByText(/pixel font/)).toBeInTheDocument();
   expect(within(card('test-look')).getByRole('heading', { name: 'Test Look' })).toBeInTheDocument();
-  expect(within(section).getAllByTestId(/^template-/)).toHaveLength(2);
+  // One card per template: the real ones and the made-up one
+  expect(within(section).getAllByTestId(/^template-/)).toHaveLength(TEMPLATES.length);
 
   expect(within(card('8-bit')).getByText('DARK')).toBeInTheDocument();
   expect(within(card('test-look')).getByText('LIGHT')).toBeInTheDocument();
@@ -110,14 +111,19 @@ test('when the restaurant\'s template changes while the screen is open, IN USE m
   expect(within(card('8-bit')).getByRole('button', { name: 'Preview 8-Bit' })).toBeInTheDocument();
 });
 
-test('with a single template, the screen says more are coming and offers nothing to press', () => {
-  TEMPLATES.pop();                                    // Only the real one
+test('the first batch of new templates is offered, each marked light or dark and with the name as its logo', () => {
   renderScreen();
 
-  expect(screen.getByText(/only template so far/)).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /^Preview/ })).not.toBeInTheDocument();
-
-  TEMPLATES.push(TEST_LOOK);    // For afterEach to remove
+  // What a manager is told before previewing: Plain and Coffee Shop are light pages,
+  // Nightclub and Fancy dark ones
+  const offered = { plain: ['Plain', 'LIGHT'], 'coffee-shop': ['Coffee Shop', 'LIGHT'], nightclub: ['Nightclub', 'DARK'], fancy: ['Fancy', 'DARK'] };
+  for (const [id, [name, scheme]] of Object.entries(offered)) {
+    expect(within(card(id)).getByRole('heading', { name })).toBeInTheDocument();
+    expect(within(card(id)).getByText(scheme)).toBeInTheDocument();
+    expect(within(card(id)).getByRole('button', { name: `Preview ${name}` })).toBeInTheDocument();
+    // The NOTTA-POS artwork is drawn in 8-Bit's colors and belongs to 8-Bit alone
+    expect(TEMPLATES.find(template => template.id === id).logo).toBe('text');
+  }
 });
 
 test('OPEN THE GALLERY goes to the gallery', async () => {

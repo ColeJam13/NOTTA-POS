@@ -87,3 +87,47 @@ export const lowestContrast = (foregroundValue, backgroundValue) => {
   if (fronts.length === 0 || backs.length === 0) return null;
   return Math.min(...fronts.flatMap(front => backs.map(back => contrastRatio(front, back))));
 };
+
+/**
+ * HOW DIFFERENT TWO COLORS LOOK, as one number. The arithmetic behind distinct.test.js.
+ *
+ * Contrast (above) only compares brightness: a red and a green of the same brightness
+ * have a contrast of 1 to 1 and are still obviously different colors. To ask "could
+ * these two be mistaken for each other?" the colors are first moved into "Lab", a way
+ * of writing a color as three numbers (how light, how red-or-green, how
+ * yellow-or-blue) that was designed so that equal distances look like roughly equal
+ * differences to the eye. The difference is then simply the distance between the two.
+ *
+ * Reading the number (the formula is the one known as CIE76):
+ *     about 2    the smallest difference an eye can notice side by side
+ *     10 to 20   clearly two shades of one color
+ *     30 or more two different colors at a glance
+ *     100        about as far apart as black and white
+ *
+ * It is a rough measure, good for catching "these are nearly the same color", not for
+ * ranking palettes.
+ */
+const toLab = ({ r, g, b }) => {
+  // 1. From the 0 to 255 a screen is told, to how much light it really gives off
+  const light = (value) => {
+    const share = value / 255;
+    return share <= 0.04045 ? share / 12.92 : ((share + 0.055) / 1.055) ** 2.4;
+  };
+  const [red, green, blue] = [light(r), light(g), light(b)];
+  // 2. To the three numbers color science measures in (XYZ), relative to white
+  const x = (0.4124 * red + 0.3576 * green + 0.1805 * blue) / 0.95047;
+  const y = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+  const z = (0.0193 * red + 0.1192 * green + 0.9505 * blue) / 1.08883;
+  // 3. To Lab: the eye notices a step between two dark colors more than between two bright ones
+  const curve = (value) => (value > 0.008856 ? Math.cbrt(value) : 7.787 * value + 16 / 116);
+  return { lightness: 116 * curve(y) - 16, redGreen: 500 * (curve(x) - curve(y)), yellowBlue: 200 * (curve(y) - curve(z)) };
+};
+
+/**
+ * How different two solid colors look: 0 for the same color, 30 or more for two colors
+ * nobody would confuse.
+ */
+export const colorDifference = (one, other) => {
+  const a = toLab(one), b = toLab(other);
+  return Math.hypot(a.lightness - b.lightness, a.redGreen - b.redGreen, a.yellowBlue - b.yellowBlue);
+};

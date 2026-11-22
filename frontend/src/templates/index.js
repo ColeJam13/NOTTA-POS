@@ -3,6 +3,10 @@
 // override it, and a later stylesheet wins.
 import './fonts.css';
 import './eight-bit.css';
+import './plain.css';
+import './coffee-shop.css';
+import './nightclub.css';
+import './fancy.css';
 import { useSyncExternalStore } from 'react';
 
 /**
@@ -82,6 +86,41 @@ export const TEMPLATES = [
     scheme: 'dark',
     swatches: ['--color-bg', '--color-accent-fill', '--color-primary-fill', '--color-danger-fill'],
     logo: 'picture'
+  },
+
+  // ----- The first batch of new templates. DRAFTS: the owner is trying each one in
+  // ----- the running app, and any of them may still change or be dropped.
+  {
+    id: 'plain',
+    name: 'Plain',
+    description: 'Neutral and quiet: dark text on a light page, one blue, one green.',
+    scheme: 'light',
+    swatches: ['--color-bg', '--color-accent-fill', '--color-primary-fill', '--color-danger-fill'],
+    logo: 'text'
+  },
+  {
+    id: 'coffee-shop',
+    name: 'Coffee Shop',
+    description: 'Warm, soft, unhurried: cream paper, espresso text, round corners.',
+    scheme: 'light',
+    swatches: ['--color-bg', '--color-accent-fill', '--color-primary-fill', '--color-danger-fill'],
+    logo: 'text'
+  },
+  {
+    id: 'nightclub',
+    name: 'Nightclub',
+    description: 'Smooth modern neon on near-black: magenta and cyan, round, glowing.',
+    scheme: 'dark',
+    swatches: ['--color-bg', '--color-accent-fill', '--color-primary-fill', '--color-attention'],
+    logo: 'text'
+  },
+  {
+    id: 'fancy',
+    name: 'Fancy',
+    description: 'Fine dining: candlelight, ivory text, thin lines, and a little gold.',
+    scheme: 'dark',
+    swatches: ['--color-bg', '--color-surface', '--color-text', '--color-primary-fill'],
+    logo: 'text'
   }
 ];
 

@@ -104,10 +104,6 @@ function Settings({ setCurrentView, setSelectedTable }) {
               </div>
             ))}
           </div>
-
-          {TEMPLATES.length === 1 && (
-            <p className="settings-help">This is the only template so far. More are on the way.</p>
-          )}
         </section>
       </div>
     </div>

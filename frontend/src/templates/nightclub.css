@@ -1,0 +1,311 @@
+/*
+ * THE NIGHTCLUB TEMPLATE: smooth modern neon on near-black.
+ *
+ * A template is one file that gives a value to every token (see the top of eight-bit.css
+ * for what a token is and how the screens use them). This file has the same tokens as
+ * 8-Bit, in the same order, and applies where the page says data-template="nightclub".
+ *
+ * WHAT MAKES IT THE NIGHTCLUB, AND NOT A RECOLORED 8-BIT
+ *   - Round where 8-Bit is square-ish: 14px corners, 18px on the big buttons and pop-ups.
+ *   - Gradients where 8-Bit is flat: a filled button (SEND, a selected tab, CLOSE ORDER)
+ *     is a sweep from one neon to its neighbor. A "fill" token may hold a gradient
+ *     because fill tokens are only ever used as backgrounds; the contrast test checks
+ *     the text on it against every color in the sweep.
+ *   - Quiet lines where 8-Bit outlines every box in purple: the frame is a deep indigo,
+ *     and the neon is kept for what is filled, selected, or under the pointer, which glows.
+ *   - A smooth geometric font, Space Grotesk, heavier for headings, where 8-Bit has pixels.
+ *
+ * --color-success-fill is NOT a gradient: the Payment window draws it with
+ * "background-color", which cannot hold one.
+ */
+
+[data-template="nightclub"] {
+  /* ====================================================================== */
+  /* FONTS                                                                  */
+  /* ====================================================================== */
+
+  /* Space Grotesk throughout, heavier for headings. It ships with the app (templates/fonts.css). */
+  --font-body: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-logo: 'Space Grotesk', system-ui, sans-serif;
+  --font-fallback: system-ui, sans-serif;
+  --font-display: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-heading: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-numbers: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --font-weight-normal: 400;
+  --font-weight-bold: 600;
+  --font-weight-heading: 700;
+
+  /* Type sizes, by step. The number in a token's name is its size in 8-Bit, whose pixel font
+     is wide and tall for its size. An ordinary font at the same number would be much
+     smaller to the eye, so each step here is a few pixels larger and none is below 12px.
+     (Item names on a kitchen ticket are step 10: 14px here.) */
+  --font-size-8: 12px;
+  --font-size-9: 13px;
+  --font-size-10: 14px;
+  --font-size-11: 14px;
+  --font-size-12: 15px;
+  --font-size-13: 16px;
+  --font-size-14: 17px;
+  --font-size-15: 18px;
+  --font-size-16: 19px;
+  --font-size-18: 21px;
+  --font-size-20: 23px;
+  --font-size-22: 25px;
+  --font-size-24: 28px;
+  --font-size-28: 32px;
+  --font-size-30: 34px;
+  --font-size-32: 36px;
+  --font-size-36: 40px;
+  --font-size-50: 54px;
+
+  --letter-spacing: 0.3px;
+  --letter-spacing-wide: 1px;
+  --letter-spacing-logo: 3px;
+
+  --line-height-tight: 1;
+  --line-height: 1.4;
+  --line-height-relaxed: 1.5;
+  --line-height-loose: 1.6;
+
+  /* ====================================================================== */
+  /* SHAPE                                                                  */
+  /* ====================================================================== */
+
+  /* Round: 14px, and 18px on the big buttons and pop-ups. Thin lines. */
+  --radius-button: 14px;
+  --radius-button-small: 10px;
+  --radius-button-large: 18px;
+  --radius-field: 12px;
+  --radius-field-small: 12px;
+  --radius-card: 14px;
+  --radius-box: 14px;
+  --radius-box-small: 14px;
+  --radius-popup: 18px;
+  --radius-chip: 8px;
+  --radius-bar: 8px;
+  --radius-bar-large: 8px;
+  --radius-pill: 999px;
+  --radius-round: 50%;
+
+  --border-width-thin: 1px;
+  --border-width: 1px;
+  --border-width-thick: 2px;
+
+  /* Gaps and padding, by step. The same as 8-Bit: tap targets and spacing do not shrink. */
+  --space-2: 2px;
+  --space-3: 3px;
+  --space-4: 4px;
+  --space-5: 5px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-14: 14px;
+  --space-15: 15px;
+  --space-16: 16px;
+  --space-18: 18px;
+  --space-20: 20px;
+  --space-22: 22px;
+  --space-24: 24px;
+  --space-25: 25px;
+  --space-30: 30px;
+  --space-40: 40px;
+  --space-60: 60px;
+  --space-75: 75px;
+
+  /* ====================================================================== */
+  /* COLORS: SURFACES                                                       */
+  /* ====================================================================== */
+
+  --color-scheme: dark;                              /* For the browser's own controls (date picker, drop-downs, scroll bars) */
+
+  --color-bg: #07060d;                               /* The page */
+  --color-bg-deep: #0c0a17;                          /* Sunk below the page: the top bar, text boxes, rows */
+  --color-surface: #12101f;                          /* Cards, panels, plain buttons */
+  --color-surface-hover: #1b1830;
+  --color-control: #1f1b36;                          /* Neutral buttons on a panel */
+  --color-control-hover: #2b2649;
+  --color-overlay: rgba(3, 2, 8, 0.78);              /* The dimming behind a pop-up */
+
+  /* ====================================================================== */
+  /* COLORS: TEXT                                                           */
+  /* ====================================================================== */
+
+  --color-text: #f4f1ff;
+  --color-text-muted: #b5aed0;
+  --color-text-subtle: #958eb3;
+  --color-text-faint: #7d769c;
+  --color-text-hint: #958eb3;
+
+  /* ====================================================================== */
+  /* COLORS: THE FRAME AND THE ACCENT                                       */
+  /* ====================================================================== */
+
+  /* The frame is a deep indigo, not the accent. The accent is magenta: as text a slightly
+     lighter pink, as a background a sweep from magenta to violet with dark text on it. */
+  --color-border: #2e2950;                           /* The line around almost every box */
+  --color-accent: #ff4db8;                           /* Accent text */
+  --color-accent-fill: linear-gradient(135deg, #ff2daa, #b14dff); /* Accent background: a selected tab, a hovered button */
+  --color-on-accent: #07060d;                        /* Text on it */
+  --color-accent-soft: #d7b8ff;
+  --color-accent-surface: #2a1233;
+  --color-subheading: #ff4db8;
+
+  /* ====================================================================== */
+  /* COLORS: PRIMARY (headings, amounts, the main action)                   */
+  /* ====================================================================== */
+
+  /* Headings are the near-white text color, set heavy. Cyan is the main action (a sweep from
+     cyan to blue, dark text) and amounts. */
+  --color-heading: #f4f1ff;
+  --color-primary: #00e5ff;
+  --color-primary-fill: linear-gradient(135deg, #00e5ff, #5b9dff);
+  --color-primary-fill-hover: linear-gradient(135deg, #5cf0ff, #86b6ff);
+  --color-on-primary: #07060d;
+  --color-border-primary: #00e5ff;
+
+  --color-success: #3dffa2;
+  --color-success-fill: #3dffa2;
+  --color-on-success: #07060d;
+
+  /* ====================================================================== */
+  /* COLORS: DANGER                                                         */
+  /* ====================================================================== */
+
+  --color-danger: #ff6b6b;
+  --color-danger-hover: #ff8a8a;
+  --color-danger-fill: linear-gradient(135deg, #ff4d4d, #ff4d8f);
+  --color-danger-fill-hover: linear-gradient(135deg, #ff6b6b, #ff6ba3);
+  --color-on-danger: #07060d;
+  --color-border-danger: #ff4d4d;
+  --color-danger-surface: #2b0f17;
+  --color-danger-surface-hover: #3c1521;
+
+  /* ====================================================================== */
+  /* COLORS: ATTENTION                                                      */
+  /* ====================================================================== */
+
+  --color-attention: #ffe14d;
+  --color-border-attention: #ffe14d;
+  --color-attention-surface: #29230c;
+  --color-note: #ffe14d;
+
+  /* ====================================================================== */
+  /* COLORS: NEUTRAL AND SWITCHED OFF                                       */
+  /* ====================================================================== */
+
+  --color-border-muted: #7d769c;
+  --color-border-neutral: #958eb3;
+  --color-neutral-fill: #958eb3;
+  --color-on-neutral: #07060d;
+  --color-border-subtle: #221e3b;
+  --color-disabled-fill: #2b2649;
+  --color-on-disabled: #6c658a;
+
+  --color-rank-gold: #ffe14d;
+  --color-rank-silver: #c9c5dc;
+  --color-rank-bronze: #e39a5c;
+
+  --color-grid-line: rgba(255, 45, 170, 0.12);
+
+  /* ====================================================================== */
+  /* STATUS: colors that carry a meaning                                    */
+  /* ====================================================================== */
+
+  /* Each state has a color of its own and is never shown by fading (the three opacities
+     are 1). Where a state also has a word or an icon (the lock, 86'D, DONE), the screen
+     draws it in every template.
+     "Made" and "on time" are green here, because the primary color is cyan. */
+  /* A saved draft on the order */
+  --status-draft-border: var(--color-border-attention);
+  --status-draft-surface: var(--color-attention-surface);
+  --status-draft-text: var(--color-attention);
+
+  /* Locked: the kitchen has it. Said with color; not faded (opacity 1). */
+  --status-locked-border: var(--color-border-muted);
+  --status-locked-surface: var(--color-bg-deep);
+  --status-locked-text: var(--color-text-subtle);
+  --status-locked-icon: var(--color-danger);
+  --status-locked-opacity: 1;
+
+  /* A table's card: something in its edit window, the kitchen working, everything made */
+  --status-limbo-border: #b98cff;
+  --status-in-kitchen-border: var(--color-border-attention);
+  --status-all-done-border: var(--color-success);
+
+  /* The kitchen display: on time reads calm, 10 minutes amber, 15 minutes red */
+  --status-item-label: var(--color-primary);
+  --status-wait-ok: var(--color-success);
+  --status-wait-warning: var(--color-attention);
+  --status-wait-late: var(--color-danger);
+  --status-ticket-done-border: var(--color-border-muted);
+  --status-ticket-done-text: var(--color-text-subtle);
+  --status-ticket-done-opacity: 1;
+
+  /* 86'd */
+  --status-86-text: var(--color-danger);
+  --status-86-border: var(--color-border-danger);
+  --status-86-surface: var(--color-danger-surface);
+  --status-86-surface-hover: var(--color-danger-surface-hover);
+  --status-86-card-border: var(--color-border-muted);
+  --status-86-card-text: var(--color-text-subtle);
+  --status-86-label: var(--color-danger);
+  --status-86-card-opacity: 1;
+
+  /* An error or refusal */
+  --status-error-text: var(--color-danger);
+  --status-error-border: var(--color-border-danger);
+  --status-error-surface: var(--color-danger-surface);
+
+  /* A table on the Floor Map */
+  --status-table-available-border: var(--color-success);
+  --status-table-occupied-border: var(--color-border-danger);
+  --status-table-occupied-surface: var(--color-danger-surface);
+
+  /* A terminal paused for wrong PINs */
+  --status-paused-border: var(--color-border-attention);
+  --status-paused-text: var(--color-attention);
+
+  /* ====================================================================== */
+  /* GLOWS AND SHADOWS                                                      */
+  /* ====================================================================== */
+
+  /* Strong glow on the accent and the primary, under the pointer and on what is selected.
+     Cards rest on a dark shadow; a pop-up has a violet haze around it. */
+  --glow-accent: 0 0 24px rgba(255, 45, 170, 0.6);
+  --glow-accent-soft: 0 0 24px rgba(255, 45, 170, 0.6);
+  --glow-accent-tight: 0 0 24px rgba(255, 45, 170, 0.6);
+  --glow-accent-tight-soft: 0 0 24px rgba(255, 45, 170, 0.6);
+  --glow-accent-wide: 0 0 36px rgba(255, 45, 170, 0.6);
+  --glow-primary: 0 0 24px rgba(0, 229, 255, 0.55);
+  --glow-primary-soft: 0 0 24px rgba(0, 229, 255, 0.55);
+  --glow-primary-tight: 0 0 24px rgba(0, 229, 255, 0.55);
+  --glow-danger: 0 0 22px rgba(255, 77, 77, 0.5);
+  --glow-danger-tight: 0 0 22px rgba(255, 77, 77, 0.5);
+
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-button: none;
+  --shadow-popup: 0 0 48px rgba(177, 77, 255, 0.28), 0 24px 60px rgba(0, 0, 0, 0.6);
+  --shadow-navbar: 0 4px 28px rgba(255, 45, 170, 0.22);
+  --glow-logo: 0 0 12px rgba(255, 45, 170, 0.85), 0 0 30px rgba(177, 77, 255, 0.6);
+  --ring-selected: 0 0 0 3px #07060d, 0 0 0 6px #ffe14d;
+  --gradient-progress: linear-gradient(90deg, #ff2daa, #b14dff, #00e5ff);
+
+  /* ====================================================================== */
+  /* WHERE 8-BIT HAS TWO VALUES, THIS TEMPLATE HAS ONE                      */
+  /* ====================================================================== */
+
+  /* 8-Bit keeps ten values a hair apart from their neighbors, for historical reasons.
+     Here each of those tokens is simply its neighbor. */
+  --color-on-accent-alt: var(--color-on-accent);
+  --color-on-danger-alt: var(--color-on-danger);
+  --color-danger-alt: var(--color-danger);
+  --color-note-alt: var(--color-note);
+  --color-overlay-strong: var(--color-overlay);
+  --tip-input-surface: var(--color-bg-deep);
+  --tip-input-border: var(--color-border);
+  --tip-input-border-focus: var(--color-border-primary);
+  --tip-input-text: var(--color-text);
+  --tip-input-placeholder: var(--color-text-faint);
+}
