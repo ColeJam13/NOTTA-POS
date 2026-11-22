@@ -7,6 +7,10 @@ import './plain.css';
 import './coffee-shop.css';
 import './nightclub.css';
 import './fancy.css';
+import './dive-bar.css';
+import './brunch.css';
+import './diner.css';
+import './sports-bar.css';
 import { useSyncExternalStore } from 'react';
 
 /**
@@ -75,7 +79,7 @@ export const DEFAULT_TEMPLATE = '8-bit';
 //   logo        what the Home and PIN screens show at the top (components/Logo):
 //                 'picture'  the NOTTA-POS artwork. It is drawn in the 8-Bit colors, so
 //                            it belongs to 8-Bit (the owner's decision D13).
-//                 'text'     the name NOTTA-POS in the template's own display font and
+//                 'text'     the name NOTTA-POS in the template's own logo font and
 //                            accent color. Every other template, until one has artwork
 //                            of its own.
 export const TEMPLATES = [
@@ -120,6 +124,40 @@ export const TEMPLATES = [
     description: 'Fine dining: candlelight, ivory text, thin lines, and a little gold.',
     scheme: 'dark',
     swatches: ['--color-bg', '--color-surface', '--color-text', '--color-primary-fill'],
+    logo: 'text'
+  },
+
+  // ----- The second batch. Drafts as well.
+  {
+    id: 'dive-bar',
+    name: 'Dive Bar',
+    description: 'Dark wood and chalk, one blue beer sign, amber buttons. Rough on purpose.',
+    scheme: 'dark',
+    swatches: ['--color-bg', '--color-accent-fill', '--color-primary-fill', '--color-text'],
+    logo: 'text'
+  },
+  {
+    id: 'brunch',
+    name: 'Brunch Spot',
+    description: 'Bright, airy, cheerful: warm white, coral and teal, everything round.',
+    scheme: 'light',
+    swatches: ['--color-bg', '--color-accent-fill', '--color-primary-fill', '--color-attention-surface'],
+    logo: 'text'
+  },
+  {
+    id: 'diner',
+    name: 'Diner',
+    description: 'A 1950s lunch counter: cream, cherry red, teal, and chrome lines.',
+    scheme: 'light',
+    swatches: ['--color-bg', '--color-accent-fill', '--color-primary-fill', '--color-border'],
+    logo: 'text'
+  },
+  {
+    id: 'sports-bar',
+    name: 'Sports Bar',
+    description: 'A stadium at night: navy, silver lines, turf green, scoreboard numbers.',
+    scheme: 'dark',
+    swatches: ['--color-bg', '--color-accent-fill', '--color-primary-fill', '--color-border'],
     logo: 'text'
   }
 ];

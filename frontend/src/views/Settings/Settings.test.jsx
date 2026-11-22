@@ -111,12 +111,14 @@ test('when the restaurant\'s template changes while the screen is open, IN USE m
   expect(within(card('8-bit')).getByRole('button', { name: 'Preview 8-Bit' })).toBeInTheDocument();
 });
 
-test('the first batch of new templates is offered, each marked light or dark and with the name as its logo', () => {
+test('every template after 8-Bit is offered, marked light or dark, with the name as its logo', () => {
   renderScreen();
 
-  // What a manager is told before previewing: Plain and Coffee Shop are light pages,
-  // Nightclub and Fancy dark ones
-  const offered = { plain: ['Plain', 'LIGHT'], 'coffee-shop': ['Coffee Shop', 'LIGHT'], nightclub: ['Nightclub', 'DARK'], fancy: ['Fancy', 'DARK'] };
+  // What a manager is told before previewing. The first batch, then the second.
+  const offered = {
+    plain: ['Plain', 'LIGHT'], 'coffee-shop': ['Coffee Shop', 'LIGHT'], nightclub: ['Nightclub', 'DARK'], fancy: ['Fancy', 'DARK'],
+    'dive-bar': ['Dive Bar', 'DARK'], brunch: ['Brunch Spot', 'LIGHT'], diner: ['Diner', 'LIGHT'], 'sports-bar': ['Sports Bar', 'DARK']
+  };
   for (const [id, [name, scheme]] of Object.entries(offered)) {
     expect(within(card(id)).getByRole('heading', { name })).toBeInTheDocument();
     expect(within(card(id)).getByText(scheme)).toBeInTheDocument();

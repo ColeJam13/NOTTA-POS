@@ -81,7 +81,10 @@
 
   --font-weight-normal: normal;
   --font-weight-bold: bold;
-  --font-weight-heading: bold;           /* h1 to h4. A template with a light, elegant heading face sets this lower. */
+  --font-weight-display: bold;           /* h1 and h2: the titles of screens and pop-ups */
+  --font-weight-heading: bold;           /* h3 and h4. Two weights, because a template's title font and its heading font
+                                            may be different faces, and one of them may have a single weight. */
+  --font-weight-logo: bold;              /* The logo in the top bar (and the logo as text, in templates that have no artwork) */
 
   /* Type sizes. The number is the size in pixels in this template. */
   --font-size-8: 8px;
@@ -108,6 +111,10 @@
   --letter-spacing: 1px;
   --letter-spacing-wide: 2px;
   --letter-spacing-logo: 6px;
+  /* How the logo's letters are cased. The name is written "Notta-Pos" in the page.
+     "uppercase": NOTTA-POS, as it has always been drawn. "none": as written, for a
+     template whose logo font is a script, which cannot be read in capitals. */
+  --logo-case: uppercase;
 
   /* Space between lines of running text (a multiple of the type size) */
   --line-height-tight: 1;

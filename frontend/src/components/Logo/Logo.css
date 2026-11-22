@@ -1,10 +1,16 @@
 /* The logo as text, for templates with no artwork of their own. (The picture's size on
    each screen is set by that screen's stylesheet, as it always was.) */
+/* The logo has a font, a weight, and a casing of its own (--font-logo, --font-weight-logo,
+   --logo-case), so that a template can set the name in lettering it uses nowhere else:
+   the Diner's is a script. In most templates they are the same as its titles'.
+   The name is WRITTEN "Notta-Pos" (Logo.jsx) and almost every template draws it in
+   capitals; a script, which cannot be read in capitals, draws it as written. */
 .logo-text {
-  font-family: var(--font-display);
-  font-weight: var(--font-weight-heading);
+  font-family: var(--font-logo);
+  font-weight: var(--font-weight-logo);
   color: var(--color-accent);
   letter-spacing: var(--letter-spacing-logo);
+  text-transform: var(--logo-case);
   line-height: var(--line-height-tight);
   text-align: center;
   white-space: nowrap;

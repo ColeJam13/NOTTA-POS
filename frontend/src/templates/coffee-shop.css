@@ -28,7 +28,9 @@
 
   --font-weight-normal: 400;
   --font-weight-bold: 700;
-  --font-weight-heading: 600;
+  --font-weight-display: var(--font-weight-heading); /* h1 and h2: the titles of screens and pop-ups */
+  --font-weight-heading: 600;                        /* h3 and h4: section headings and the names on cards */
+  --font-weight-logo: var(--font-weight-heading);    /* The logo as text, on the Home and PIN screens and in the top bar */
 
   /* Type sizes, by step. The number in a token's name is its size in 8-Bit, whose pixel font
      is wide and tall for its size. An ordinary font at the same number would be much
@@ -56,6 +58,7 @@
   --letter-spacing: 0.2px;
   --letter-spacing-wide: 0.5px;
   --letter-spacing-logo: 1px;
+  --logo-case: uppercase;                            /* The logo in capitals: NOTTA-POS */
 
   --line-height-tight: 1;
   --line-height: 1.4;

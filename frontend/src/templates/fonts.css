@@ -114,3 +114,80 @@
   font-style: normal;
   font-display: swap;
 }
+
+/* ----------------------------------------------------------------------------
+   THE SECOND BATCH: Dive Bar, Brunch Spot, Diner, Sports Bar.
+   (Sports Bar's body font is Inter, declared above for Plain. Barlow is shared by the
+   Dive Bar and the Diner.)
+   ---------------------------------------------------------------------------- */
+
+/* Dive Bar: titles and headings. Capitals only, one weight (14 kB) */
+@font-face {
+  font-family: 'Bebas Neue';
+  src: url('../fonts/BebasNeue.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Dive Bar and Diner: everything else, regular and bold (22 kB and 23 kB) */
+@font-face {
+  font-family: 'Barlow';
+  src: url('../fonts/Barlow-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Barlow';
+  src: url('../fonts/Barlow-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Brunch Spot: titles and headings, one weight (25 kB) */
+@font-face {
+  font-family: 'DM Serif Display';
+  src: url('../fonts/DMSerifDisplay.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Brunch Spot: everything else (37 kB) */
+@font-face {
+  font-family: 'DM Sans';
+  src: url('../fonts/DMSans.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Diner: the logo, and nothing else. One weight (32 kB) */
+@font-face {
+  font-family: 'Pacifico';
+  src: url('../fonts/Pacifico.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Sports Bar: titles and headings (21 kB) */
+@font-face {
+  font-family: 'Oswald';
+  src: url('../fonts/Oswald.woff2') format('woff2');
+  font-weight: 500 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Sports Bar: amounts and timers. Every figure is the same width (33 kB) */
+@font-face {
+  font-family: 'Roboto Mono';
+  src: url('../fonts/RobotoMono.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}

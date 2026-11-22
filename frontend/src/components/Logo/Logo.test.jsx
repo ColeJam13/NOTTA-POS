@@ -38,7 +38,7 @@ test('a template with no artwork shows the name as text, at the size asked for',
   render(<Logo pictureClassName="home-logo" size="large" />);
 
   expect(theLogo().tagName).toBe('DIV');
-  expect(theLogo()).toHaveTextContent('NOTTA-POS');
+  expect(theLogo()).toHaveTextContent('Notta-Pos');      // Drawn in capitals by the template's stylesheet (--logo-case)
   expect(theLogo()).toHaveClass('logo-text', 'logo-text-large');
   expect(theLogo()).not.toHaveClass('home-logo');             // The picture's size does not apply to text
   expect(document.querySelector('img')).toBeNull();
@@ -49,7 +49,7 @@ test('the logo follows a preview, and goes back when it stops', async () => {
   expect(theLogo().tagName).toBe('IMG');
 
   previewTemplate('test-look');
-  expect((await screen.findByText('NOTTA-POS')).tagName).toBe('DIV');
+  expect((await screen.findByText('Notta-Pos')).tagName).toBe('DIV');
 
   stopPreview();
   await screen.findByAltText('NOTTA-POS Logo');
