@@ -30,7 +30,7 @@ pain points not addressed in other systems.
 - **Active Orders:** front-of-house and kitchen views of every open order, with modifiers and notes. The kitchen starts and completes items.
 - **Close Order:** the check (subtotal, tax, total) is worked out by the backend; pay by cash, credit, debit, or gift card, with a tip.
 - **Tables and Quick Orders:** open and closed checks. The tip on a closed check is shown to the person who opened it and to managers.
-- **Settings (managers):** the restaurant's template, the look every terminal is drawn in. There is one so far (8-Bit); the system that previews and switches them is built.
+- **Settings (managers):** the restaurant's template, the look every terminal is drawn in. There is one so far (8-Bit); the system that previews and switches them is built, with a gallery that shows every piece of the app in every state in the template on screen.
 - **Financials:** revenue, tips, and payment methods for today, this week, this month, or a custom range.
 
 Challenges is a mock-up with sample data. See `CLAUDE.md` for the build plan and the known gaps.
