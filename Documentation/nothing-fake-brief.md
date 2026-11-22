@@ -63,6 +63,8 @@ Small. No backend logic.
 
 ## N2. A search box that searches
 
+**Done (#299), as written below.** Two things the brief left open: "yesterday" means since the start of yesterday (it includes today), and Quick Orders are found as checks, not as tables.
+
 What it is for: getting to a table or a check without walking through screens. It also closes a recorded gap: the Tables screen shows only the 50 most recently closed checks, with no way to find an older one.
 
 **Backend.** One endpoint, `GET /api/search?q=...`, for anyone signed in. The answer has four groups, each capped (ten is enough), built with batched queries:
