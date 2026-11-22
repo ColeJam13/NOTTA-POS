@@ -12,7 +12,10 @@
   gap: var(--space-30);
 }
 
+/* The search box. "position: relative" is for the panel of results that hangs under it
+   (components/Search/Search.css). */
 .navbar-search {
+  position: relative;
   flex: 1;
   max-width: 600px;
 }

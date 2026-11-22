@@ -1,7 +1,8 @@
 import './NavBar.css';
 import { AlertCircle, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext';
-import { canOpenScreen, initialsOf, ROLE_LABELS } from '../../utils/roles';
+import { canDo, canOpenScreen, initialsOf, ROLE_LABELS } from '../../utils/roles';
+import Search from '../Search';
 
 /**
  * The bar at the top of every screen.
@@ -37,14 +38,35 @@ function NavBar({ currentView, setCurrentView, setSelectedTable, confirmLeave })
     setCurrentView(view);
   };
 
+  // A table (or an open check's table) chosen in the search box: open its order
+  // screen. The same "unsaved work" question as every button in the bar, asked first.
+  // Returns false when the person chose to stay, so the box keeps what was typed.
+  const openTable = (table) => {
+    if (confirmLeave && !confirmLeave()) return false;
+
+    setSelectedTable(table);
+    setCurrentView('createOrder');
+    return true;
+  };
+
+  // The search box goes to a screen the way a button does, and says whether it went
+  const openScreen = (view) => {
+    if (confirmLeave && !confirmLeave()) return false;
+
+    setCurrentView(view);
+    return true;
+  };
+
   return (
     <div className="navbar">
       <div className="navbar-top">
         <h1 className="navbar-logo" onClick={() => goTo('home')} style={{cursor: 'pointer'}}>Notta-Pos</h1>
         
-        <div className="navbar-search">
-          <input type="text" placeholder="Find table, order, item..." />
-        </div>
+        {/* Find a table, a check, or a dish, and go straight to it (components/Search).
+            Every role may search (utils/roles.js); what a result does depends on the role. */}
+        {canDo(staff?.role, 'search')
+          ? <Search onOpenTable={openTable} onOpenScreen={openScreen} />
+          : <div className="navbar-search" />}
         
         <div className="navbar-right">
           <button className="notifications-btn">

@@ -130,6 +130,7 @@ const PAIRS = [
   ['--status-table-available-border', '--color-bg-deep', MARK, 'an available table on the floor'],
   ['--status-table-occupied-border', '--color-bg-deep', MARK, 'an occupied table on the floor'],
   ['--status-paused-border', '--color-surface', MARK, 'a paused terminal\'s row'],
+  ['--color-border-primary', '--color-surface', MARK, 'the line around the search result the arrow keys or the pointer are on'],
 ];
 
 // Templates held to more than the usual minimums. High Contrast exists to be the most

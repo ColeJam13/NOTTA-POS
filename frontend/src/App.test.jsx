@@ -93,6 +93,14 @@ beforeEach(() => {
       return json([{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }]);
     }
     if (path === '/api/order-item-modifiers/order/77') return json([]);
+    // The search box in the top bar finds table W1 for "1", and nothing else
+    if (path === '/api/search?q=1&closed=today') {
+      const none = { results: [], more: false };
+      return json({
+        tables: { results: [{ tableId: 1, tableNumber: 'W1', section: 'Window', seatCount: 2, status: 'occupied', isQuickOrder: false }], more: false },
+        openChecks: none, closedChecks: none, menuItems: none
+      });
+    }
     throw new Error(`Unexpected request in test: ${method} ${path}`);
   });
 });
@@ -354,6 +362,36 @@ test('tapping CREATE ORDER while a table is on screen starts a fresh order, not 
   expect(screen.getByText('Add items to order')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'CLOSE ORDER' })).toBeDisabled();
   await waitFor(() => expect(screen.getByRole('button', { name: 'SEND ORDER' })).toBeDisabled());
+});
+
+// ============================================================================
+// The search box in the top bar
+// ============================================================================
+
+test('a server finds a table from the search box on any screen and lands on its order', async () => {
+  await signIn('1111');
+  await userEvent.click(screen.getByRole('button', { name: 'CREATE ORDER' }));
+  expect(await screen.findByText('Current Order - New Quick Order')).toBeInTheDocument();
+
+  await userEvent.type(screen.getByRole('combobox', { name: 'Search tables, checks, and the menu' }), '1');
+  await userEvent.click(await screen.findByRole('option', { name: /^Table W1, Window/ }));
+
+  // Table W1's order, loaded fresh, with the item it already has
+  expect(await screen.findByText('Current Order - Table W1')).toBeInTheDocument();
+  expect(await within(document.querySelector('.order-items-list')).findByText('Chicken Cutty')).toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: 'Search tables, checks, and the menu' })).toHaveValue('');
+});
+
+test('the kitchen can search, and a table it finds is information, not a way onto the order screen', async () => {
+  await signIn('3333');
+  await userEvent.click(screen.getByRole('button', { name: '86 BOARD' }));
+
+  await userEvent.type(await screen.findByRole('combobox', { name: 'Search tables, checks, and the menu' }), '1');
+  const found = await screen.findByRole('option', { name: /^Table W1, Window/ });
+
+  expect(found.tagName).toBe('DIV');
+  await userEvent.click(found);
+  expect(screen.queryByText(/Current Order/)).not.toBeInTheDocument();
 });
 
 // ============================================================================

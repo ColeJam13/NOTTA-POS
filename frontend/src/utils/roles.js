@@ -13,6 +13,7 @@
  * correct. The matrix:
  *
  *   read the menu, tables, orders         anyone signed in
+ *   search (tables, checks, the menu)     anyone signed in
  *   open orders, ring in, send, take pay  server, bartender, host, manager
  *   start and complete items              kitchen, bartender, manager
  *   86 and un-86                          kitchen, bartender, manager
@@ -51,6 +52,9 @@ const SCREENS_BY_ROLE = {
 
 // Restricted things inside a screen, and the roles that may do them
 const ROLES_BY_ACTION = {
+  // The search box in the top bar: every role (Permissions.SEARCH on the backend). What
+  // a result DOES still depends on the role: see components/Search.
+  'search': ['manager', 'server', 'bartender', 'host', 'kitchen'],
   'edit-layout': ['manager'],                             // Rearranging the Floor Map
   'change-86': ['manager', 'kitchen', 'bartender'],       // 86'ing an item or putting it back on
   'make-items': ['manager', 'kitchen', 'bartender']       // START and COMPLETE on the kitchen display
@@ -68,7 +72,7 @@ export const canOpenScreen = (role, view) => {
 
 /**
  * @param {string|null} role - The signed-in person's role
- * @param {string} action - 'edit-layout', 'change-86', or 'make-items'
+ * @param {string} action - 'search', 'edit-layout', 'change-86', or 'make-items'
  * @returns {boolean} - Whether that role may do it
  */
 export const canDo = (role, action) => {

@@ -1,0 +1,147 @@
+/* The panel under the search box in the top bar (the box itself is styled with the bar,
+   in NavBar.css). Tokens only: every color, size, and gap comes from the template. */
+
+/* Hangs under the box, over whatever screen is showing. It is as tall as its results
+   up to most of the window, and then the results scroll and the footer stays put. */
+.search-panel {
+  position: absolute;
+  top: calc(100% + var(--space-8));
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  max-height: 70vh;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-popup);
+  box-shadow: var(--shadow-popup);
+}
+
+/* The part that gives way when there are many results */
+.search-results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-10);
+}
+
+.search-group + .search-group {
+  margin-top: var(--space-10);
+}
+
+.search-group-title {
+  padding: var(--space-6) var(--space-12);
+  color: var(--color-subheading);
+  font-size: var(--font-size-10);
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+/* One result. A button when it can be chosen, a plain row when it is information only;
+   both look the same at rest. */
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+  padding: var(--space-10) var(--space-12);
+  background: transparent;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-box);
+  color: var(--color-text);
+  font-size: var(--font-size-12);
+  text-align: left;
+}
+
+button.search-row {
+  cursor: pointer;
+}
+
+/* Where the arrow keys (or the pointer) are: a line around the row. A line and not a
+   different background, so that every word in the row is still on the panel's own
+   color and stays as readable as it was. */
+.search-row.highlighted {
+  border-color: var(--color-border-primary);
+}
+
+.search-row-main {
+  flex: 1;
+  min-width: 0;                         /* Lets a long name wrap inside the row and not push the amount out */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.search-row-name {
+  font-weight: var(--font-weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.search-row-detail {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-10);
+}
+
+.search-row-amount {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+/* AVAILABLE, OCCUPIED, 86'D: always a word, so the color is never the only signal */
+.search-row-state {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-10);
+  letter-spacing: var(--letter-spacing);
+}
+
+.search-row-state.out {
+  color: var(--status-86-text);
+  font-weight: var(--font-weight-bold);
+}
+
+.search-more,
+.search-empty {
+  padding: var(--space-8) var(--space-12);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-10);
+  line-height: var(--line-height);
+}
+
+.search-error {
+  padding: var(--space-8) var(--space-12);
+  color: var(--status-error-text);
+  font-size: var(--font-size-10);
+  line-height: var(--line-height);
+}
+
+/* How far back to look for paid checks */
+.search-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-10) var(--space-12);
+  border-top: var(--border-width-thin) solid var(--color-border-subtle);
+}
+
+.search-footer-label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-10);
+}
+
+.search-period {
+  padding: var(--space-6) var(--space-10);
+  background: var(--color-control);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-button-small);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-9);
+  cursor: pointer;
+}
+
+.search-period.active {
+  background: var(--color-primary-fill);
+  border-color: var(--color-border-primary);
+  color: var(--color-on-primary);
+}

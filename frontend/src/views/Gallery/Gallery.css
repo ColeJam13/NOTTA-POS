@@ -180,6 +180,19 @@
   margin-top: 0;
 }
 
+/* The search panel hangs under the search box in the real app. Here it is laid out in
+   the page, one beside the other, and as tall as what is in it. */
+.gallery-search {
+  position: relative;
+  max-width: 600px;
+  margin-bottom: var(--space-16);
+}
+
+.gallery-search .search-panel {
+  position: static;
+  max-height: none;
+}
+
 .gallery-pin-pad {
   display: flex;
   flex-direction: column;

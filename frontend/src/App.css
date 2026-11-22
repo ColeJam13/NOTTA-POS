@@ -46,7 +46,8 @@ h3, h4 {
 .staff-paused-left,
 .stat-value,
 .payment-amount,
-.transaction-total {
+.transaction-total,
+.search-row-amount {
   font-family: var(--font-numbers);
 }
 

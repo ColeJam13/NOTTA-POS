@@ -3,6 +3,8 @@ import NavBar from '../../components/NavBar';
 import Logo from '../../components/Logo';
 import PinPad from '../../components/PinPad';
 import PaymentForm from '../../components/PaymentModal/PaymentForm';
+import { SearchResults } from '../../components/Search';
+import { rowsOf } from '../../components/Search/SearchResults';
 import ActiveTableCard from '../../components/TableChecks/ActiveTableCard';
 import OrderItemsList from '../CreateOrder/OrderItemsList';
 import MenuPanel from '../CreateOrder/MenuPanel';
@@ -125,6 +127,41 @@ const PAUSED_TERMINALS = [
 
 const nothing = () => {};       // The gallery's buttons do nothing: there is no order behind them
 
+// What the search box found, made up: one or two results of each kind, in the shape the
+// backend answers with (SearchResultsView). The second closed check has no tip in it,
+// as a check does when the person asking did not open it.
+const FOUND = {
+  tables: { results: [
+    { tableId: 1, tableNumber: 'W7', section: 'Window', seatCount: 4, status: 'available', isQuickOrder: false },
+    { tableId: 2, tableNumber: 'W17', section: 'Window', seatCount: 2, status: 'occupied', isQuickOrder: false }
+  ], more: false },
+  openChecks: { results: [
+    { orderId: 31, tableId: 2, tableNumber: 'W17', status: 'occupied', isQuickOrder: false, serverName: 'Sarah', itemCount: 3, subtotal: 48.5, openedAt: null }
+  ], more: false },
+  closedChecks: { results: [
+    { orderId: 21, tableId: 1, tableNumber: 'W7', isQuickOrder: false, serverName: 'Sarah', createdAt: null, closedAt: null, subtotal: 20, tax: 0.6, total: 20.6, tipAmount: 5, paymentMethod: 'credit_card', items: [] },
+    { orderId: 22, tableId: 3, tableNumber: 'QO7', isQuickOrder: true, serverName: 'Dan', createdAt: null, closedAt: null, subtotal: 12.5, tax: 0.38, total: 12.88, items: [] }
+  ], more: true },
+  menuItems: { results: [
+    { menuItemId: 1, name: 'Omelette of the Day', category: 'Savory', price: 16, is86d: false },
+    { menuItemId: 2, name: 'Garden Toast', category: 'Savory', price: 12.5, is86d: true }
+  ], more: false }
+};
+// The made-up search results with their times filled in: opened 12 minutes ago, paid 30
+// and 95 minutes ago, by the backend's clock, as every "ago" in the app is worked out
+const withTimes = (found) => {
+  const ago = (minutes) => new Date(serverNow() - minutes * 60 * 1000).toISOString();
+  return {
+    ...found,
+    openChecks: { ...found.openChecks, results: found.openChecks.results.map(check => ({ ...check, openedAt: ago(12) })) },
+    closedChecks: { ...found.closedChecks, results: found.closedChecks.results.map((check, index) => ({ ...check, createdAt: ago(150), closedAt: ago(index === 0 ? 30 : 95) })) }
+  };
+};
+const NOTHING_FOUND = {
+  tables: { results: [], more: false }, openChecks: { results: [], more: false },
+  closedChecks: { results: [], more: false }, menuItems: { results: [], more: false }
+};
+
 // One titled block of the page
 function Piece({ title, note, wide, children }) {
   return (
@@ -144,6 +181,7 @@ function Gallery({ setCurrentView, setSelectedTable }) {
   const [category, setCategory] = useState('Savory');
   const [paymentMethod, setPaymentMethod] = useState('credit_card');
   const [tipPercent, setTipPercent] = useState(18);
+  const [searchPeriod, setSearchPeriod] = useState('today');   // The search panel's "closed checks from" buttons really switch
 
   // Show a template: a preview, unless it is the restaurant's own (then no preview is needed)
   const show = (id) => {
@@ -299,6 +337,27 @@ function Gallery({ setCurrentView, setSelectedTable }) {
                   onCancel={nothing}
                 />
               </div>
+            </div>
+          </Piece>
+
+          <Piece title="SEARCH" wide note="The panel under the search box in the top bar: a table, an open check, paid checks, and menu items, with one result under the arrow keys; then what it says when nothing is found.">
+            <div className="gallery-search">
+              <SearchResults
+                results={withTimes(FOUND)} query="7"
+                rows={rowsOf(withTimes(FOUND), { openOrders: true, change86: false })}
+                highlightedKey="table-1"
+                onChoose={nothing} onHighlight={nothing}
+                period={searchPeriod} onPeriod={setSearchPeriod}
+                failed={false}
+              />
+            </div>
+            <div className="gallery-search">
+              <SearchResults
+                results={NOTHING_FOUND} query="zucchini" rows={[]}
+                highlightedKey={null} onChoose={nothing} onHighlight={nothing}
+                period={searchPeriod} onPeriod={setSearchPeriod}
+                failed={false}
+              />
             </div>
           </Piece>
 
