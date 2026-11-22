@@ -17,7 +17,8 @@
  *   - Only a font under an open license that allows shipping it inside an app: the SIL
  *     Open Font License or Apache 2.0. Check the font's own license; do not assume.
  *   - The file goes in src/fonts as .woff2, with its license file beside it, and only
- *     the weights the template really uses (each weight is a file of its own).
+ *     the weights the template really uses (each weight is a file of its own, unless
+ *     the font is a "variable" one: see the second half of this file).
  *   - Add a block here, and name the font in the template's --font-... tokens.
  *   - Say in the pull request how many kilobytes the template's fonts add.
  */
@@ -37,4 +38,79 @@
 @font-face {
   font-family: 'GothicByte';
   src: url('../fonts/GothicByte.ttf') format('truetype');
+}
+
+/* ----------------------------------------------------------------------------
+   THE FONTS OF THE TEMPLATES ADDED AFTER 8-BIT
+
+   Each file is the Latin "woff2" the Google Fonts project serves for that font, and
+   each font's license (the SIL Open Font License) is beside it in src/fonts as
+   <Name>-OFL.txt.
+
+   Most are "variable" fonts: ONE file that holds every weight between two limits, where
+   an older font needs a file per weight. "font-weight: 400 700" tells the browser the
+   file can draw any weight from 400 (regular) to 700 (bold). Lato is not variable, so it
+   has a file for regular and a file for bold.
+   ---------------------------------------------------------------------------- */
+
+/* Plain: everything (48 kB) */
+@font-face {
+  font-family: 'Inter';
+  src: url('../fonts/Inter.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Coffee Shop: titles and headings (37 kB) */
+@font-face {
+  font-family: 'Fraunces';
+  src: url('../fonts/Fraunces.woff2') format('woff2');
+  font-weight: 500 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Coffee Shop: everything else (39 kB) */
+@font-face {
+  font-family: 'Nunito';
+  src: url('../fonts/Nunito.woff2') format('woff2');
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Nightclub: everything (22 kB) */
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('../fonts/SpaceGrotesk.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Fancy: titles and headings (38 kB) */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  src: url('../fonts/CormorantGaramond.woff2') format('woff2');
+  font-weight: 500 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Fancy: everything else, regular and bold (24 kB and 23 kB) */
+@font-face {
+  font-family: 'Lato';
+  src: url('../fonts/Lato-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Lato';
+  src: url('../fonts/Lato-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
 }

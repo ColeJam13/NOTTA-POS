@@ -15,8 +15,9 @@
  * WHY
  *   No other stylesheet in the app contains a color, a font, or a size of its own. They
  *   all read their look from the names in this file. So a different look for the whole
- *   app (the Plain, Coffee Shop, and Nightclub templates in the plan) is a second file
- *   like this one with other values, and not one screen's stylesheet has to change.
+ *   app (Plain, Coffee Shop, Nightclub, and Fancy, beside this file, and more to come)
+ *   is a second file like this one with other values, and not one screen's stylesheet
+ *   has to change.
  *   src/templates/tokens.test.js fails if a stylesheet goes back to a literal value.
  *
  * THESE VALUES ARE THE LOOK THE APP HAD BEFORE TOKENS EXISTED (step B4a of the plan).
