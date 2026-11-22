@@ -1,86 +1,75 @@
+import { useState, useEffect } from 'react';
 import NavBar from '../../components/NavBar';
-import { Medal } from 'lucide-react';
+import PeriodPicker, { rangeOf, periodOf } from '../../components/PeriodPicker';
+import Leaderboard from './Leaderboard';
+import { getJson } from '../../services/api';
+import { useStaff } from '../../context/StaffContext';
 import './Challenges.css';
 
+// How often the leaderboard is asked for again while the screen is open. Sales change
+// when a check is paid, which is a few times a minute on a busy night.
+export const LEADERBOARD_REFRESH_MS = 15000;
+
+/**
+ * Challenges screen. For now it holds the leaderboard: what each person sold in a period.
+ *
+ * The numbers come from the backend (GET /api/reports/staff-sales), which adds up the
+ * checks closed in the period and gives each to the person who opened it: the same
+ * sales the Financials screen reports, split by person. This screen only picks the
+ * period and draws the answer. Everyone sees everyone's sales and rank (the owner's
+ * decision D6); nobody's tips are here.
+ *
+ * It used to be invented names and invented challenges typed into this file. The
+ * challenges come back, on real data, in step N5 of Documentation/nothing-fake-brief.md;
+ * until then there are none on the screen rather than made-up ones.
+ */
 function Challenges({ setCurrentView, setSelectedTable }) {
-  // Mock data - will be replaced with API calls later
-  const mockData = {
-    activeChallenges: [
-      {
-        id: 1,
-        name: 'APPETIZER CHAMPION',
-        description: 'Sell 15 appetizers today',
-        progress: 12,
-        target: 15,
-        reward: 20,
-        status: 'in_progress',
-        timeRemaining: 'End of shift'
-      },
-      {
-        id: 2,
-        name: 'WINE PAIRING PRO',
-        description: 'Sell 20 glasses of wine this week',
-        progress: 17,
-        target: 20,
-        reward: 50,
-        status: 'in_progress',
-        timeRemaining: '2 days'
-      }
-    ],
-    completedChallenges: [
-      {
-        id: 3,
-        name: 'HIGH ROLLER',
-        description: 'Close a single check over $150',
-        reward: 25,
-        completedAt: '2 hours ago',
-        claimed: true
-      }
-    ],
-    availableChallenges: [
-      {
-        id: 4,
-        name: 'DESSERT CHAMPION',
-        description: 'Sell 10 desserts this shift',
-        reward: 15
-      },
-      {
-        id: 5,
-        name: 'COFFEE CLOSER',
-        description: 'Sell 15 coffees/espressos',
-        reward: 10
-      },
-      {
-        id: 6,
-        name: '5-STAR SERVICE',
-        description: 'Get 5 perfect feedback scores',
-        reward: 30
-      }
-    ],
-    leaderboard: [
-      { rank: 1, name: 'SARAH M.', sales: 4127.50, avgTip: 22.3, streak: 3 },
-      { rank: 2, name: 'MARCUS K.', sales: 3892.00, avgTip: 21.8, streak: 2 },
-      { rank: 3, name: 'YOU (CJ)', sales: 3764.50, avgTip: 20.1, streak: 1 },
-      { rank: 4, name: 'ALEX R.', sales: 3621.75, avgTip: 19.5, streak: 0 },
-      { rank: 5, name: 'JAMIE L.', sales: 3480.25, avgTip: 18.9, streak: 0 },
-      { rank: 6, name: 'TAYLOR P.', sales: 3294.00, avgTip: 18.2, streak: 0 },
-      { rank: 7, name: 'JORDAN C.', sales: 3087.50, avgTip: 17.8, streak: 0 }
-    ]
-  };
+  const { staff } = useStaff();
 
-  const getRankIcon = (rank) => {
-    if (rank <= 3) {
-      return <Medal size={20} />;
-    }
-    return `${rank}.`;
-  };
+  // The period on screen. The buttons, and what each period means, are the ones the
+  // Financials screen uses (components/PeriodPicker).
+  const [period, setPeriod] = useState(periodOf('week'));
+  // The backend's rows for that period. null until the first answer for it arrives.
+  const [rows, setRows] = useState(null);
+  const [failed, setFailed] = useState(false);
 
-  const getRankClass = (rank) => {
-    if (rank === 1) return 'gold';
-    if (rank === 2) return 'silver';
-    if (rank === 3) return 'bronze';
-    return '';
-  };
+  // The period as text, so the effect below starts again only when it really changes
+  const periodKey = `${period.kind}|${period.customStart}|${period.customEnd}`;
+
+  useEffect(() => {
+    // An answer can arrive after another period has been picked (or after the screen
+    // has been left). "current" lets a late answer see that it is no longer wanted.
+    let current = true;
+
+    const load = () => {
+      // Worked out on every ask, not once: "today" must become tomorrow at midnight
+      // on a screen that has been open all night
+      const { from, to } = rangeOf(period);
+      getJson(`/api/reports/staff-sales?from=${from}&to=${to}`)
+        .then(report => {
+          if (!current) return;
+          setRows(report.staff);
+          setFailed(false);
+        })
+        .catch(error => {
+          if (!current) return;
+          console.error('Error fetching the leaderboard:', error);
+          setFailed(true);
+        });
+    };
+
+    setRows(null);                  // The last period's rows are not this period's: draw nothing until the answer comes
+    setFailed(false);
+    load();
+    const timer = setInterval(load, LEADERBOARD_REFRESH_MS);
+
+    return () => {
+      current = false;
+      clearInterval(timer);
+    };
+    // periodKey stands for the three fields of period that matter
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodKey]);
 
   return (
     <div className="page-with-nav">
@@ -88,112 +77,13 @@ function Challenges({ setCurrentView, setSelectedTable }) {
       <div className="challenges-page">
         <h2>CHALLENGES</h2>
 
-        <div className="challenges-grid">
-          {/* Active Challenges */}
-          <div className="challenges-section">
-            <h3 className="section-title">Active Challenges</h3>
-            {mockData.activeChallenges.length > 0 ? (
-              mockData.activeChallenges.map(challenge => (
-                <div key={challenge.id} className="challenge-card">
-                  <div className="challenge-header">
-                    <div className="challenge-name">{challenge.name}</div>
-                    <div className="challenge-status in-progress">IN PROGRESS</div>
-                  </div>
-                  <div className="challenge-description">{challenge.description}</div>
-                  <div className="challenge-progress">
-                    <div className="progress-text">
-                      <span>Progress: {challenge.progress}/{challenge.target}</span>
-                      <span>{Math.round((challenge.progress / challenge.target) * 100)}%</span>
-                    </div>
-                    <div className="progress-bar-container">
-                      <div 
-                        className="progress-bar-fill" 
-                        style={{ width: `${(challenge.progress / challenge.target) * 100}%` }}
-                      >
-                        {challenge.progress}/{challenge.target}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="challenge-footer">
-                    <div className="challenge-reward">Reward: ${challenge.reward}</div>
-                    <div className="challenge-time">{challenge.timeRemaining}</div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="no-challenges">No active challenges</div>
-            )}
-          </div>
+        <PeriodPicker period={period} onChange={setPeriod} />
 
-          {/* Completed Challenges */}
-          <div className="challenges-section">
-            <h3 className="section-title">Completed Challenges</h3>
-            {mockData.completedChallenges.length > 0 ? (
-              mockData.completedChallenges.map(challenge => (
-                <div key={challenge.id} className="challenge-card completed">
-                  <div className="challenge-header">
-                    <div className="challenge-name">{challenge.name}</div>
-                    <div className="challenge-status completed">COMPLETE</div>
-                  </div>
-                  <div className="challenge-description">{challenge.description}</div>
-                  <div className="challenge-footer">
-                    <div className="challenge-reward">Reward: ${challenge.reward}</div>
-                    <button 
-                      className={`challenge-btn ${challenge.claimed ? 'claimed' : ''}`}
-                      disabled={challenge.claimed}
-                    >
-                      {challenge.claimed ? 'CLAIMED' : 'CLAIM REWARD'}
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="no-challenges">No completed challenges</div>
-            )}
-          </div>
-
-          {/* Available Challenges */}
-          <div className="challenges-section">
-            <h3 className="section-title">Available Challenges</h3>
-            {mockData.availableChallenges.map(challenge => (
-              <div key={challenge.id} className="challenge-card available">
-                <div className="challenge-header">
-                  <div className="challenge-name">{challenge.name}</div>
-                </div>
-                <div className="challenge-description">{challenge.description}</div>
-                <div className="challenge-footer">
-                  <div className="challenge-reward">Reward: ${challenge.reward}</div>
-                  <button className="challenge-btn secondary">START CHALLENGE</button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Leaderboard */}
-          <div className="challenges-section">
-            <h3 className="section-title">Top Servers - This Week</h3>
-            <div className="leaderboard-table">
-              {mockData.leaderboard.map(entry => (
-                <div 
-                  key={entry.rank} 
-                  className={`leaderboard-row ${entry.name.includes('YOU') ? 'highlight' : ''}`}
-                >
-                  <div className={`leaderboard-rank ${getRankClass(entry.rank)}`}>
-                    {getRankIcon(entry.rank)}
-                  </div>
-                  <div className="leaderboard-name">
-                    {entry.name}
-                  </div>
-                  <div className="leaderboard-sales">
-                    ${entry.sales.toFixed(2)}
-                  </div>
-                  <div className="leaderboard-tips">
-                    {entry.avgTip.toFixed(1)}% avg tips
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="challenges-section">
+          <h3 className="section-title">Leaderboard</h3>
+          <p className="leaderboard-about">Sales before tax, on checks closed in this period, by who opened the check.</p>
+          {failed && <p className="leaderboard-failed" role="alert">The leaderboard could not be loaded. It will be tried again in a moment.</p>}
+          <Leaderboard rows={rows} ownStaffId={staff ? staff.staffId : null} />
         </div>
       </div>
     </div>

@@ -46,10 +46,10 @@ export default [
       // are allowed (args: 'none'): a callback often has to accept arguments it ignores.
       'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none', ignoreRestSiblings: true }],
 
-      // Off, as it was under Create React App. It asks for braces around a "case" that
-      // declares a variable. Financials has one such case; turning the rule on is a
-      // change to a screen, which this move was not meant to make.
-      'no-case-declarations': 'off',
+      // ('no-case-declarations' was off here until step N4: Financials had one "case" that
+      // declared a variable without braces. That switch moved to
+      // components/PeriodPicker/periods.js with the braces added, so the rule is on again,
+      // as part of ESLint's recommended set above.)
 
       // The rest are the extras Create React App switched on
       'array-callback-return': 'warn',                      // A map()/filter() callback that forgets to return

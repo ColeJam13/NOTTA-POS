@@ -47,6 +47,14 @@
   letter-spacing: var(--letter-spacing-wide);
 }
 
+/* THE CHALLENGE CARDS ARE NOT ON THE SCREEN RIGHT NOW. They were drawn from invented
+   challenges, which step N4 of Documentation/nothing-fake-brief.md took off the screen;
+   step N5 puts challenges back, on real data, and draws them with these rules. The
+   rules stay in between (.challenges-grid above, and from .challenge-card to
+   .no-challenges below) so that the
+   tokens only they use (--gradient-progress, --radius-bar-large, --radius-chip) are
+   not left defined and unused, which tokens.test.js refuses. */
+
 .challenge-card {
   background: var(--color-bg-deep);
   border: var(--border-width) solid var(--color-border);
@@ -191,63 +199,6 @@
   box-shadow: none;
 }
 
-.leaderboard-table {
-  width: 100%;
-}
-
-.leaderboard-row {
-  display: grid;
-  grid-template-columns: 60px 1fr 150px 120px;
-  gap: var(--space-15);
-  padding: var(--space-15);
-  background: var(--color-bg-deep);
-  border: var(--border-width-thin) solid var(--color-border);
-  border-radius: var(--radius-box);
-  margin-bottom: var(--space-10);
-  align-items: center;
-}
-
-.leaderboard-row.highlight {
-  background: var(--color-accent-surface);
-  border-color: var(--color-border-primary);
-}
-
-.leaderboard-rank {
-  font-size: var(--font-size-24);
-  font-weight: var(--font-weight-bold);
-  text-align: center;
-}
-
-.leaderboard-rank.gold {
-  color: var(--color-rank-gold);
-}
-
-.leaderboard-rank.silver {
-  color: var(--color-rank-silver);
-}
-
-.leaderboard-rank.bronze {
-  color: var(--color-rank-bronze);
-}
-
-.leaderboard-name {
-  color: var(--color-text);
-  font-size: var(--font-size-14);
-  font-weight: var(--font-weight-bold);
-}
-
-.leaderboard-sales {
-  color: var(--color-primary);
-  font-size: var(--font-size-14);
-  text-align: right;
-}
-
-.leaderboard-tips {
-  color: var(--color-accent);
-  font-size: var(--font-size-12);
-  text-align: right;
-}
-
 .no-challenges {
   text-align: center;
   color: var(--color-text-faint);
@@ -255,14 +206,142 @@
   padding: var(--space-40);
 }
 
-.leaderboard-rank.gold {
+/* ----- The leaderboard ----- */
+
+/* What the numbers are, in a line under the title */
+.leaderboard-about {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-10);
+  text-align: center;
+  margin-bottom: var(--space-20);
+}
+
+.leaderboard-empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-12);
+  padding: var(--space-40);
+}
+
+.leaderboard-failed {
+  text-align: center;
+  color: var(--status-error-text);
+  font-size: var(--font-size-12);
+  margin-bottom: var(--space-15);
+}
+
+/* A window too narrow for seven columns scrolls the table sideways, not the page */
+.leaderboard-scroll {
+  overflow-x: auto;
+}
+
+/* A real table, so a screen reader can say which column a number is in. Each row is
+   drawn as a box of its own: "separate" keeps the cells' borders apart, and the
+   spacing is the gap between one row's box and the next. */
+.leaderboard-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 var(--space-10);
+}
+
+.leaderboard-table th {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-10);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing);
+  text-align: right;
+  white-space: nowrap;
+  padding: 0 var(--space-15);
+}
+
+.leaderboard-table th.leaderboard-col-rank {
+  text-align: center;
+}
+
+.leaderboard-table th.leaderboard-col-name {
+  text-align: left;
+}
+
+/* A row's box is made of its cells: every cell has the top and bottom line, the first
+   has the left one and the last the right one, with the corners rounded to match. */
+.leaderboard-row td {
+  background: var(--color-bg-deep);
+  border-top: var(--border-width-thin) solid var(--color-border);
+  border-bottom: var(--border-width-thin) solid var(--color-border);
+  padding: var(--space-15);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.leaderboard-row td:first-child {
+  border-left: var(--border-width-thin) solid var(--color-border);
+  border-radius: var(--radius-box) 0 0 var(--radius-box);
+}
+
+.leaderboard-row td:last-child {
+  border-right: var(--border-width-thin) solid var(--color-border);
+  border-radius: 0 var(--radius-box) var(--radius-box) 0;
+}
+
+/* The signed-in person's own row. It also carries the word YOU (.leaderboard-you). */
+.leaderboard-row.own td {
+  background: var(--color-accent-surface);
+  border-color: var(--color-border-primary);
+}
+
+.leaderboard-row td.leaderboard-rank {
+  color: var(--color-text);
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-bold);
+  text-align: center;
+}
+
+/* The medal beside the number, for the first three ranks */
+.leaderboard-rank svg {
+  vertical-align: middle;
+  margin-right: var(--space-6);
+}
+
+.leaderboard-rank.gold svg {
   color: var(--color-rank-gold);
 }
 
-.leaderboard-rank.silver {
+.leaderboard-rank.silver svg {
   color: var(--color-rank-silver);
 }
 
-.leaderboard-rank.bronze {
+.leaderboard-rank.bronze svg {
   color: var(--color-rank-bronze);
+}
+
+.leaderboard-row td.leaderboard-name {
+  color: var(--color-text);
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-bold);
+  text-align: left;
+  white-space: normal;
+}
+
+.leaderboard-you {
+  display: inline-block;
+  margin-left: var(--space-10);
+  padding: var(--space-3) var(--space-8);
+  background: var(--color-primary-fill);
+  border-radius: var(--radius-chip);
+  color: var(--color-on-primary);
+  font-size: var(--font-size-9);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing);
+  vertical-align: middle;
+}
+
+.leaderboard-sales {
+  color: var(--color-primary);
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-bold);
+}
+
+.leaderboard-number {
+  color: var(--color-text);
+  font-size: var(--font-size-12);
 }

@@ -5,6 +5,7 @@ import PinPad from '../../components/PinPad';
 import PaymentForm from '../../components/PaymentModal/PaymentForm';
 import { SearchResults } from '../../components/Search';
 import { NotificationPanel } from '../../components/Notifications';
+import PeriodPicker, { periodOf } from '../../components/PeriodPicker';
 import { Bell } from 'lucide-react';
 import { rowsOf } from '../../components/Search/SearchResults';
 import ActiveTableCard from '../../components/TableChecks/ActiveTableCard';
@@ -13,6 +14,7 @@ import MenuPanel from '../CreateOrder/MenuPanel';
 import OrderTicket from '../ActiveOrders/OrderTicket';
 import TableVisual from '../FloorMap/TableVisual';
 import PausedTerminalRow from '../Staff/PausedTerminalRow';
+import Leaderboard from '../Challenges/Leaderboard';
 import { EightySixChip, EightySixTile } from '../EightySixBoard/EightySixPieces';
 import { TEMPLATES, useTemplates, templateOnScreen, previewTemplate, stopPreview } from '../../templates';
 import { serverNow } from '../../services/serverClock';
@@ -24,6 +26,7 @@ import '../Tables/Tables.css';
 import '../FloorMap/FloorMap.css';
 import '../EightySixBoard/EightySixBoard.css';
 import '../Staff/Staff.css';
+import '../Challenges/Challenges.css';
 import '../Home/Home.css';
 import './Gallery.css';
 
@@ -138,6 +141,17 @@ const NOTICES = [
   { notificationId: 1, kind: 'item_86', text: "Garden Toast is 86'd", fromName: 'Kit', minutesAgo: 40 }
 ];
 
+// A leaderboard, made up, in the shape the backend answers with (StaffSalesView): two
+// people tied for first (so the next rank is 3), someone below the medals, and the row
+// of the person looking at it (staff 3, see OWN_ROW).
+const BOARD = [
+  { staffId: 1, name: 'Sarah Miller', rank: 1, checksClosed: 14, sales: 1240.5, checkAverage: 88.61, biggestCheck: 310, itemsSold: 96 },
+  { staffId: 2, name: 'Dan', rank: 1, checksClosed: 11, sales: 1240.5, checkAverage: 112.77, biggestCheck: 240.25, itemsSold: 71 },
+  { staffId: 3, name: 'Morgan', rank: 3, checksClosed: 9, sales: 884, checkAverage: 98.22, biggestCheck: 180, itemsSold: 58 },
+  { staffId: 4, name: 'Harper', rank: 4, checksClosed: 2, sales: 61.75, checkAverage: 30.88, biggestCheck: 45, itemsSold: 5 }
+];
+const OWN_ROW = 3;
+
 // What the search box found, made up: one or two results of each kind, in the shape the
 // backend answers with (SearchResultsView). The second closed check has no tip in it,
 // as a check does when the person asking did not open it.
@@ -193,6 +207,7 @@ function Gallery({ setCurrentView, setSelectedTable }) {
   const [paymentMethod, setPaymentMethod] = useState('credit_card');
   const [tipPercent, setTipPercent] = useState(18);
   const [searchPeriod, setSearchPeriod] = useState('today');   // The search panel's "closed checks from" buttons really switch
+  const [boardPeriod, setBoardPeriod] = useState(periodOf('custom'));   // So do the period buttons; CUSTOM shows the two date boxes
 
   // Show a template: a preview, unless it is the restaurant's own (then no preview is needed)
   const show = (id) => {
@@ -367,6 +382,18 @@ function Gallery({ setCurrentView, setSelectedTable }) {
             </div>
             <div className="gallery-notifications">
               <NotificationPanel notifications={[]} onDismiss={nothing} onDismissAll={nothing} canWrite={false} onSend={async () => {}} />
+            </div>
+          </Piece>
+
+          <Piece title="LEADERBOARD AND PERIOD BUTTONS" wide note="The period buttons Financials and the leaderboard share, with the date boxes of a custom period; the leaderboard with a tie for first, a medal for the first three ranks, and your own row; and what it says when nobody has sold anything.">
+            <PeriodPicker period={boardPeriod} onChange={setBoardPeriod} />
+            <div className="challenges-section gallery-leaderboard">
+              <h3 className="section-title">Leaderboard</h3>
+              <Leaderboard rows={BOARD} ownStaffId={OWN_ROW} />
+            </div>
+            <div className="challenges-section gallery-leaderboard">
+              <h3 className="section-title">Leaderboard</h3>
+              <Leaderboard rows={[]} />
             </div>
           </Piece>
 

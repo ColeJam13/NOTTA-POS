@@ -16,6 +16,7 @@
  *   search (tables, checks, the menu)     anyone signed in
  *   read and dismiss own notifications    anyone signed in
  *   write a message to the floor          kitchen, bartender, manager
+ *   read what each person sold            anyone signed in (no tips in it)
  *   open orders, ring in, send, take pay  server, bartender, host, manager
  *   start and complete items              kitchen, bartender, manager
  *   86 and un-86                          kitchen, bartender, manager
@@ -62,7 +63,11 @@ const ROLES_BY_ACTION = {
   'make-items': ['manager', 'kitchen', 'bartender'],      // START and COMPLETE on the kitchen display
   // Writing a message to everyone else from the bell's panel (the owner's decision D5;
   // Permissions.SEND_MESSAGES on the backend). Everyone reads and dismisses their own.
-  'send-message': ['manager', 'kitchen', 'bartender']
+  'send-message': ['manager', 'kitchen', 'bartender'],
+  // Reading what each person sold, for the leaderboard: every role (the owner's decision
+  // D6; Permissions.SEE_STAFF_SALES on the backend). Which roles are offered the
+  // Challenges screen it is drawn on is SCREENS_BY_ROLE above, a separate question.
+  'see-staff-sales': ['manager', 'server', 'bartender', 'host', 'kitchen']
 };
 
 /**
@@ -77,7 +82,7 @@ export const canOpenScreen = (role, view) => {
 
 /**
  * @param {string|null} role - The signed-in person's role
- * @param {string} action - 'search', 'edit-layout', 'change-86', 'make-items', or 'send-message'
+ * @param {string} action - 'search', 'edit-layout', 'change-86', 'make-items', 'send-message', or 'see-staff-sales'
  * @returns {boolean} - Whether that role may do it
  */
 export const canDo = (role, action) => {

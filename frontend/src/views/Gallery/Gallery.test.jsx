@@ -133,6 +133,27 @@ test('the 86 board, the PIN pad, payment, messages, and paused terminals are all
   expect(piece('BUTTONS').querySelector('.btn-close-order:disabled')).not.toBeNull();
 });
 
+test('the leaderboard is shown with a tie, medals, your own row, and when empty, with the period buttons above it', async () => {
+  await renderGallery();
+  const board = piece('LEADERBOARD AND PERIOD BUTTONS');
+
+  // The shared period buttons, with a custom period's two date boxes
+  expect([...board.querySelectorAll('.period-btn')].map(button => button.textContent)).toEqual(['TODAY', 'THIS WEEK', 'THIS MONTH', 'CUSTOM']);
+  expect(board.querySelectorAll('input[type="date"]')).toHaveLength(2);
+
+  // Two people tied for first, so the next rank is 3; the first three have a medal
+  expect([...board.querySelectorAll('.leaderboard-rank-number')].map(cell => cell.textContent)).toEqual(['1', '1', '3', '4']);
+  expect([...board.querySelectorAll('.leaderboard-rank')].map(cell => cell.querySelector('svg') !== null)).toEqual([true, true, true, false]);
+
+  // One row is the viewer's own, and says so with a word
+  expect(board.querySelectorAll('.leaderboard-row.own')).toHaveLength(1);
+  expect(within(board.querySelector('.leaderboard-row.own')).getByText('YOU')).toBeInTheDocument();
+
+  expect(within(board).getByText('No sales yet for this period.')).toBeInTheDocument();
+  // As on the real screen: no tips
+  expect(board.textContent).not.toMatch(/tip/i);
+});
+
 test('the bell is shown with a count and with none, and its panel with each kind of notification and when empty', async () => {
   renderGallery();
   const bells = piece('NOTIFICATIONS');

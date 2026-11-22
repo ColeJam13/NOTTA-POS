@@ -200,6 +200,11 @@
   max-height: none;
 }
 
+/* The leaderboard's card, with room between the full one and the empty one */
+.gallery-leaderboard {
+  margin-bottom: var(--space-16);
+}
+
 /* The search panel hangs under the search box in the real app. Here it is laid out in
    the page, one beside the other, and as tall as what is in it. */
 .gallery-search {
