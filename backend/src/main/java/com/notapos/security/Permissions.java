@@ -51,6 +51,11 @@ public final class Permissions {
     // the matrix does not name and no screen uses yet: closed until a feature needs it.
     public static final String MANAGER_ONLY = "hasRole('MANAGER')";
 
+    // The search box in the top bar: every role. It finds tables, checks, and menu items,
+    // which every role may already read. What a closed check in the answer says about its
+    // tip is decided per person in the service, as it is on the Tables screen.
+    public static final String SEARCH = "isAuthenticated()";
+
     // Any role at all. Not needed to let people in (a method with no rule is already open to
     // everyone signed in); it is written on the few endpoints that change something and are
     // meant for every role, to say that the missing role list is on purpose.

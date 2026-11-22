@@ -2,6 +2,7 @@ package com.notapos.repository;
 
 import com.notapos.entity.Order;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -35,6 +36,55 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findOrdersBetween(LocalDateTime start, LocalDateTime end);
 
     List<Order> findByStatusAndClosedAtBetween(String status, LocalDateTime start, LocalDateTime end);     // Find orders with a status that were closed within a time range (start and end included)
+
+    // ------------------------------------------------------------------
+    // The search box
+    // ------------------------------------------------------------------
+    //
+    // A check is found by its table's number, by the name of the person who opened it,
+    // or by its own number. Orders and tables are not linked by a JPA relationship in
+    // this codebase, so the query names both and matches them up itself (t.tableId =
+    // o.tableId): one query, not one per order.
+    //
+    // "pattern" and "orderNumber" are PARAMETERS. The database receives them as values,
+    // separately from the query's text, so nothing a person types can change what the
+    // query does. (Building the query by gluing the typed text into it is how "SQL
+    // injection" happens. Never do that.)
+
+    /**
+     * Open checks matching what was typed, newest first.
+     *
+     * @param status      OrderStatus.OPEN's value
+     * @param pattern     See TableRepository.searchRegularTables
+     * @param orderNumber The typed text as a number, or null when it is not one
+     * @param page        How many to return at most
+     */
+    @Query("""
+            SELECT o FROM Order o, RestaurantTable t
+            WHERE t.tableId = o.tableId
+              AND o.status = :status
+              AND (LOWER(t.tableNumber) LIKE :pattern ESCAPE '\\'
+                   OR LOWER(o.serverName) LIKE :pattern ESCAPE '\\'
+                   OR o.orderId = :orderNumber)
+            ORDER BY o.createdAt DESC, o.orderId DESC
+            """)
+    List<Order> searchWithStatus(String status, String pattern, Long orderNumber, Pageable page);
+
+    /**
+     * Closed checks matching what was typed and closed at or after a moment, most
+     * recently closed first.
+     */
+    @Query("""
+            SELECT o FROM Order o, RestaurantTable t
+            WHERE t.tableId = o.tableId
+              AND o.status = :status
+              AND o.closedAt >= :since
+              AND (LOWER(t.tableNumber) LIKE :pattern ESCAPE '\\'
+                   OR LOWER(o.serverName) LIKE :pattern ESCAPE '\\'
+                   OR o.orderId = :orderNumber)
+            ORDER BY o.closedAt DESC, o.orderId DESC
+            """)
+    List<Order> searchWithStatusClosedSince(String status, LocalDateTime since, String pattern, Long orderNumber, Pageable page);
 
     // ------------------------------------------------------------------
     // Row locks: how two terminals are kept from acting on one check at the same instant

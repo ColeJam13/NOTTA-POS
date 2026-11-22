@@ -2,7 +2,9 @@ package com.notapos.repository;
 
 
 import com.notapos.entity.MenuItem;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
@@ -39,4 +41,14 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     List<MenuItem> findAllByOrderByMenuItemIdAsc();
 
     List<MenuItem> findByIsActiveOrderByMenuItemIdAsc(Boolean isActive);
+
+    /**
+     * Items on the menu whose name contains what was typed, by name, for the search box.
+     * An 86'd item is still on the menu and is found; an inactive one is not.
+     *
+     * @param pattern See TableRepository.searchRegularTables: a parameter, never query text
+     * @param page    How many to return at most
+     */
+    @Query("SELECT m FROM MenuItem m WHERE m.isActive = true AND LOWER(m.name) LIKE :pattern ESCAPE '\\' ORDER BY m.name, m.menuItemId")
+    List<MenuItem> searchOnTheMenu(String pattern, Pageable page);
 }
