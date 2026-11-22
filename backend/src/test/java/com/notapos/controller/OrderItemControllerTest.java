@@ -246,14 +246,14 @@ class OrderItemControllerTest {
         
         // Given - Service completes item
         testItem.setStatus("completed");
-        when(orderItemService.completeItem(1L)).thenReturn(testItem);
+        when(orderItemService.completeItem(eq(1L), any())).thenReturn(testItem);
 
         // When/Then - PUT request should return 200 OK
         mockMvc.perform(put("/api/order-items/1/complete").with(signIn.asKitchen()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("completed"));
 
-        verify(orderItemService, times(1)).completeItem(1L);
+        verify(orderItemService, times(1)).completeItem(eq(1L), any());
     }
 
     @Test
@@ -359,13 +359,13 @@ class OrderItemControllerTest {
         // WHY: Handle missing items
         
         // Given - Service throws exception
-        when(orderItemService.completeItem(999L)).thenThrow(new ResourceNotFoundException("Item not found"));
+        when(orderItemService.completeItem(eq(999L), any())).thenThrow(new ResourceNotFoundException("Item not found"));
 
         // When/Then - PUT request should return 404 Not Found
         mockMvc.perform(put("/api/order-items/999/complete").with(signIn.asKitchen()))
                 .andExpect(status().isNotFound());
 
-        verify(orderItemService, times(1)).completeItem(999L);
+        verify(orderItemService, times(1)).completeItem(eq(999L), any());
     }
 
     @Test

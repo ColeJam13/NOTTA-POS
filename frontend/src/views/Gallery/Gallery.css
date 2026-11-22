@@ -180,6 +180,26 @@
   margin-top: 0;
 }
 
+/* The bell with a count, and with none, side by side */
+.gallery-bells {
+  display: flex;
+  gap: var(--space-20);
+  margin-bottom: var(--space-16);
+}
+
+/* The notification panel hangs under the bell in the real app. Here it is laid out in
+   the page, as tall as what is in it. */
+.gallery-notifications {
+  position: relative;
+  max-width: 400px;
+  margin-bottom: var(--space-16);
+}
+
+.gallery-notifications .notification-panel {
+  position: static;
+  max-height: none;
+}
+
 /* The search panel hangs under the search box in the real app. Here it is laid out in
    the page, one beside the other, and as tall as what is in it. */
 .gallery-search {

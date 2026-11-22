@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.notapos.exception.ResourceNotFoundException;
 import com.notapos.entity.MenuItem;
 import com.notapos.repository.MenuItemRepository;
+import com.notapos.security.StaffSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
@@ -24,10 +25,12 @@ import java.util.Optional;
 public class MenuItemService {
 
     private final MenuItemRepository menuItemRepository;
+    private final NotificationService notificationService;      // Tells everyone else when an item is 86'd or back on
 
     @Autowired
-    public MenuItemService(MenuItemRepository menuItemRepository) {
+    public MenuItemService(MenuItemRepository menuItemRepository, NotificationService notificationService) {
         this.menuItemRepository = menuItemRepository;
+        this.notificationService = notificationService;
     }
 
     public List<MenuItem> getAllMenuItems() {       // Get all menu items (including inactive)
@@ -100,13 +103,29 @@ public class MenuItemService {
         return menuItemRepository.findByIs86dAndIsActiveOrderByMenuItemIdAsc(true, true);
     }
 
+    /**
+     * 86 an item (true) or put it back on (false), and tell everyone else.
+     *
+     * The notification is written in THIS transaction (NotificationService insists
+     * on it), so the change and its notice are saved together or not at all. It is
+     * only written when the item's state really changed: 86'ing something that is
+     * already out tells nobody anything new.
+     *
+     * @param by The signed-in person making the change. They are not notified.
+     */
     @Transactional
-    public MenuItem set86d(Long id, boolean is86d) {                    // 86 an item (true) or put it back on (false)
+    public MenuItem set86d(Long id, boolean is86d, StaffSession by) {
         MenuItem menuItem = menuItemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Menu item not found with id: " + id));
 
+        boolean was86d = Boolean.TRUE.equals(menuItem.getIs86d());
         menuItem.setIs86d(is86d);
-        return menuItemRepository.save(menuItem);
+        MenuItem saved = menuItemRepository.save(menuItem);
+
+        if (was86d != is86d) {
+            notificationService.itemEightySixChanged(saved, by);
+        }
+        return saved;
     }
 
     @Transactional

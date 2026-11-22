@@ -42,7 +42,9 @@
 }
 
 .notifications-btn {
-  position: relative;
+  position: relative;                    /* For the count on its corner */
+  display: flex;
+  align-items: center;
   background: transparent;
   border: var(--border-width) solid var(--color-border);
   color: var(--color-text);
@@ -58,6 +60,13 @@
   background: var(--color-accent-fill);
 }
 
+/* While its panel is open the bell is filled in, like the gear on the Settings screen */
+.notifications-btn.active {
+  background: var(--color-accent-fill);
+  color: var(--color-on-accent);
+}
+
+/* How many notifications: a small round count on the bell's corner. Not drawn at zero. */
 .notifications-badge {
   position: absolute;
   top: -5px;

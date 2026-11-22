@@ -15,6 +15,7 @@ import Settings from './views/Settings';
 import Gallery from './views/Gallery';
 import TemplatePreviewBar from './components/TemplatePreviewBar';
 import { StaffContext } from './context/StaffContext';
+import { NotificationsProvider } from './context/NotificationsContext';
 import { apiFetch, getJson, setSessionToken, setOnSessionEnded } from './services/api';
 import { showChosenTemplate, stopPreview } from './templates';
 import { canOpenScreen } from './utils/roles';
@@ -167,10 +168,15 @@ function App() {
   return (
     // Every screen below can read who is signed in with useStaff()
     <StaffContext.Provider value={{ staff, signOut }}>
-      {/* Draws nothing unless a manager is trying a template out; then it sits above
-          whichever screen is open */}
-      <TemplatePreviewBar />
-      {renderView()}
+      {/* Asks the backend for this person's notifications every few seconds, once, for
+          every screen: the bell in each screen's top bar reads them from here. It is
+          only here while someone is signed in, so signing out stops the asking. */}
+      <NotificationsProvider>
+        {/* Draws nothing unless a manager is trying a template out; then it sits above
+            whichever screen is open */}
+        <TemplatePreviewBar />
+        {renderView()}
+      </NotificationsProvider>
     </StaffContext.Provider>
   );
 

@@ -4,6 +4,7 @@ import tools.jackson.databind.ObjectMapper;
 import com.notapos.dto.StaffCreateRequest;
 import com.notapos.entity.MenuItem;
 import com.notapos.entity.MenuItemModifierGroup;
+import com.notapos.entity.Notification;
 import com.notapos.entity.Modifier;
 import com.notapos.entity.ModifierGroup;
 import com.notapos.entity.Order;
@@ -19,6 +20,7 @@ import com.notapos.enums.StaffRole;
 import com.notapos.repository.MenuItemModifierGroupRepository;
 import com.notapos.repository.MenuItemRepository;
 import com.notapos.repository.ModifierGroupRepository;
+import com.notapos.repository.NotificationRepository;
 import com.notapos.repository.ModifierRepository;
 import com.notapos.repository.OrderItemModifierRepository;
 import com.notapos.repository.OrderItemRepository;
@@ -112,6 +114,7 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
     @Autowired private OrderItemRepository orderItemRepository;
     @Autowired private OrderItemModifierRepository orderItemModifierRepository;
     @Autowired private PaymentRepository paymentRepository;
+    @Autowired private NotificationRepository notificationRepository;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired @Qualifier("requestMappingHandlerMapping") private RequestMappingHandlerMapping handlerMapping;     // Every endpoint the backend has
@@ -138,6 +141,7 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
     private Order closedOrder;          // On paidTable: paid and closed
     private OrderItem draftItem, pendingItem, firedItem;
     private OrderItemModifier itemModifier;
+    private Notification notice;        // A notification for everyone, from nobody on record: it is on every person's list
     private Payment payment;
     private TableStatusLog statusLog;
 
@@ -169,6 +173,7 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
         Set<StaffRole> takesOrders = EnumSet.of(StaffRole.SERVER, StaffRole.BARTENDER, StaffRole.HOST, StaffRole.MANAGER);
         Set<StaffRole> makesOrders = EnumSet.of(StaffRole.KITCHEN, StaffRole.BARTENDER, StaffRole.MANAGER);
         Set<StaffRole> knowsWhatRanOut = EnumSet.of(StaffRole.KITCHEN, StaffRole.BARTENDER, StaffRole.MANAGER);
+        Set<StaffRole> writesMessages = EnumSet.of(StaffRole.KITCHEN, StaffRole.BARTENDER, StaffRole.MANAGER);
         Set<StaffRole> managerOnly = EnumSet.of(StaffRole.MANAGER);
 
         // ------------------------------------------------------------------
@@ -319,6 +324,17 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
         endpoint("GET /api/staff/paused-devices", managerOnly, () -> get("/api/staff/paused-devices"));
         endpoint("POST /api/staff/paused-devices/release", managerOnly, () -> json(post("/api/staff/paused-devices/release"),
                 "{\"device\":\"192.168.1.21\"}"));
+        // ------------------------------------------------------------------
+        // Notifications, the bell in the top bar (step N3, decision D5)
+        // ------------------------------------------------------------------
+
+        // Reading and dismissing your own: every role (Permissions.OWN_NOTIFICATIONS)
+        endpoint("GET /api/notifications", anyoneSignedIn, () -> get("/api/notifications"));
+        endpoint("POST /api/notifications/{id}/dismiss", anyoneSignedIn, () -> post("/api/notifications/" + notice.getNotificationId() + "/dismiss"));
+        endpoint("POST /api/notifications/dismiss-all", anyoneSignedIn, () -> post("/api/notifications/dismiss-all"));
+        // Writing a message to the floor: the kitchen, bartenders, and managers (Permissions.SEND_MESSAGES)
+        endpoint("POST /api/notifications/messages", writesMessages, () -> json(post("/api/notifications/messages"), "{\"text\":\"Fryer is down\"}"));
+
         endpoint("GET /api/reports/financials", managerOnly, () -> get("/api/reports/financials")
                 .param("from", "2026-11-18T00:00:00").param("to", "2026-11-19T00:00:00"));
         endpoint("PUT /api/tables/layout", managerOnly, () -> json(put("/api/tables/layout"),
@@ -374,6 +390,8 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
      *      table needs them back. Staff are left alone, so everyone stays signed in.
      */
     private void buildRestaurant() {
+        jdbcTemplate.update("DELETE FROM notification_dismissals");
+        notificationRepository.deleteAll();
         orderItemModifierRepository.deleteAll();
         orderItemRepository.deleteAll();
         paymentRepository.deleteAll();
@@ -437,6 +455,12 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
         statusLog.setTableId(busyTable.getTableId());
         statusLog.setNewStatus("occupied");
         statusLog = tableStatusLogRepository.save(statusLog);
+
+        notice = new Notification();                                 // "For everyone", so every role may dismiss it
+        notice.setKind("message");
+        notice.setBody("Fryer is down");
+        notice.setCreatedAt(java.time.Instant.now());
+        notice = notificationRepository.save(notice);
     }
 
     private PrepStation prepStation(String name) {

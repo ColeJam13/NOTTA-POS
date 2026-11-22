@@ -133,6 +133,31 @@ test('the 86 board, the PIN pad, payment, messages, and paused terminals are all
   expect(piece('BUTTONS').querySelector('.btn-close-order:disabled')).not.toBeNull();
 });
 
+test('the bell is shown with a count and with none, and its panel with each kind of notification and when empty', async () => {
+  renderGallery();
+  const bells = piece('NOTIFICATIONS');
+
+  // The bell both ways: the count is drawn only when there is one
+  expect(within(bells).getByRole('button', { name: 'Notifications: 4' }).querySelector('.notifications-badge')).toHaveTextContent('4');
+  expect(within(bells).getByRole('button', { name: 'Notifications: none' }).querySelector('.notifications-badge')).toBeNull();
+
+  // One notification of each kind, each with its word
+  for (const word of ["86'D", 'BACK ON', 'ORDER UP', 'MESSAGE']) {
+    expect(within(bells).getByText(word)).toBeInTheDocument();
+  }
+  expect(within(bells).getByText('Kit · 4m ago')).toBeInTheDocument();
+  expect(within(bells).getByRole('button', { name: 'DISMISS ALL' })).toBeInTheDocument();
+  expect(within(bells).getByLabelText('Message to everyone')).toBeInTheDocument();
+  // ...and the panel with nothing in it
+  expect(within(bells).getByText('No notifications.')).toBeInTheDocument();
+
+  // Pressing things here dismisses nothing and sends nothing
+  await userEvent.click(within(bells).getByRole('button', { name: 'Dismiss: Table W5 is up' }));
+  await userEvent.type(within(bells).getByLabelText('Message to everyone'), 'hello{Enter}');
+  expect(within(bells).getByText('Table W5 is up')).toBeInTheDocument();
+  expect(global.fetch).not.toHaveBeenCalled();
+});
+
 test('the search panel is shown with a result of each kind, one of them under the arrow keys, and its empty state', async () => {
   renderGallery();
   const search = piece('SEARCH');

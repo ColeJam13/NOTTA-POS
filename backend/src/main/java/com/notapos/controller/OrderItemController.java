@@ -11,7 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.notapos.security.Permissions;
+import com.notapos.security.StaffSession;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -121,8 +123,9 @@ public class OrderItemController {
 
     @PreAuthorize(Permissions.MAKE_ORDERS)                                      // The people who make the orders
     @PutMapping("/{id}/complete")                                               // Mark item as completed
-    public ResponseEntity<OrderItem> completeItem(@PathVariable Long id) {
-        OrderItem completed = orderItemService.completeItem(id);
+    public ResponseEntity<OrderItem> completeItem(@PathVariable Long id,
+                                                  @AuthenticationPrincipal StaffSession currentStaff) {    // Who completed it: "order up" goes to the check's server
+        OrderItem completed = orderItemService.completeItem(id, currentStaff);
         return ResponseEntity.ok(completed);
     }
 

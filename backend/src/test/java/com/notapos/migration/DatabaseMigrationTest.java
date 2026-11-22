@@ -263,8 +263,9 @@ class DatabaseMigrationTest {
 
         // Then - V1 actually ran here (type SQL, not BASELINE) and created the tables
         assertEquals("SQL", value(jdbcUrl, "SELECT type FROM flyway_schema_history WHERE version = '1'"));
-        // (the twelve from V1, staff_sessions from V4, and settings from V7)
-        assertEquals("14", value(jdbcUrl, "SELECT count(*) FROM information_schema.tables "
+        // (the twelve from V1, staff_sessions from V4, settings from V7, and the two
+        // notification tables from V8)
+        assertEquals("16", value(jdbcUrl, "SELECT count(*) FROM information_schema.tables "
                 + "WHERE table_schema = 'public' AND table_name <> 'flyway_schema_history'"));
     }
 
@@ -478,5 +479,45 @@ class DatabaseMigrationTest {
         // And - the time is a moment with a zone, like every table added since V4
         assertEquals("timestamp with time zone", value(jdbcUrl, "SELECT data_type FROM information_schema.columns "
                 + "WHERE table_name = 'settings' AND column_name = 'updated_at'"));
+    }
+
+    // ------------------------------------------------------------------
+    // V8: notifications
+    // ------------------------------------------------------------------
+
+    @Test
+    void testV8_ShouldAddTwoEmptyNotificationTablesToAnExistingDatabase() throws Exception {
+        // WHAT: Test the notifications and notification_dismissals tables V8 adds
+        // WHY: Both must arrive EMPTY (a restaurant has no notifications until something
+        //      happens), a notification must allow "for everyone" (no recipient), and a
+        //      person can dismiss a notification once: the pair is the table's key.
+
+        // Given - a database from before Flyway
+        String jdbcUrl = databaseFromBeforeFlyway("v8_notifications");
+
+        // When
+        migrate(jdbcUrl);
+
+        // Then - both tables are there, and empty
+        assertEquals("0", value(jdbcUrl, "SELECT count(*) FROM notifications"));
+        assertEquals("0", value(jdbcUrl, "SELECT count(*) FROM notification_dismissals"));
+
+        // And - a notification for everyone, from nobody on record, can be stored; its ID is handed out
+        run(jdbcUrl, "INSERT INTO notifications (kind, body, created_at) VALUES ('message', 'Fryer is down', now())");
+        String id = value(jdbcUrl, "SELECT notification_id FROM notifications");
+        assertNotNull(id);
+
+        // And - one person can dismiss it once, and another person can as well
+        run(jdbcUrl, "INSERT INTO notification_dismissals (notification_id, staff_id, dismissed_at) VALUES (" + id + ", 7, now())");
+        assertThrows(Exception.class, () -> run(jdbcUrl,
+                "INSERT INTO notification_dismissals (notification_id, staff_id, dismissed_at) VALUES (" + id + ", 7, now())"));
+        run(jdbcUrl, "INSERT INTO notification_dismissals (notification_id, staff_id, dismissed_at) VALUES (" + id + ", 8, now())");
+        assertEquals("2", value(jdbcUrl, "SELECT count(*) FROM notification_dismissals"));
+
+        // And - the times are moments with a zone, like every table added since V4
+        assertEquals("timestamp with time zone", value(jdbcUrl, "SELECT data_type FROM information_schema.columns "
+                + "WHERE table_name = 'notifications' AND column_name = 'created_at'"));
+        assertEquals("timestamp with time zone", value(jdbcUrl, "SELECT data_type FROM information_schema.columns "
+                + "WHERE table_name = 'notification_dismissals' AND column_name = 'dismissed_at'"));
     }
 }

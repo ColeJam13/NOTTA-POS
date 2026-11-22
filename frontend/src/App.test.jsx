@@ -29,6 +29,7 @@ const STAFF_BY_PIN = {
 let requests;         // [{ method, path, token }] - token is the X-Staff-Token header that was sent
 let liveTokens;       // token -> staff, for sessions the fake backend still knows
 let templateOnBackend;    // what GET /api/settings says the restaurant's template is
+let notificationsOnBackend;   // what GET /api/notifications says the signed-in person has
 
 const json = (data, status = 200) => ({ ok: status < 300, status, json: async () => data });
 
@@ -36,6 +37,7 @@ beforeEach(() => {
   requests = [];
   liveTokens = {};
   templateOnBackend = '8-bit';
+  notificationsOnBackend = [];
   // The app has one real template so far; a made-up second one gives the tests something to switch to
   TEMPLATES.push(TEST_LOOK);
   window.localStorage.clear();
@@ -93,6 +95,8 @@ beforeEach(() => {
       return json([{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }]);
     }
     if (path === '/api/order-item-modifiers/order/77') return json([]);
+    // The bell in the top bar: the signed-in person's notifications
+    if (method === 'GET' && path === '/api/notifications') return json(notificationsOnBackend);
     // The search box in the top bar finds table W1 for "1", and nothing else
     if (path === '/api/search?q=1&closed=today') {
       const none = { results: [], more: false };
@@ -362,6 +366,42 @@ test('tapping CREATE ORDER while a table is on screen starts a fresh order, not 
   expect(screen.getByText('Add items to order')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'CLOSE ORDER' })).toBeDisabled();
   await waitFor(() => expect(screen.getByRole('button', { name: 'SEND ORDER' })).toBeDisabled());
+});
+
+// ============================================================================
+// The bell in the top bar
+// ============================================================================
+
+test('the bell shows the number of notifications the backend holds for the person, on any screen', async () => {
+  notificationsOnBackend = [
+    { notificationId: 2, kind: 'item_86', text: "Garden Toast is 86'd", fromName: 'Kit', createdAt: new Date().toISOString() },
+    { notificationId: 1, kind: 'order_up', text: 'Table W1 is up', fromName: 'Kit', createdAt: new Date().toISOString() }
+  ];
+  await signIn('1111');
+  await userEvent.click(screen.getByRole('button', { name: 'TABLES' }));
+
+  expect(await screen.findByRole('button', { name: 'Notifications: 2' })).toBeInTheDocument();
+
+  // The same list, read from the same place, on another screen: nothing is asked per screen
+  const asksBefore = requests.filter(r => r.path === '/api/notifications').length;
+  await userEvent.click(screen.getByRole('button', { name: '86 BOARD' }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Notifications: 2' }));
+  expect(screen.getByText('Table W1 is up')).toBeInTheDocument();
+  expect(requests.filter(r => r.path === '/api/notifications').length).toBe(asksBefore);
+  // A server reads and dismisses, and is not offered the box to write a message
+  expect(screen.queryByLabelText('Message to everyone')).not.toBeInTheDocument();
+});
+
+test('with no notifications the bell has no number, and the kitchen is offered the box to write a message', async () => {
+  await signIn('3333');
+  await userEvent.click(screen.getByRole('button', { name: '86 BOARD' }));
+
+  const bell = await screen.findByRole('button', { name: 'Notifications: none' });
+  expect(bell).toHaveTextContent('');                 // No 0, and not the 2 that used to be typed into the code
+
+  await userEvent.click(bell);
+  expect(screen.getByText('No notifications.')).toBeInTheDocument();
+  expect(screen.getByLabelText('Message to everyone')).toBeInTheDocument();
 });
 
 // ============================================================================
