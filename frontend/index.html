@@ -4,9 +4,15 @@
   <meta charset="utf-8" />
   <link rel="icon" href="/favicon.ico" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#000000" />
+  <!-- The color a browser gives its own bar above the page: the color of the app's top
+       bar in the 8-Bit template (the default look), so the two meet without a seam.
+       A page cannot read a design token here, so the value is written out. The manifest
+       says the same, and src/appIdentity.test.js fails if either drifts from 8-Bit. -->
+  <meta name="theme-color" content="#0f0f1e" />
   <meta name="description" content="Notta-POS - Restaurant Point of Sale System" />
   <link rel="apple-touch-icon" href="/logo192.png" />
+  <!-- The manifest: the app's name, icons, and colors, for the places a browser draws
+       them itself (a bookmark, a phone's home screen). public/manifest.json. -->
   <link rel="manifest" href="/manifest.json" />
 
   <!-- No fonts are fetched from the internet: they ship with the app (src/templates/fonts.css). -->
