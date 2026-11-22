@@ -91,6 +91,8 @@ If the owner wants it narrower (no menu items, say), he will say so when he read
 
 ## N3. Notifications (was B1)
 
+**Done (#300), as written below.** Four things the brief left open: nobody is told twice about one change (86'ing an item that is already 86'd, or completing an item that is already completed, sends nothing); "order up" is sent each time the last unfinished item on a check is completed, so a second round sends a second one; a check with no opener on record sends none; and the list holds the newest 50.
+
 **Decision D5, decided 2026-11-22.** The kitchen, bartenders, and managers may write and send a message to the floor. The app itself sends the other two kinds.
 
 Three kinds:

@@ -43,7 +43,7 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 8b | U1. Spring Boot 3.5 to 4.1 (the 3.5 line no longer gets security fixes) | Done (#289) |
 | 9 | B4a. Design tokens: every screen reads its look from named values | Done (#290) |
 | 10 | **B4b and B4c. Template system, then the new templates** | B4b done (#291). B4c follows `Documentation/templates-brief.md`: groundwork (done, #293), then twelve templates in three batches. All three are done as drafts (#294, #295, #296): thirteen templates in all. What remains is the owner's notes, handled in a polish pull request. D9 (default decided), D13 |
-| 10a | **Nothing fake: N1 to N5** (the app's name and leftovers, search, notifications, per-person sales and the leaderboard, challenges). Follows `Documentation/nothing-fake-brief.md`. Covers B1 and B3 | N1 done (#298). N2 done (#299). N3 is next. D5 and D6 decided 2026-11-22 |
+| 10a | **Nothing fake: N1 to N5** (the app's name and leftovers, search, notifications, per-person sales and the leaderboard, challenges). Follows `Documentation/nothing-fake-brief.md`. Covers B1 and B3 | N1 done (#298). N2 done (#299). N3 done (#300). N4 is next. D5 and D6 decided 2026-11-22 |
 | 11 | P3. Phone-sized screens | |
 | 12 | P4. HTTPS on a private network, and the installable app | D8 |
 | 13 | B5, then B2 (B1 and B3 moved up to step 10a) | D4 (decided) |
@@ -368,7 +368,7 @@ Things that would bring the project closer to common practice but are not urgent
 
 ### B1. Working notifications
 
-**Replaced on 2026-11-22 by `Documentation/nothing-fake-brief.md`, steps N3. Build from the brief; the paragraph below is kept as the record of what was first written.**
+**Done (#300), as step N3 of `Documentation/nothing-fake-brief.md`, which replaced this section on 2026-11-22. The paragraph below is kept as the record of what was first written.**
 
 The nav bar bell shows a hardcoded count. Build real ones: an 86 or un-86 reaches every order screen, "order up" reaches the server who opened the order when the kitchen completes its items, and kitchen and managers can write and send a message to the floor. Needs decision D5: who may send to whom, and whether a notification must be acknowledged. Polling is acceptable to start, consistent with the rest of the app.
 
@@ -457,7 +457,7 @@ Owner actions still open unless already done: turn on Dependabot alerts (U3), tu
 
 ## How to continue
 
-1. **Next: `Documentation/nothing-fake-brief.md`, step N3 (N1 and N2 are done, #298 and #299), then N4 and N5, one pull request each.** The owner's notes on the twelve draft templates become a polish pull request whenever he sends them; it waits its turn like any other.
+1. **Next: `Documentation/nothing-fake-brief.md`, step N4 (N1, N2, and N3 are done: #298, #299, #300), then N5, one pull request each.** The owner's notes on the twelve draft templates become a polish pull request whenever he sends them; it waits its turn like any other.
 1. B4c, for the record: it followed `Documentation/templates-brief.md`. Its groundwork is done (#293) and so is the first batch of four templates as drafts (#294: Plain, Coffee Shop, Nightclub, Fancy). The second batch is done too (#295: Dive Bar, Brunch Spot, Diner, Sports Bar), and the third (#296: Cantina, Izakaya, Beach Bar, High Contrast). B4c is built. The owner reviews by switching templates in the running app; notes are handled in a polish pull request, whenever they come. The next step in the table is P3, phone-sized screens. U2 (Node 24 in CI and the frontend tool bumps) and the rest of U3 (the Maven Wrapper) can go in at any gap. Part A (A1 to A6), P1, P2, and U1 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
 2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 

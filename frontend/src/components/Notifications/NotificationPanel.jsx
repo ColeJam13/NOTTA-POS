@@ -109,7 +109,7 @@ function NotificationPanel({ notifications, onDismiss, onDismissAll, canWrite, o
               type="text"
               value={draft}
               maxLength={MESSAGE_MAX_LENGTH}
-              placeholder="Fryer is down for 10 minutes"
+              placeholder="Write a message"
               autoComplete="off"
               onChange={(event) => { setDraft(event.target.value); setOutcome(null); }}
             />
