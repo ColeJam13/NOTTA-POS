@@ -38,6 +38,11 @@
   grid-column: 1 / -1;
 }
 
+/* "No challenges yet." on its own, above the leaderboard */
+.challenges-none {
+  margin-bottom: var(--space-40);
+}
+
 .section-title {
   color: var(--color-heading);
   font-size: var(--font-size-16);
@@ -47,14 +52,22 @@
   letter-spacing: var(--letter-spacing-wide);
 }
 
-/* THE CHALLENGE CARDS ARE NOT ON THE SCREEN RIGHT NOW. They were drawn from invented
-   challenges, which step N4 of Documentation/nothing-fake-brief.md took off the screen;
-   step N5 puts challenges back, on real data, and draws them with these rules. The
-   rules stay in between (.challenges-grid above, and from .challenge-card to
-   .no-challenges below) so that the
-   two tokens only they use (--gradient-progress and --radius-bar-large, the progress
-   bar's) are not left defined and unused in all thirteen templates, which
-   tokens.test.js refuses. */
+/* ----- The challenges ----- */
+
+/* NEW CHALLENGE, for a manager, above the cards */
+.challenges-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-20);
+}
+
+/* What the backend said when it refused something a manager pressed */
+.challenges-refusal {
+  text-align: center;
+  color: var(--status-error-text);
+  font-size: var(--font-size-12);
+  margin-bottom: var(--space-20);
+}
 
 .challenge-card {
   background: var(--color-bg-deep);
@@ -64,11 +77,10 @@
   margin-bottom: var(--space-20);
 }
 
-.challenge-card.completed {
-  border-color: var(--color-border-primary);
-}
-
-.challenge-card.available {
+/* One that has ended, or has not started, has a quieter line around it. Its status
+   and its time say which in words. */
+.challenge-card.finished,
+.challenge-card.upcoming {
   border-color: var(--color-border-muted);
 }
 
@@ -76,6 +88,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-10);
   margin-bottom: var(--space-15);
 }
 
@@ -86,30 +99,47 @@
   text-transform: uppercase;
 }
 
+/* The status word. Three looks group the words; the word itself is what says the
+   state (see statusFor in challengeRules.js). */
 .challenge-status {
   font-size: var(--font-size-10);
   padding: var(--space-5) var(--space-10);
   border-radius: var(--radius-chip);
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.challenge-status.in-progress {
+.challenge-status.working {
   background: var(--color-accent-fill);
   color: var(--color-on-accent);
 }
 
-.challenge-status.completed {
+.challenge-status.done {
   background: var(--color-primary-fill);
   color: var(--color-on-primary);
 }
 
-.challenge-description {
+.challenge-status.quiet {
+  background: var(--color-control);
   color: var(--color-text);
+}
+
+/* What has to be done, in a sentence */
+.challenge-goal {
+  color: var(--color-text);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-8);
+}
+
+.challenge-description {
+  color: var(--color-text-muted);
   font-size: var(--font-size-12);
   margin-bottom: var(--space-15);
 }
 
 .challenge-progress {
+  margin-top: var(--space-15);
   margin-bottom: var(--space-15);
 }
 
@@ -117,10 +147,12 @@
   display: flex;
   justify-content: space-between;
   font-size: var(--font-size-10);
-  color: var(--color-text-subtle);
+  color: var(--color-text-muted);
   margin-bottom: var(--space-8);
 }
 
+/* The bar carries no text of its own: the numbers are written above it, where they
+   can be read whatever the bar's colors are */
 .progress-bar-container {
   background: var(--color-bg-deep);
   border: var(--border-width-thin) solid var(--color-border);
@@ -133,18 +165,20 @@
   height: 100%;
   background: var(--gradient-progress);
   transition: width 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+}
+
+/* "2 of the 5 checks needed", under the bar of a check average */
+.challenge-checks {
+  color: var(--color-text-muted);
   font-size: var(--font-size-10);
-  color: var(--color-on-accent);
-  font-weight: var(--font-weight-bold);
+  margin-top: var(--space-8);
 }
 
 .challenge-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-10);
 }
 
 .challenge-reward {
@@ -156,6 +190,13 @@
 .challenge-time {
   color: var(--color-text-faint);
   font-size: var(--font-size-10);
+}
+
+/* "Prize waiting" / "Prize awarded by Morgan" */
+.challenge-prize-note {
+  color: var(--color-primary);
+  font-size: var(--font-size-12);
+  margin-top: var(--space-10);
 }
 
 .challenge-btn {
@@ -188,23 +229,168 @@
   color: var(--color-on-accent);
 }
 
-.challenge-btn.claimed {
+/* DELETE: the same red as CLOSE ORDER */
+.challenge-btn.danger {
+  background: var(--color-danger-fill);
+  border-color: var(--color-border-danger);
+  color: var(--color-on-danger);
+}
+
+.challenge-btn.danger:hover {
+  background: var(--color-danger-fill-hover);
+  box-shadow: none;
+}
+
+/* Switched off while a save is on its way */
+.challenge-btn:disabled {
   background: var(--color-disabled-fill);
   border-color: var(--color-border-muted);
   color: var(--color-on-disabled);
   cursor: not-allowed;
 }
 
-.challenge-btn.claimed:hover {
+.challenge-btn:disabled:hover {
   transform: none;
   box-shadow: none;
 }
 
+/* ----- A manager's part of a card ----- */
+
+.challenge-manage {
+  margin-top: var(--space-15);
+  padding-top: var(--space-15);
+  border-top: var(--border-width-thin) solid var(--color-border);
+}
+
+.challenge-people-title {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-10);
+  letter-spacing: var(--letter-spacing);
+  text-transform: uppercase;
+  margin-bottom: var(--space-10);
+}
+
+.challenge-people {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-15) 0;
+}
+
+/* One person: name, progress, status, and the prize. The name takes the room that is left. */
+.challenge-person {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-8) 0;
+  color: var(--color-text);
+  font-size: var(--font-size-12);
+}
+
+.challenge-person-name {
+  font-weight: var(--font-weight-bold);
+}
+
+.challenge-person-status,
+.challenge-person-prize {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-10);
+}
+
+.challenge-nobody {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-10);
+  margin-bottom: var(--space-15);
+}
+
+.challenge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-10);
+}
+
 .no-challenges {
   text-align: center;
-  color: var(--color-text-faint);
-  font-style: italic;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-12);
   padding: var(--space-40);
+}
+
+/* ----- The form for a new challenge, over the screen ----- */
+
+.challenge-form-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--color-overlay-strong);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* As tall as what is in it, up to most of the window; then it scrolls inside */
+.challenge-form {
+  background: var(--color-surface);
+  border: var(--border-width-thick) solid var(--color-border);
+  border-radius: var(--radius-popup);
+  box-shadow: var(--shadow-popup);
+  padding: var(--space-30);
+  width: 90%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-15);
+}
+
+.challenge-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  flex: 1;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-11);
+}
+
+.challenge-form input,
+.challenge-form select {
+  background: var(--color-bg-deep);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-field-small);
+  padding: var(--space-10);
+  font-family: var(--font-body);
+  font-size: var(--font-size-14);
+  min-width: 0;
+}
+
+.challenge-form input:focus,
+.challenge-form select:focus {
+  outline: none;
+  border-color: var(--color-border-primary);
+}
+
+/* Two boxes side by side: the measure and its target, the start and the end */
+.challenge-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-15);
+}
+
+.challenge-form-refusal {
+  color: var(--status-error-text);
+  font-size: var(--font-size-12);
+}
+
+.challenge-form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-10);
 }
 
 /* ----- The leaderboard ----- */

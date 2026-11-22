@@ -200,6 +200,29 @@
   max-height: none;
 }
 
+/* A challenge's card in each state, side by side, as many to a row as fit */
+.gallery-challenges {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-16);
+  align-items: start;
+}
+
+.gallery-challenge-manager {
+  max-width: 640px;
+}
+
+/* The form is a pop-up over the screen in the real app. Here it is laid out in the page. */
+.gallery-challenge-form .challenge-form-overlay {
+  position: static;
+  background: none;
+  justify-content: flex-start;
+}
+
+.gallery-challenge-form .challenge-form {
+  max-height: none;
+}
+
 /* The leaderboard's card, with room between the full one and the empty one */
 .gallery-leaderboard {
   margin-bottom: var(--space-16);

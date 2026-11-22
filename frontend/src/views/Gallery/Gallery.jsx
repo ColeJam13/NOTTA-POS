@@ -15,6 +15,8 @@ import OrderTicket from '../ActiveOrders/OrderTicket';
 import TableVisual from '../FloorMap/TableVisual';
 import PausedTerminalRow from '../Staff/PausedTerminalRow';
 import Leaderboard from '../Challenges/Leaderboard';
+import ChallengeCard from '../Challenges/ChallengeCard';
+import ChallengeForm from '../Challenges/ChallengeForm';
 import { EightySixChip, EightySixTile } from '../EightySixBoard/EightySixPieces';
 import { TEMPLATES, useTemplates, templateOnScreen, previewTemplate, stopPreview } from '../../templates';
 import { serverNow, asBackendStamp } from '../../services/serverClock';
@@ -141,6 +143,40 @@ const NOTICES = [
   { notificationId: 1, kind: 'item_86', text: "Garden Toast is 86'd", fromName: 'Kit', minutesAgo: 40 }
 ];
 
+// Challenges, made up, in the shape the backend answers with (ChallengeView): one card
+// for each thing a card can say. The viewer is staff 3 (OWN_ROW), so "your progress" is
+// that person's line. Times are filled in when the gallery is drawn (see challengeCards).
+const anyone = (staffId, name, progress, fields = {}) =>
+  ({ staffId, name, progress, checksClosed: 4, meetsTarget: false, completed: false, awardedAt: null, awardedByName: null, ...fields });
+const DONE = { meetsTarget: true, completed: true };
+const CHALLENGES = [
+  { challengeId: 1, name: 'Sweet tooth', description: 'Pie, cake, and the daily pastry', measure: 'items_sold', target: 15, menuCategory: 'Sweet',
+    state: 'active', endsInHours: 3.26, prize: '$20', participants: [anyone(3, 'Morgan', 12)] },
+  { challengeId: 2, name: 'Big night', measure: 'total_sales', target: 500,
+    state: 'active', endsInHours: 5.1, prize: 'First cut Friday', participants: [anyone(3, 'Morgan', 612.5, DONE)] },
+  { challengeId: 3, name: 'High average', measure: 'check_average', target: 40, minChecks: 5,
+    state: 'active', endsInHours: 49, prize: '$25', participants: [anyone(3, 'Morgan', 45.2, { checksClosed: 6, meetsTarget: true })] },
+  { challengeId: 4, name: 'Weekend push', measure: 'biggest_check', target: 150,
+    state: 'upcoming', startsInHours: 26.1, endsInHours: 74, prize: null, participants: [] },
+  { challengeId: 5, name: 'Pastry push', measure: 'items_sold', target: 20, menuItemId: 41, menuItemName: 'Daily Pastry',
+    state: 'finished', endedMinutesAgo: 35, prize: '$20', participants: [anyone(3, 'Morgan', 23, { ...DONE, awardedMinutesAgo: 10, awardedByName: 'Alex' })] },
+  { challengeId: 6, name: 'Lunch rush', measure: 'total_sales', target: 300,
+    state: 'finished', endedMinutesAgo: 190, prize: '$10', participants: [anyone(3, 'Morgan', 212)] }
+];
+// The same kind of card as a manager sees it: everyone's progress, and the buttons
+const MANAGED_CHALLENGE = { challengeId: 7, name: 'Big night', description: 'Friday dinner only', measure: 'total_sales', target: 500,
+  state: 'active', endsInHours: 5.1, prize: 'First cut Friday', participants: [
+    anyone(1, 'Sarah Miller', 612.5, DONE),
+    anyone(2, 'Dan', 540, { ...DONE, awardedMinutesAgo: 10, awardedByName: 'Alex' }),
+    anyone(3, 'Morgan', 212)
+  ] };
+// Menu items for the form's "which items count" list
+const CHALLENGE_MENU = [
+  { menuItemId: 41, name: 'Daily Pastry', category: 'Sweet' },
+  { menuItemId: 12, name: 'Burger', category: 'Savory' },
+  { menuItemId: 42, name: 'Cake', category: 'Sweet' }
+];
+
 // A leaderboard, made up, in the shape the backend answers with (StaffSalesView): two
 // people tied for first (so the next rank is 3), someone below the medals, and the row
 // of the person looking at it (staff 3, see OWN_ROW).
@@ -172,6 +208,19 @@ const FOUND = {
     { menuItemId: 2, name: 'Garden Toast', category: 'Savory', price: 12.5, is86d: true }
   ], more: false }
 };
+// A made-up challenge with its start, end, and award times worked out from "now" by the
+// backend's clock, as the real answers have them
+const challengeAt = ({ startsInHours, endsInHours, endedMinutesAgo, participants, ...rest }) => {
+  const ago = (minutes) => asBackendStamp(serverNow() - minutes * 60 * 1000);
+  return {
+    description: null, menuCategory: null, menuItemId: null, menuItemName: null, minChecks: null, createdByName: 'Alex',
+    ...rest,
+    startsAt: startsInHours ? ago(-startsInHours * 60) : ago(26 * 60),
+    endsAt: endedMinutesAgo ? ago(endedMinutesAgo) : ago(-endsInHours * 60),
+    participants: participants.map(({ awardedMinutesAgo, ...person }) => ({ ...person, awardedAt: awardedMinutesAgo ? ago(awardedMinutesAgo) : null }))
+  };
+};
+
 // The made-up search results with their times filled in: opened 12 minutes ago, paid 30
 // and 95 minutes ago, by the backend's clock, as every "ago" in the app is worked out
 const withTimes = (found) => {
@@ -382,6 +431,23 @@ function Gallery({ setCurrentView, setSelectedTable }) {
             </div>
             <div className="gallery-notifications">
               <NotificationPanel notifications={[]} onDismiss={nothing} onDismissAll={nothing} canWrite={false} onSend={async () => {}} />
+            </div>
+          </Piece>
+
+          <Piece title="CHALLENGES" wide note="A challenge's card in everything it can say: in progress, complete with the prize waiting, a check average on track, not started, finished and awarded, finished and not completed. Then the same card as a manager sees it, with everyone's progress and the buttons, and the form for a new challenge.">
+            <div className="gallery-challenges">
+              {CHALLENGES.map(challenge => (
+                <ChallengeCard key={challenge.challengeId} challenge={challengeAt(challenge)} ownStaffId={OWN_ROW} />
+              ))}
+            </div>
+            <div className="gallery-challenge-manager">
+              <ChallengeCard
+                challenge={challengeAt(MANAGED_CHALLENGE)} ownStaffId={OWN_ROW} canManage
+                onEdit={nothing} onEnd={nothing} onDelete={nothing} onAward={nothing}
+              />
+            </div>
+            <div className="gallery-challenge-form">
+              <ChallengeForm menuItems={CHALLENGE_MENU} onSave={async () => ({ ok: true, message: '' })} onCancel={nothing} />
             </div>
           </Piece>
 

@@ -133,6 +133,9 @@ const PAIRS = [
   ['--status-table-occupied-border', '--color-bg-deep', MARK, 'an occupied table on the floor'],
   ['--status-paused-border', '--color-surface', MARK, 'a paused terminal\'s row'],
   ['--color-border-primary', '--color-surface', MARK, 'the line around the search result the arrow keys or the pointer are on'],
+  // A challenge's progress bar against the track it fills. The bar holds no text (the
+  // numbers are written above it), so it only has to be visible as a mark.
+  ['--gradient-progress', '--color-bg-deep', MARK, 'the filled part of a challenge\'s progress bar'],
   // The medals beside the first three ranks on the leaderboard. They are icons, so they
   // must be visible; they are NOT what tells first from third (the rank's number is
   // printed beside each), which is why they are not a group in distinct.test.js: gold

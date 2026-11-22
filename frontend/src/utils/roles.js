@@ -17,6 +17,9 @@
  *   read and dismiss own notifications    anyone signed in
  *   write a message to the floor          kitchen, bartender, manager
  *   read what each person sold            anyone signed in (no tips in it)
+ *   read challenges and everyone's progress  anyone signed in
+ *   make, change, end, delete a challenge;
+ *   mark a prize as handed over           manager
  *   open orders, ring in, send, take pay  server, bartender, host, manager
  *   start and complete items              kitchen, bartender, manager
  *   86 and un-86                          kitchen, bartender, manager
@@ -67,7 +70,12 @@ const ROLES_BY_ACTION = {
   // Reading what each person sold, for the leaderboard: every role (the owner's decision
   // D6; Permissions.SEE_STAFF_SALES on the backend). Which roles are offered the
   // Challenges screen it is drawn on is SCREENS_BY_ROLE above, a separate question.
-  'see-staff-sales': ['manager', 'server', 'bartender', 'host', 'kitchen']
+  'see-staff-sales': ['manager', 'server', 'bartender', 'host', 'kitchen'],
+  // Reading the challenges with everyone's progress: every role (Permissions.SEE_CHALLENGES)
+  'see-challenges': ['manager', 'server', 'bartender', 'host', 'kitchen'],
+  // Making, changing, ending, and deleting a challenge, and marking a prize as handed
+  // over (Permissions.MANAGE_CHALLENGES)
+  'manage-challenges': ['manager']
 };
 
 /**
@@ -82,7 +90,8 @@ export const canOpenScreen = (role, view) => {
 
 /**
  * @param {string|null} role - The signed-in person's role
- * @param {string} action - 'search', 'edit-layout', 'change-86', 'make-items', 'send-message', or 'see-staff-sales'
+ * @param {string} action - 'search', 'edit-layout', 'change-86', 'make-items', 'send-message', 'see-staff-sales',
+ *                          'see-challenges', or 'manage-challenges'
  * @returns {boolean} - Whether that role may do it
  */
 export const canDo = (role, action) => {
