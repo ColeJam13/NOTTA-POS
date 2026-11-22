@@ -114,10 +114,11 @@ test('when the restaurant\'s template changes while the screen is open, IN USE m
 test('every template after 8-Bit is offered, marked light or dark, with the name as its logo', () => {
   renderScreen();
 
-  // What a manager is told before previewing. The first batch, then the second.
+  // What a manager is told before previewing. The three batches, in order.
   const offered = {
     plain: ['Plain', 'LIGHT'], 'coffee-shop': ['Coffee Shop', 'LIGHT'], nightclub: ['Nightclub', 'DARK'], fancy: ['Fancy', 'DARK'],
-    'dive-bar': ['Dive Bar', 'DARK'], brunch: ['Brunch Spot', 'LIGHT'], diner: ['Diner', 'LIGHT'], 'sports-bar': ['Sports Bar', 'DARK']
+    'dive-bar': ['Dive Bar', 'DARK'], brunch: ['Brunch Spot', 'LIGHT'], diner: ['Diner', 'LIGHT'], 'sports-bar': ['Sports Bar', 'DARK'],
+    cantina: ['Cantina', 'LIGHT'], izakaya: ['Izakaya', 'DARK'], 'beach-bar': ['Beach Bar', 'DARK'], 'high-contrast': ['High Contrast', 'DARK']
   };
   for (const [id, [name, scheme]] of Object.entries(offered)) {
     expect(within(card(id)).getByRole('heading', { name })).toBeInTheDocument();

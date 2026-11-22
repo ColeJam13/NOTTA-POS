@@ -19,7 +19,7 @@ That changes how B4c is run. The plan said one template per pull request, each a
 | 1 | Groundwork (below). No new template yet. **Done (#293): see "What the groundwork found" at the end** |
 | 2 | Plain, Coffee Shop, Nightclub, Fancy. **Done as drafts (#294): see "What the first batch found" at the end** |
 | 3 | Dive Bar, Brunch Spot, Diner, Sports Bar. **Done as drafts (#295): see "What the second batch found" at the end** |
-| 4 | Cantina, Izakaya, Beach Bar, High Contrast |
+| 4 | Cantina, Izakaya, Beach Bar, High Contrast. **Done as drafts (#296): see "What the third batch found" at the end** |
 
 ## Groundwork (pull request 1)
 
@@ -127,3 +127,15 @@ For whoever builds the third batch.
 - **In a template with a strong frame color, watch `--color-border-muted`.** Sports Bar's frame is silver and its muted border (a locked line, a closed check, a finished ticket) is a darker grey-blue: a measured difference of 17, where 30 is "two colors at a glance". Those states also have a darker background, grey text, and a lock or a word, so it was left; the owner may want the muted border darker still.
 - **`::first-letter` changes how text is drawn even when it sets nothing new** (the logo's glow in 8-Bit). Found by the 46-scene comparison with `main`, which is worth running for every batch that touches a shared stylesheet.
 - **Fonts of this batch:** Bebas Neue, Barlow (regular and bold), DM Serif Display, DM Sans, Pacifico, Oswald, Roboto Mono, all under the SIL Open Font License: 207 kB in all. Roboto Mono's license in the Google Fonts project is the OFL now, not Apache.
+
+## What the third batch found (added with #296)
+
+All twelve are built. For whoever polishes them from the owner's notes.
+
+- **The four are in:** `cantina.css`, `izakaya.css`, `beach-bar.css`, `high-contrast.css`. Pictures: `Documentation/templates/batch-3`.
+- **Zilla Slab draws old-style figures too** (the third display font to do so, after Cormorant Garamond). Cantina uses it for titles and the logo, and bold Mulish for the names on cards and tickets. Noto Serif and Lilita One have figures that stand on the line and are used for both.
+- **High Contrast clears 7 to 1 for every text pair** on pure black, with `--color-surface-hover` and the two control greys kept dark enough that white and yellow text still clear it on them. Its type scale is two pixels above the other templates' at every step. Atkinson Hyperlegible's zero has a slash through it; that is the font doing its job.
+- **"Generous spacing" has a price in height.** Izakaya's larger gaps make the order screen need about 800 pixels of window before CLOSE ORDER is on screen, where the others need about 750. The list of items shrinks first, as designed.
+- **On a dark teal page, danger as text cannot be a deep crimson** (2 to 1). Beach Bar's destructive buttons are crimson with white text, as the brief asks; danger as text is a light red.
+- **Three warm colors on sand (Cantina) cannot all be far apart and all be readable.** The values in the file came from a search for the widest spacing that still passes contrast: a rust for the accent, a cool crimson for danger, a mustard for attention.
+- **Fonts of this batch:** Zilla Slab (one weight), Mulish, Noto Serif (one weight), IBM Plex Sans (one variable file), Lilita One, Atkinson Hyperlegible (regular and bold), all under the SIL Open Font License: 163 kB in all. The whole set of twelve templates adds about 600 kB of fonts to the app; a device downloads only what the template on screen uses.
