@@ -17,7 +17,7 @@ That changes how B4c is run. The plan said one template per pull request, each a
 | Pull request | Contents |
 |---|---|
 | 1 | Groundwork (below). No new template yet. **Done (#293): see "What the groundwork found" at the end** |
-| 2 | Plain, Coffee Shop, Nightclub, Fancy |
+| 2 | Plain, Coffee Shop, Nightclub, Fancy. **Done as drafts (#294): see "What the first batch found" at the end** |
 | 3 | Dive Bar, Brunch Spot, Diner, Sports Bar |
 | 4 | Cantina, Izakaya, Beach Bar, High Contrast |
 
@@ -97,4 +97,21 @@ For whoever builds the template pull requests.
 - **A throwaway light template was used to check all of this** (Plain's palette, pill buttons, three system fonts). It is not in the repository. With it, the contrast test passed with no exceptions, and the order screen, Financials (the date picker follows `--color-scheme`), Staff, the PIN pad, and the gallery all drew correctly.
 - **Getting a font as `woff2`:** this machine has no font converter. The Google Fonts project serves each font as `woff2` already (the Latin file is the one needed); that is where `PressStart2P-Regular.woff2` came from, 12 kB against 118 kB for the `.ttf`. Check each font's license file in that project before using it.
 - **Screenshots:** the gallery scrolls inside the page. To photograph all of it, make the browser window as tall as its content first.
+
+## What the first batch found (added with #294)
+
+For whoever builds the second and third batches.
+
+- **The four are in:** `plain.css`, `coffee-shop.css`, `nightclub.css`, `fancy.css`, drafts until the owner has used them. Pictures: `Documentation/templates/batch-1` (eight screens and the gallery for each).
+- **Type steps are larger than their names.** A step's number is its size in 8-Bit's pixel font. All four use one scale: 8 to 12px, 9 to 13, 10 and 11 to 14, 12 to 15, 14 to 17, 16 to 19, 18 to 21, 24 to 28, 50 to 54. Item names on a kitchen ticket are step 10. Start the next templates from the same scale.
+- **Line heights 1.4 to 1.6, letter spacing a fraction of a pixel.** 8-Bit's 1px and 2px letter spacing is for a pixel font. `--letter-spacing-wide` is what titles and section headings use, so "wide letter spacing on headings" is that token.
+- **A second test: `distinct.test.js`.** States drawn side by side must differ by 30 or more (what the number means is in `contrast.js`). Passing contrast is not enough: on a light page, attention and danger both end up dark, and a dark orange is nearly a dark red. What worked: a mustard for attention (`#7f5a00` on cream, `#8a5a00` on white) and a red with no orange in it for danger.
+- **Give "made" and "on time" a green of their own (`--color-success`)** when the template's primary color is not green (Nightclub's is cyan, Fancy's is gold). `--status-all-done-border`, `--status-wait-ok`, and `--status-table-available-border` all point at it.
+- **`--status-limbo-border` needs a color no other state has.** The four use a violet or a soft blue.
+- **Attention must read as yellow against ordinary text too.** Fancy's first attention color, "a paler yellow than the gold", could not be told from its ivory text on a kitchen ticket.
+- **When the brief gives accent and primary the same color (Fancy),** make the accent BACKGROUND something else (Fancy: ivory), or a selected tab and the main action are one button.
+- **A serif with old-style figures is for titles only.** Cormorant Garamond's 3, 4, 5, 7, and 9 drop below the line; "Table W3" on a ticket was slow to read. Fancy uses it for `--font-display` and Lato for `--font-heading`. Check each heading font's figures on a table card before using it for `--font-heading`.
+- **A fill may be a gradient, except `--color-success-fill` and `--tip-input-surface`** (drawn with `background-color`).
+- **Look at the real screens, not only the gallery.** The order screen (a taller font pushed CLOSE ORDER off the bottom: fixed in the screen's layout, the list of items now gives way), the kitchen display with a late, a warning, and an on-time ticket, and the modifier picker with a choice made each showed something the gallery did not.
+- **Fonts:** take the "latin" `woff2` the Google Fonts project serves. A variable font is one file for a range of weights (`font-weight: 400 700` in its `@font-face`). The six fonts of this batch add 231 kB to the app in all; a device downloads only the ones the template on screen uses.
 
