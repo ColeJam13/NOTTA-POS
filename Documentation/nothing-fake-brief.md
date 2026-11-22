@@ -52,6 +52,8 @@ Nothing fake was found on the backend, or on any other screen.
 
 ## N1. The app's own name, and the leftovers
 
+**Done (#298).** The whole logo did not hold up at 16 and 32 pixels, so the owner was asked, and chose a square crop of its emblem (the sword on the plate) for every icon size.
+
 Small. No backend logic.
 
 - `manifest.json`: the name and short name are "Notta-POS", with a one-line description, and theme and background colors that match 8-Bit (the default template). A manifest cannot read tokens, so these are literal values; say so in a comment in the pull request. Do not add install behavior. The installable app is P4; this step only stops the file from describing another project.
