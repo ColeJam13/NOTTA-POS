@@ -18,7 +18,7 @@ That changes how B4c is run. The plan said one template per pull request, each a
 |---|---|
 | 1 | Groundwork (below). No new template yet. **Done (#293): see "What the groundwork found" at the end** |
 | 2 | Plain, Coffee Shop, Nightclub, Fancy. **Done as drafts (#294): see "What the first batch found" at the end** |
-| 3 | Dive Bar, Brunch Spot, Diner, Sports Bar |
+| 3 | Dive Bar, Brunch Spot, Diner, Sports Bar. **Done as drafts (#295): see "What the second batch found" at the end** |
 | 4 | Cantina, Izakaya, Beach Bar, High Contrast |
 
 ## Groundwork (pull request 1)
@@ -115,3 +115,15 @@ For whoever builds the second and third batches.
 - **Look at the real screens, not only the gallery.** The order screen (a taller font pushed CLOSE ORDER off the bottom: fixed in the screen's layout, the list of items now gives way), the kitchen display with a late, a warning, and an on-time ticket, and the modifier picker with a choice made each showed something the gallery did not.
 - **Fonts:** take the "latin" `woff2` the Google Fonts project serves. A variable font is one file for a range of weights (`font-weight: 400 700` in its `@font-face`). The six fonts of this batch add 231 kB to the app in all; a device downloads only the ones the template on screen uses.
 
+## What the second batch found (added with #295)
+
+For whoever builds the third batch.
+
+- **The four are in:** `dive-bar.css`, `brunch.css`, `diner.css`, `sports-bar.css`. Pictures: `Documentation/templates/batch-2`.
+- **A display font is for titles and the logo. Decide `--font-heading` separately.** Bebas Neue was too narrow and DM Serif Display too thin for "Table W3" on a kitchen ticket; both templates use their body font in bold for `--font-heading`. Oswald and Fraunces held up as heading fonts. Titles and headings now have a weight each (`--font-weight-display`, `--font-weight-heading`): a face with one weight is asked for 400, never bold, or the browser smears one.
+- **A script font cannot be drawn in capitals, and every title in the app is.** Pacifico is the Diner's logo and nothing else. The logo has its own font, weight, and casing tokens (`--font-logo`, `--font-weight-logo`, `--logo-case`); the name is written "Notta-Pos" in the page and drawn in capitals unless `--logo-case` is `none`. A script wants `--letter-spacing-logo: 0` or its letters come apart. Lilita One (Beach Bar) has capitals and can be an ordinary display font.
+- **White text does not fit on every bright fill.** White on coral `#E8604C` is 3.4 to 1. Either the fill carries dark text (Brunch Spot) or it is deepened until white passes. The same will come up for Beach Bar's orange and pink.
+- **Where the brief puts the accent and danger in the same family (coral and red, cherry and a darker red),** keep the accent off section headings and say in the pull request that the two are neighbors. Every danger state has a word or an icon already; a template cannot add one.
+- **In a template with a strong frame color, watch `--color-border-muted`.** Sports Bar's frame is silver and its muted border (a locked line, a closed check, a finished ticket) is a darker grey-blue: a measured difference of 17, where 30 is "two colors at a glance". Those states also have a darker background, grey text, and a lock or a word, so it was left; the owner may want the muted border darker still.
+- **`::first-letter` changes how text is drawn even when it sets nothing new** (the logo's glow in 8-Bit). Found by the 46-scene comparison with `main`, which is worth running for every batch that touches a shared stylesheet.
+- **Fonts of this batch:** Bebas Neue, Barlow (regular and bold), DM Serif Display, DM Sans, Pacifico, Oswald, Roboto Mono, all under the SIL Open Font License: 207 kB in all. Roboto Mono's license in the Google Fonts project is the OFL now, not Apache.
