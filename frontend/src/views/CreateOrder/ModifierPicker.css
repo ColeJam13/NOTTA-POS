@@ -125,7 +125,12 @@
   transition: all 0.2s;
 }
 
-.modifier-option:hover:not(:disabled) {
+/* Under the pointer an option lightens, unless it is the chosen one: that keeps its fill
+   (the rule below). Without ":not(.selected)" this rule won for the background, and the
+   chosen option's name was drawn in the fill's text color on the pale hover background,
+   where it could not be read. On a touch screen the pointer rests where the finger last
+   tapped, which is on the option just chosen. (ModifierPicker.css.test.js checks this.) */
+.modifier-option:hover:not(:disabled):not(.selected) {
   background: var(--color-surface-hover);
 }
 
