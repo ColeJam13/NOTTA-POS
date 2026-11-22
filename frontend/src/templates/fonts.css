@@ -13,17 +13,23 @@
  * A browser only downloads a font once something on screen uses it, so a font listed
  * here costs nothing on a template that never names it.
  *
- * A NEW TEMPLATE THAT NEEDS A FONT: put the file in src/fonts (with its license, and
- * check the license allows shipping it inside an app), add a block here, and name it
- * in the template's --font-... tokens.
+ * A NEW TEMPLATE THAT NEEDS A FONT
+ *   - Only a font under an open license that allows shipping it inside an app: the SIL
+ *     Open Font License or Apache 2.0. Check the font's own license; do not assume.
+ *   - The file goes in src/fonts as .woff2, with its license file beside it, and only
+ *     the weights the template really uses (each weight is a file of its own).
+ *   - Add a block here, and name the font in the template's --font-... tokens.
+ *   - Say in the pull request how many kilobytes the template's fonts add.
  */
 
 /* The pixel font of the 8-Bit template. SIL Open Font License: src/fonts/PressStart2P-OFL.txt.
+   The file is "woff2", the compressed form made for web pages (12 kB; the same font as
+   a .ttf is 118 kB), holding the Latin letters, digits, and punctuation.
    "swap" draws text in a fallback font for the moment before this one has loaded, in
-   place of drawing nothing; it is what the Google Fonts line asked for too. */
+   place of drawing nothing. */
 @font-face {
   font-family: 'Press Start 2P';
-  src: url('../fonts/PressStart2P-Regular.ttf') format('truetype');
+  src: url('../fonts/PressStart2P-Regular.woff2') format('woff2');
   font-display: swap;
 }
 
