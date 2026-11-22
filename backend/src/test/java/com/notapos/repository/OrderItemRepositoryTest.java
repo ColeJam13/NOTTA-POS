@@ -600,4 +600,76 @@ class OrderItemRepositoryTest extends BaseRepositoryTest {
         // When & Then
         assertEquals(Map.of(order1.getOrderId(), 1L, order3.getOrderId(), 7L), itemsSoldOn(order1, order3));
     }
+
+    @Test
+    void testCountItemsSoldOfMenuItemByOrderIdIn_ShouldCountOnlyThatItem_WhateverItsStateToday() {
+        // WHAT: Test the count of ONE menu item sold on several orders
+        // WHY: A challenge like "sell 20 Burgers" counts that item only, and keeps
+        //      counting what was sold after the item is 86'd or taken off the menu
+
+        // Given - burgers and fries on two orders, a draft burger, and the burger now 86'd and off the menu
+        orderItemRepository.deleteAll();
+        itemOn(order1, menuItem1, 2, "completed");
+        itemOn(order1, menuItem1, 1, "fired");
+        itemOn(order1, menuItem2, 5, "completed");
+        itemOn(order1, menuItem1, 9, "draft");
+        itemOn(order2, menuItem2, 4, "completed");
+        itemOn(order3, menuItem1, 1, "completed");
+        menuItem1.setIs86d(true);
+        menuItem1.setIsActive(false);
+        menuItemRepository.saveAndFlush(menuItem1);
+
+        // When
+        Map<Long, Long> sold = orderItemRepository
+                .countItemsSoldOfMenuItemByOrderIdIn(List.of(order1.getOrderId(), order2.getOrderId()), "draft", menuItem1.getMenuItemId()).stream()
+                .collect(Collectors.toMap(OrderItemRepository.ItemsSoldOnOrder::getOrderId, OrderItemRepository.ItemsSoldOnOrder::getItemsSold));
+
+        // Then - 3 on the first order (the draft is left out); the second sold none of it, so it has no row; the third was not asked about
+        assertEquals(Map.of(order1.getOrderId(), 3L), sold);
+    }
+
+    @Test
+    void testCountItemsSoldInCategoryByOrderIdIn_ShouldCountTheItemsOfThatCategory() {
+        // WHAT: Test the count of a menu CATEGORY's items sold on several orders
+        // WHY: A challenge like "sell 15 from Beverage". An order item does not carry its
+        //      category; the query has to match each one to its menu item to find out.
+
+        // Given - menuItem5 (Soda) is the only Beverage; everything else is Savory
+        orderItemRepository.deleteAll();
+        itemOn(order1, menuItem5, 2, "completed");
+        itemOn(order1, menuItem1, 1, "completed");
+        itemOn(order1, menuItem5, 6, "draft");
+        itemOn(order2, menuItem2, 3, "completed");
+        itemOn(order3, menuItem5, 1, "pending");
+        List<Long> all = List.of(order1.getOrderId(), order2.getOrderId(), order3.getOrderId());
+
+        // When
+        Map<Long, Long> beverages = orderItemRepository.countItemsSoldInCategoryByOrderIdIn(all, "draft", "Beverage").stream()
+                .collect(Collectors.toMap(OrderItemRepository.ItemsSoldOnOrder::getOrderId, OrderItemRepository.ItemsSoldOnOrder::getItemsSold));
+        Map<Long, Long> savory = orderItemRepository.countItemsSoldInCategoryByOrderIdIn(all, "draft", "Savory").stream()
+                .collect(Collectors.toMap(OrderItemRepository.ItemsSoldOnOrder::getOrderId, OrderItemRepository.ItemsSoldOnOrder::getItemsSold));
+
+        // Then
+        assertEquals(Map.of(order1.getOrderId(), 2L, order3.getOrderId(), 1L), beverages);
+        assertEquals(Map.of(order1.getOrderId(), 1L, order2.getOrderId(), 3L), savory);
+    }
+
+    @Test
+    void testCountItemsSoldInCategoryByOrderIdIn_ACategoryNoItemIsIn_SoldNothing() {
+        // WHAT: Test a category that no menu item belongs to, and an item moved out of one
+        // WHY: "A challenge on a category no item belongs to any more shows zero." The
+        //      category is the one the menu item has TODAY.
+
+        // Given - a soda is sold, then Soda is moved from Beverage to a new category
+        orderItemRepository.deleteAll();
+        itemOn(order1, menuItem5, 2, "completed");
+        menuItem5.setCategory("Soft Drinks");
+        menuItemRepository.saveAndFlush(menuItem5);
+        List<Long> all = List.of(order1.getOrderId());
+
+        // When & Then - Beverage is empty now, and what was sold moved with the item
+        assertEquals(List.of(), orderItemRepository.countItemsSoldInCategoryByOrderIdIn(all, "draft", "Beverage"));
+        assertEquals(List.of(), orderItemRepository.countItemsSoldInCategoryByOrderIdIn(all, "draft", "Dinosaurs"));
+        assertEquals(2L, orderItemRepository.countItemsSoldInCategoryByOrderIdIn(all, "draft", "Soft Drinks").get(0).getItemsSold());
+    }
 }

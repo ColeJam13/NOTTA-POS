@@ -25,6 +25,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     Optional<MenuItem> findByName(String name);             // Find item by name
 
     List<MenuItem> findByCategory(String category);         // Find item by category
+    boolean existsByCategory(String category);              // Is any item (on the menu or off it) in this category?
 
     List<MenuItem> findByIsActive(Boolean isActive);        // Find all active items
 

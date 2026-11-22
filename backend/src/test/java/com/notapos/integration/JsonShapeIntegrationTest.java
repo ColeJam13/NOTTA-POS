@@ -131,7 +131,7 @@ class JsonShapeIntegrationTest extends BaseIntegrationTest {
         for (String table : List.of("order_item_modifiers", "order_items", "payments", "orders",
                 "menu_item_modifier_groups", "modifiers", "modifier_groups", "menu_items", "prep_stations",
                 "table_status_logs", "tables", "staff_sessions", "staff", "settings",
-                "notification_dismissals", "notifications")) {
+                "notification_dismissals", "notifications", "challenge_awards", "challenges")) {
             jdbc.update("DELETE FROM " + table);
         }
 
@@ -197,6 +197,21 @@ class JsonShapeIntegrationTest extends BaseIntegrationTest {
                 + "(9405, 'message', 'A system notice', NULL, NULL, NULL, '2026-11-18 15:00:00+00')");                  // From nobody on record
         jdbc.update("INSERT INTO notification_dismissals (notification_id, staff_id, dismissed_at) VALUES (9404, 9007, '2026-11-18 17:45:00+00')");
 
+        // ----- Challenges, as they stand at the moment the clock is held at (18:00 UTC on the 18th): -----
+        //   9501 running: sell 5 from Savory. The three paid checks above were closed in its period.
+        //   9502 finished at noon: reach 15.00 in sales. Both people completed it; Sarah's prize was handed over.
+        //   9503 not started: a check average, with the fields the other two leave empty.
+        jdbc.update("INSERT INTO challenges (challenge_id, name, description, measure, target, menu_category, menu_item_id, min_checks, "
+                + "starts_at, ends_at, prize, created_by_staff_id, created_by_name, created_at) VALUES "
+                + "(9501, 'Savory Sprint', 'Sell five savory plates', 'items_sold', 5.00, 'Savory', NULL, NULL, "
+                + "'2026-11-18 05:00:00+00', '2026-11-19 05:00:00+00', '$20', 9002, 'Morgan', '2026-11-18 04:00:00+00'), "
+                + "(9502, 'Morning Rush', NULL, 'total_sales', 15.00, NULL, NULL, NULL, "
+                + "'2026-11-18 05:00:00+00', '2026-11-18 12:00:00+00', 'First cut Friday', 9002, 'Morgan', '2026-11-18 04:00:00+00'), "
+                + "(9503, 'High Average', NULL, 'check_average', 40.00, NULL, NULL, 3, "
+                + "'2026-11-19 05:00:00+00', '2026-11-20 05:00:00.5+00', NULL, 9002, 'Morgan', '2026-11-18 04:00:00+00')");
+        jdbc.update("INSERT INTO challenge_awards (challenge_award_id, challenge_id, staff_id, staff_name, awarded_by_staff_id, awarded_by_name, awarded_at) VALUES "
+                + "(9601, 9502, 9007, 'Sarah', 9002, 'Morgan', '2026-11-18 13:00:00.25+00')");                          // A time with a fraction of a second
+
         morgan = signIn.as(9002L, "Morgan", StaffRole.MANAGER);
         sarah = signIn.as(9007L, "Sarah", StaffRole.SERVER);
     }
@@ -252,6 +267,9 @@ class JsonShapeIntegrationTest extends BaseIntegrationTest {
                 // every role may. One of the two people has no staff row (9099), so the
                 // recording also holds the name taken from the check.
                 new Case("staff-sales", "server", "/api/reports/staff-sales?from=2026-11-18T00:00:00&to=2026-11-19T00:00:00"),
+                // Challenges, with everyone's progress: one running, one not started, one finished
+                // with a prize handed over. Read as a server, because every role may.
+                new Case("challenges", "server", "/api/challenges"),
                 // Staff
                 new Case("staff", "manager", "/api/staff"),
                 new Case("staff-me", "server", "/api/staff/me"));

@@ -73,6 +73,16 @@ public final class Permissions {
     // rule of its own because it is a different job.
     public static final String SEE_STAFF_SALES = "isAuthenticated()";
 
+    // Reading the challenges, with everyone's progress on each: every role (D6, like the
+    // leaderboard, and with no tips in it either).
+    public static final String SEE_CHALLENGES = "isAuthenticated()";
+
+    // Making, changing, ending, and deleting a challenge, and marking a prize as handed
+    // over: managers. The same role as MANAGER_ONLY today, and a rule of its own because
+    // it is a different job: a shift lead might one day run challenges without seeing
+    // the Financials report.
+    public static final String MANAGE_CHALLENGES = "hasRole('MANAGER')";
+
     // Any role at all. Not needed to let people in (a method with no rule is already open to
     // everyone signed in); it is written on the few endpoints that change something and are
     // meant for every role, to say that the missing role list is on purpose.

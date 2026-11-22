@@ -4,6 +4,7 @@ import tools.jackson.databind.ObjectMapper;
 import com.notapos.dto.StaffCreateRequest;
 import com.notapos.entity.MenuItem;
 import com.notapos.entity.MenuItemModifierGroup;
+import com.notapos.entity.Challenge;
 import com.notapos.entity.Notification;
 import com.notapos.entity.Modifier;
 import com.notapos.entity.ModifierGroup;
@@ -20,6 +21,7 @@ import com.notapos.enums.StaffRole;
 import com.notapos.repository.MenuItemModifierGroupRepository;
 import com.notapos.repository.MenuItemRepository;
 import com.notapos.repository.ModifierGroupRepository;
+import com.notapos.repository.ChallengeRepository;
 import com.notapos.repository.NotificationRepository;
 import com.notapos.repository.ModifierRepository;
 import com.notapos.repository.OrderItemModifierRepository;
@@ -115,6 +117,7 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
     @Autowired private OrderItemModifierRepository orderItemModifierRepository;
     @Autowired private PaymentRepository paymentRepository;
     @Autowired private NotificationRepository notificationRepository;
+    @Autowired private ChallengeRepository challengeRepository;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired @Qualifier("requestMappingHandlerMapping") private RequestMappingHandlerMapping handlerMapping;     // Every endpoint the backend has
@@ -142,6 +145,7 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
     private OrderItem draftItem, pendingItem, firedItem;
     private OrderItemModifier itemModifier;
     private Notification notice;        // A notification for everyone, from nobody on record: it is on every person's list
+    private Challenge challenge;        // Running now, and completed by whoever opened the paid check (staff 77)
     private Payment payment;
     private TableStatusLog statusLog;
 
@@ -341,6 +345,17 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
         endpoint("GET /api/reports/staff-sales", anyoneSignedIn, () -> get("/api/reports/staff-sales")
                 .param("from", "2026-11-18T00:00:00").param("to", "2026-11-19T00:00:00"));
 
+        // Challenges. Everyone reads them, with everyone's progress (Permissions.SEE_CHALLENGES, D6)
+        endpoint("GET /api/challenges", anyoneSignedIn, () -> get("/api/challenges"));
+        // ...and managers run them (Permissions.MANAGE_CHALLENGES): make, change, end, delete, mark a prize as handed over
+        String aChallenge = "{\"name\":\"Big night\",\"measure\":\"total_sales\",\"target\":500,"
+                + "\"startsAt\":\"2026-11-18T17:00:00\",\"endsAt\":\"2026-11-18T23:00:00\"}";
+        endpoint("POST /api/challenges", managerOnly, () -> json(post("/api/challenges"), aChallenge));
+        endpoint("PUT /api/challenges/{id}", managerOnly, () -> json(put("/api/challenges/" + challenge.getChallengeId()), aChallenge));
+        endpoint("POST /api/challenges/{id}/end", managerOnly, () -> post("/api/challenges/" + challenge.getChallengeId() + "/end"));
+        endpoint("DELETE /api/challenges/{id}", managerOnly, () -> delete("/api/challenges/" + challenge.getChallengeId()));
+        endpoint("POST /api/challenges/{id}/awards/{staffId}", managerOnly, () -> post("/api/challenges/" + challenge.getChallengeId() + "/awards/77"));
+
         endpoint("GET /api/reports/financials", managerOnly, () -> get("/api/reports/financials")
                 .param("from", "2026-11-18T00:00:00").param("to", "2026-11-19T00:00:00"));
         endpoint("PUT /api/tables/layout", managerOnly, () -> json(put("/api/tables/layout"),
@@ -398,6 +413,8 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
     private void buildRestaurant() {
         jdbcTemplate.update("DELETE FROM notification_dismissals");
         notificationRepository.deleteAll();
+        jdbcTemplate.update("DELETE FROM challenge_awards");
+        challengeRepository.deleteAll();
         orderItemModifierRepository.deleteAll();
         orderItemRepository.deleteAll();
         paymentRepository.deleteAll();
@@ -467,6 +484,23 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
         notice.setBody("Fryer is down");
         notice.setCreatedAt(java.time.Instant.now());
         notice = notificationRepository.save(notice);
+
+        // A challenge that is running, so it can be changed, ended, and deleted, and that
+        // staff 77 has completed, so a manager's AWARDED is a request that can succeed:
+        // 77 opened the paid check, and any check at all is above one cent.
+        closedOrder.setStaffId(77L);
+        closedOrder.setServerName("Winner");
+        closedOrder = orderRepository.save(closedOrder);
+        challenge = new Challenge();
+        challenge.setName("Any check at all");
+        challenge.setMeasure("biggest_check");
+        challenge.setTarget(new BigDecimal("0.01"));
+        challenge.setStartsAt(java.time.Instant.now().minusSeconds(3600));
+        challenge.setEndsAt(java.time.Instant.now().plusSeconds(3600));
+        challenge.setCreatedByStaffId(1L);
+        challenge.setCreatedByName("Test");
+        challenge.setCreatedAt(java.time.Instant.now());
+        challenge = challengeRepository.save(challenge);
     }
 
     private PrepStation prepStation(String name) {

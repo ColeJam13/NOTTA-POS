@@ -59,6 +59,24 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             + "WHERE oi.orderId IN :orderIds AND oi.status <> :draftStatus GROUP BY oi.orderId")
     List<ItemsSoldOnOrder> countItemsSoldByOrderIdIn(Collection<Long> orderIds, String draftStatus);
 
+    // The same count, of ONE menu item only: how many of it each order sold. For a
+    // challenge like "sell 20 of the Daily Pastry". The item's state today does not
+    // matter: one that has since been 86'd or taken off the menu still counts what was sold.
+    @Query("SELECT oi.orderId AS orderId, SUM(oi.quantity) AS itemsSold FROM OrderItem oi "
+            + "WHERE oi.orderId IN :orderIds AND oi.status <> :draftStatus AND oi.menuItemId = :menuItemId GROUP BY oi.orderId")
+    List<ItemsSoldOnOrder> countItemsSoldOfMenuItemByOrderIdIn(Collection<Long> orderIds, String draftStatus, Long menuItemId);
+
+    // The same count, of the items in ONE menu category: "sell 15 from Sweet". An order
+    // item does not say its category; its menu item does. Entities here are not linked
+    // by JPA relationships, so the two are matched by hand in the WHERE ("m.menuItemId =
+    // oi.menuItemId"), which the database runs as an ordinary join. The category is the
+    // one the menu item has TODAY: move an item to another category and what was sold
+    // of it moves with it.
+    @Query("SELECT oi.orderId AS orderId, SUM(oi.quantity) AS itemsSold FROM OrderItem oi, MenuItem m "
+            + "WHERE m.menuItemId = oi.menuItemId AND oi.orderId IN :orderIds AND oi.status <> :draftStatus "
+            + "AND m.category = :category GROUP BY oi.orderId")
+    List<ItemsSoldOnOrder> countItemsSoldInCategoryByOrderIdIn(Collection<Long> orderIds, String draftStatus, String category);
+
     /**
      * One row of the answer above. An interface with getters and no class behind it is a
      * PROJECTION: Spring Data builds the object and fills each getter from the column of
