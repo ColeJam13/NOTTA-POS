@@ -1,0 +1,199 @@
+/* The panel under the bell in the top bar (the bell itself is styled with the bar, in
+   NavBar.css). Tokens only: every color, size, and gap comes from the template. */
+
+/* The bell and its panel. "position: relative" is what the panel hangs from. */
+.notifications {
+  position: relative;
+}
+
+/* Hangs under the bell, its right edge on the bell's, over whatever screen is showing.
+   As tall as what is in it up to most of the window; then the list scrolls and the
+   header and the message box stay put. Never wider than the window. */
+.notification-panel {
+  position: absolute;
+  top: calc(100% + var(--space-8));
+  right: 0;
+  z-index: 50;
+  width: 400px;
+  max-width: calc(100vw - var(--space-20));
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-popup);
+  box-shadow: var(--shadow-popup);
+}
+
+.notification-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-10);
+  padding: var(--space-12) var(--space-14);
+  border-bottom: var(--border-width-thin) solid var(--color-border-subtle);
+}
+
+.notification-panel-header h4 {
+  color: var(--color-subheading);
+  font-size: var(--font-size-12);
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.notification-dismiss-all {
+  padding: var(--space-6) var(--space-10);
+  background: var(--color-control);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-button-small);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-9);
+  cursor: pointer;
+}
+
+/* The part that gives way when there are many */
+.notification-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.notification-empty {
+  padding: var(--space-20) var(--space-14);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-10);
+  text-align: center;
+}
+
+.notification-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-10);
+  padding: var(--space-12) var(--space-14);
+  border-bottom: var(--border-width-thin) solid var(--color-border-subtle);
+}
+
+.notification-body {
+  flex: 1;
+  min-width: 0;                         /* Lets a long message wrap inside the row */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* 86'D, BACK ON, ORDER UP, MESSAGE: a word and an icon. The same color for all four,
+   on purpose: the kind is never told by color. */
+.notification-kind {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-9);
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.notification-text {
+  color: var(--color-text);
+  font-size: var(--font-size-12);
+  line-height: var(--line-height);
+  overflow-wrap: anywhere;
+}
+
+.notification-meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-9);
+}
+
+/* The x on each row. A line appears around it under the pointer (a line, not another
+   background: see the search results). */
+.notification-dismiss {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: var(--space-8);
+  background: transparent;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-button-small);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.notification-dismiss:hover,
+.notification-dismiss:focus-visible {
+  border-color: var(--color-border-primary);
+}
+
+/* Writing a message */
+.notification-write {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-12) var(--space-14);
+}
+
+.notification-write label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-9);
+  letter-spacing: var(--letter-spacing);
+}
+
+.notification-write-row {
+  display: flex;
+  gap: var(--space-8);
+}
+
+.notification-write input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-10) var(--space-12);
+  background: var(--color-bg-deep);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-field);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-10);
+}
+
+.notification-write input::placeholder {
+  color: var(--color-text-faint);
+}
+
+.notification-send {
+  padding: var(--space-10) var(--space-14);
+  background: var(--color-primary-fill);
+  border: var(--border-width) solid var(--color-border-primary);
+  border-radius: var(--radius-button);
+  color: var(--color-on-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-10);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.notification-send:disabled {
+  background: var(--color-disabled-fill);
+  border-color: var(--color-border-muted);
+  color: var(--color-on-disabled);
+  cursor: not-allowed;
+}
+
+.notification-write-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-10);
+  font-size: var(--font-size-9);
+}
+
+.notification-sent {
+  margin-right: auto;
+  color: var(--color-text-muted);
+}
+
+.notification-failed {
+  margin-right: auto;
+  color: var(--status-error-text);
+}
+
+.notification-count {
+  color: var(--color-text-muted);
+}

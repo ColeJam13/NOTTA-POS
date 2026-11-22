@@ -4,6 +4,8 @@ import Logo from '../../components/Logo';
 import PinPad from '../../components/PinPad';
 import PaymentForm from '../../components/PaymentModal/PaymentForm';
 import { SearchResults } from '../../components/Search';
+import { NotificationPanel } from '../../components/Notifications';
+import { Bell } from 'lucide-react';
 import { rowsOf } from '../../components/Search/SearchResults';
 import ActiveTableCard from '../../components/TableChecks/ActiveTableCard';
 import OrderItemsList from '../CreateOrder/OrderItemsList';
@@ -126,6 +128,15 @@ const PAUSED_TERMINALS = [
 ];
 
 const nothing = () => {};       // The gallery's buttons do nothing: there is no order behind them
+
+// What the bell holds, made up: one notification of each kind, in the shape the backend
+// answers with (NotificationView). Their times are filled in when the gallery is drawn.
+const NOTICES = [
+  { notificationId: 4, kind: 'item_back', text: 'Garden Toast is back on', fromName: 'Dan', minutesAgo: 1 },
+  { notificationId: 3, kind: 'order_up', text: 'Table W5 is up', fromName: 'Kit', minutesAgo: 4 },
+  { notificationId: 2, kind: 'message', text: 'Fryer is down for 10 minutes. Fries and wings will be slow.', fromName: 'Kit', minutesAgo: 12 },
+  { notificationId: 1, kind: 'item_86', text: "Garden Toast is 86'd", fromName: 'Kit', minutesAgo: 40 }
+];
 
 // What the search box found, made up: one or two results of each kind, in the shape the
 // backend answers with (SearchResultsView). The second closed check has no tip in it,
@@ -337,6 +348,25 @@ function Gallery({ setCurrentView, setSelectedTable }) {
                   onCancel={nothing}
                 />
               </div>
+            </div>
+          </Piece>
+
+          <Piece title="NOTIFICATIONS" wide note="The bell in the top bar with a count and with none, its panel with one notification of each kind and the box for writing a message, and the panel with nothing in it.">
+            <div className="gallery-bells">
+              <button className="notifications-btn" aria-label="Notifications: 4">
+                <Bell size={20} aria-hidden="true" /><span className="notifications-badge" aria-hidden="true">4</span>
+              </button>
+              <button className="notifications-btn" aria-label="Notifications: none"><Bell size={20} aria-hidden="true" /></button>
+            </div>
+            <div className="gallery-notifications">
+              <NotificationPanel
+                notifications={NOTICES.map(notice => ({ ...notice, createdAt: new Date(serverNow() - notice.minutesAgo * 60 * 1000).toISOString() }))}
+                onDismiss={nothing} onDismissAll={nothing}
+                canWrite onSend={async () => {}}
+              />
+            </div>
+            <div className="gallery-notifications">
+              <NotificationPanel notifications={[]} onDismiss={nothing} onDismissAll={nothing} canWrite={false} onSend={async () => {}} />
             </div>
           </Piece>
 

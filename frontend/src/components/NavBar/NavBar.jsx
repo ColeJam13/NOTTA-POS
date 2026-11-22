@@ -1,8 +1,9 @@
 import './NavBar.css';
-import { AlertCircle, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { useStaff } from '../../context/StaffContext';
 import { canDo, canOpenScreen, initialsOf, ROLE_LABELS } from '../../utils/roles';
 import Search from '../Search';
+import NotificationBell from '../Notifications';
 
 /**
  * The bar at the top of every screen.
@@ -69,9 +70,9 @@ function NavBar({ currentView, setCurrentView, setSelectedTable, confirmLeave })
           : <div className="navbar-search" />}
         
         <div className="navbar-right">
-          <button className="notifications-btn">
-            <AlertCircle size={20} /> <span className="notification-badge">2</span>
-          </button>
+          {/* The bell: how many notifications this person has, and the panel that lists them
+              (components/Notifications). The number comes from the backend. */}
+          <NotificationBell />
           {/* The gear opens Settings. Only a manager is offered it (utils/roles.js); it sits up
               here because the row of screen buttons below is already full. */}
           {staff && canOpenScreen(staff.role, 'settings') && (
