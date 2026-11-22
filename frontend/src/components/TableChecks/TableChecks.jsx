@@ -1,24 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import NavBar from '../NavBar/NavBar';
-import { formatTableName, formatTimeAgo, formatDateTime, formatPaymentMethod, formatUpcharge } from '../../utils/formatters';
+import { formatTimeAgo, formatPaymentMethod } from '../../utils/formatters';
 import ActiveTableCard from './ActiveTableCard';
+// The pop-up for a paid check, and the one rule for whether its tip is shown (decided by
+// the backend: a check that was sent with no tip in it shows none)
+import ClosedCheck, { tipIsShown, amountOn } from '../ClosedCheck';
 import { getJson } from '../../services/api';
 import './TableChecks.css';
 
 // How often the screen asks the backend for the latest checks, in milliseconds
 const REFRESH_MS = 3000;
-
-// WHO SEES A TIP is decided by the backend, not here. A person is sent the tip
-// and the payment method on checks they opened; a manager on every check (the
-// owner's decision D10). For anyone else those two fields are NOT IN the check
-// at all, and this screen shows nothing in their place: no "Tip: $0.00", no
-// blank label. The screen never looks at the signed-in person's role for
-// this. It draws what it was sent.
-const tipIsShown = (check) => check.tipAmount != null;              // != null is false for a missing field as well as for null
-
-// The amount on a closed check: what the guest paid (check + tip) when the tip
-// was sent, and the check alone when it was not
-const amountOn = (check) => check.total + (tipIsShown(check) ? check.tipAmount : 0);
 
 /**
  * The body of the Tables screen and the Quick Orders screen: an ACTIVE view of
@@ -33,7 +24,7 @@ const amountOn = (check) => check.total + (tipIsShown(check) ? check.tipAmount :
  *       match them up in the browser.
  *
  * The tip and payment method on a closed check are only shown when the
- * backend sent them (see tipIsShown above).
+ * backend sent them (see tipIsShown in components/ClosedCheck).
  *
  * The page styles (cards, pop-up) come from Tables.css, loaded by the Tables view.
  *
@@ -129,72 +120,9 @@ function TableChecks({ quickOrders, title, navKey, emptyActiveText, emptyClosedT
                 )}
             </div>
 
+            {/* The paid check that was tapped, as a pop-up. The search box opens the same one. */}
             {selectedClosedOrder && (
-                <div className="modal-overlay" onClick={() => setSelectedClosedOrder(null)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <button className="modal-close" onClick={() => setSelectedClosedOrder(null)}>×</button>
-                        
-                        <h2>{formatTableName(selectedClosedOrder)}</h2>
-                        <div className="modal-info">
-                            <p><strong>Server:</strong> {selectedClosedOrder.serverName || 'N/A'}</p>
-                            <p><strong>Order Created:</strong> {formatDateTime(selectedClosedOrder.createdAt)}</p>
-                            <p><strong>Order Closed:</strong> {formatDateTime(selectedClosedOrder.closedAt)}</p>
-                            {tipIsShown(selectedClosedOrder) && (
-                                <p><strong>Payment Method:</strong> {formatPaymentMethod(selectedClosedOrder.paymentMethod)}</p>
-                            )}
-                        </div>
-
-                        <div className="modal-items">
-                            <h3>Order Items</h3>
-                            {selectedClosedOrder.items.map((item) => (
-                                // One line of the check: the item and its price, then its modifiers and kitchen note underneath
-                                <div key={item.orderItemId} className="check-line">
-                                    <div className="modal-item">
-                                        <span>{item.name}</span>
-                                        <span>${item.price.toFixed(2)}</span>
-                                    </div>
-
-                                    {item.modifiers.length > 0 && (
-                                        <ul className="check-line-modifiers">
-                                            {item.modifiers.map(modifier => (
-                                                <li key={modifier.modifierId}>
-                                                    {modifier.name}
-                                                    {modifier.priceAdjustment !== 0 && <small>{formatUpcharge(modifier.priceAdjustment)}</small>}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-
-                                    {item.specialInstructions && (
-                                        <p className="check-line-note">NOTE: {item.specialInstructions}</p>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="modal-totals">
-                            <div className="modal-total-row">
-                                <span>Subtotal:</span>
-                                <span>${selectedClosedOrder.subtotal.toFixed(2)}</span>
-                            </div>
-                            <div className="modal-total-row">
-                                <span>Tax:</span>
-                                <span>${selectedClosedOrder.tax.toFixed(2)}</span>
-                            </div>
-                            {/* The Tip row is left out altogether on a check whose tip was not sent */}
-                            {tipIsShown(selectedClosedOrder) && (
-                                <div className="modal-total-row">
-                                    <span>Tip:</span>
-                                    <span>${selectedClosedOrder.tipAmount.toFixed(2)}</span>
-                                </div>
-                            )}
-                            <div className="modal-total-row final">
-                                <span>Total:</span>
-                                <span>${amountOn(selectedClosedOrder).toFixed(2)}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <ClosedCheck check={selectedClosedOrder} onClose={() => setSelectedClosedOrder(null)} />
             )}
         </div>
     );
