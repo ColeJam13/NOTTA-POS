@@ -1,5 +1,7 @@
 package com.notapos.service;
 
+import com.notapos.config.RestaurantTime;
+import java.time.ZoneOffset;
 import com.notapos.dto.NotificationView;
 import com.notapos.entity.MenuItem;
 import com.notapos.entity.Notification;
@@ -57,7 +59,10 @@ class NotificationServiceTest {
 
     @BeforeEach
     void setUp() {
-        notificationService = new NotificationService(notificationRepository, tableRepository, clock);
+        // The restaurant's clock is read in UTC here, so what a test expects does not depend
+        // on the time zone of the machine running it
+        notificationService = new NotificationService(notificationRepository, tableRepository, clock,
+                new RestaurantTime(clock, ZoneOffset.UTC));
     }
 
     // The notification the service handed to the repository to be saved

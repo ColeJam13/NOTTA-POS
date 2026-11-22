@@ -14,7 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,7 +46,7 @@ class NotificationControllerTest {
     @MockitoBean
     private NotificationService notificationService;
 
-    private static final Instant NOON = Instant.parse("2026-11-20T17:00:00Z");
+    private static final LocalDateTime NOON = LocalDateTime.of(2026, 11, 20, 12, 0, 0);
 
     // ------------------------------------------------------------------
     // Reading
@@ -67,7 +67,7 @@ class NotificationControllerTest {
                 .andExpect(jsonPath("$[0].kind").value("item_86"))
                 .andExpect(jsonPath("$[0].text").value("Garden Toast is 86'd"))
                 .andExpect(jsonPath("$[0].fromName").value("Kit"))
-                .andExpect(jsonPath("$[0].createdAt").value("2026-11-20T17:00:00Z"))       // A moment, with its zone
+                .andExpect(jsonPath("$[0].createdAt").value("2026-11-20T12:00:00"))        // The restaurant's clock, no zone: like every other time in JSON
                 .andExpect(jsonPath("$[1].kind").value("order_up"));
 
         // The service was asked about the person who is signed in, and nobody the request named

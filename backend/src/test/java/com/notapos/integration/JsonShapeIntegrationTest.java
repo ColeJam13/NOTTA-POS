@@ -1,5 +1,6 @@
 package com.notapos.integration;
 
+import com.notapos.config.RestaurantTime;
 import com.notapos.enums.StaffRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -97,6 +98,16 @@ class JsonShapeIntegrationTest extends BaseIntegrationTest {
         @Primary
         Clock clockHeldOnTheDayOfTheFixedRows() {
             return Clock.fixed(Instant.parse("2026-11-18T18:00:00Z"), ZoneOffset.UTC);
+        }
+
+        // A moment stored in the database (a notification's time, a challenge's start and
+        // end) is sent to a screen as the restaurant's local time. Which local time that
+        // is depends on the time zone of the machine the backend runs on, and a recorded
+        // answer must be the same on every machine. So here the restaurant is in UTC.
+        @Bean
+        @Primary
+        RestaurantTime restaurantTimeReadInUtc(Clock clock) {
+            return new RestaurantTime(clock, ZoneOffset.UTC);
         }
     }
 

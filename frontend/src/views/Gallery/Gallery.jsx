@@ -17,7 +17,7 @@ import PausedTerminalRow from '../Staff/PausedTerminalRow';
 import Leaderboard from '../Challenges/Leaderboard';
 import { EightySixChip, EightySixTile } from '../EightySixBoard/EightySixPieces';
 import { TEMPLATES, useTemplates, templateOnScreen, previewTemplate, stopPreview } from '../../templates';
-import { serverNow } from '../../services/serverClock';
+import { serverNow, asBackendStamp } from '../../services/serverClock';
 // The stylesheets of the screens the pieces below come from. (In the built app every
 // stylesheet is loaded anyway; naming them here says where each look is defined.)
 import '../CreateOrder/CreateOrder.css';
@@ -101,7 +101,7 @@ const tableCard = (tableNumber, counts) => ({
 // An open check's card in each of the four borders it can have. Opened "12 minutes ago"
 // by the backend's clock, which is the clock the card measures from (serverClock.js).
 const tableCards = () => {
-  const openedAt = new Date(serverNow() - 12 * 60 * 1000).toISOString();
+  const openedAt = asBackendStamp(serverNow() - 12 * 60 * 1000);
   return [
     tableCard('W1', { openedAt, limboCount: 1, pendingCount: 2 }),            // Something is still in its edit window
     tableCard('W2', { openedAt, pendingCount: 2, firedCount: 1 }),            // The kitchen is working on it
@@ -175,7 +175,7 @@ const FOUND = {
 // The made-up search results with their times filled in: opened 12 minutes ago, paid 30
 // and 95 minutes ago, by the backend's clock, as every "ago" in the app is worked out
 const withTimes = (found) => {
-  const ago = (minutes) => new Date(serverNow() - minutes * 60 * 1000).toISOString();
+  const ago = (minutes) => asBackendStamp(serverNow() - minutes * 60 * 1000);
   return {
     ...found,
     openChecks: { ...found.openChecks, results: found.openChecks.results.map(check => ({ ...check, openedAt: ago(12) })) },
@@ -375,7 +375,7 @@ function Gallery({ setCurrentView, setSelectedTable }) {
             </div>
             <div className="gallery-notifications">
               <NotificationPanel
-                notifications={NOTICES.map(notice => ({ ...notice, createdAt: new Date(serverNow() - notice.minutesAgo * 60 * 1000).toISOString() }))}
+                notifications={NOTICES.map(notice => ({ ...notice, createdAt: asBackendStamp(serverNow() - notice.minutesAgo * 60 * 1000) }))}
                 onDismiss={nothing} onDismissAll={nothing}
                 canWrite onSend={async () => {}}
               />

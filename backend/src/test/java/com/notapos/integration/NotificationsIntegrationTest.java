@@ -200,9 +200,10 @@ class NotificationsIntegrationTest extends BaseIntegrationTest {
         JsonNode notice = bellOf(sarah).get(0);
         assertEquals("item_86", notice.get("kind").asString());
         assertEquals("Kit", notice.get("fromName").asString());
-        // A moment written with its zone, close to now
-        Instant created = Instant.parse(notice.get("createdAt").asString());
-        assertTrue(Math.abs(created.getEpochSecond() - Instant.now().getEpochSecond()) < 60, "created " + created);
+        // The restaurant's own clock with no zone, like every other time in JSON, and close to now
+        // (the test below this group says why it is not a moment in UTC)
+        LocalDateTime created = LocalDateTime.parse(notice.get("createdAt").asString());
+        assertTrue(Duration.between(created, LocalDateTime.now()).abs().getSeconds() < 60, "created " + created);
     }
 
     @Test

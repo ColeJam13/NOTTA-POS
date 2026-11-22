@@ -92,6 +92,27 @@ export const onThisDevice = (backendTimestamp) =>
   new Date(new Date(backendTimestamp).getTime() - backendAheadMs);
 
 /**
+ * A moment by the backend's clock, written the way the backend writes its stamps:
+ * a local date and time with no zone, "2026-11-21T19:15:31".
+ *
+ * Use it when the frontend has to MAKE a stamp that will be read like the backend's:
+ * the template gallery's made-up tickets and notifications ("sent 12 minutes ago" is
+ * asBackendStamp(serverNow() - 12 * 60 * 1000)), or a default for a date-and-time box.
+ * Never toISOString() for this: that writes the moment in UTC with a "Z", which is a
+ * different clock, and "12m ago" then comes out hours wrong on a device set to another
+ * time zone than the backend.
+ *
+ * @param {number} backendMs - Milliseconds in the reading serverNow() gives
+ * @returns {string} - e.g. "2026-11-21T19:15:31"
+ */
+export const asBackendStamp = (backendMs) => {
+  const date = new Date(backendMs);
+  const pad = (number) => String(number).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
+/**
  * Go back to "nothing heard from the backend yet". For tests, so one test's
  * pretend clock does not leak into the next.
  */
