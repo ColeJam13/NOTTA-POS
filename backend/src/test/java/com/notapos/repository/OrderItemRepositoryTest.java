@@ -9,8 +9,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -511,5 +514,90 @@ class OrderItemRepositoryTest extends BaseRepositoryTest {
 
         // Then - the items the set-up saved never set one
         assertEquals(0, orderItemRepository.findById(draftItem.getOrderItemId()).orElseThrow().getRingInPosition());
+    }
+
+    // ------------------------------------------------------------------
+    // How many items each order sold (the per-person sales report)
+    // ------------------------------------------------------------------
+
+    private OrderItem itemOn(Order order, MenuItem menuItem, int quantity, String status) {
+        OrderItem item = new OrderItem();
+        item.setOrderId(order.getOrderId());
+        item.setMenuItemId(menuItem.getMenuItemId());
+        item.setQuantity(quantity);
+        item.setPrice(new BigDecimal("5.00"));
+        item.setStatus(status);
+        item.setIsLocked(!"draft".equals(status));
+        return orderItemRepository.save(item);
+    }
+
+    // The query's answer as a plain map: order ID -> items sold
+    private Map<Long, Long> itemsSoldOn(Order... orders) {
+        List<Long> ids = Arrays.stream(orders).map(Order::getOrderId).toList();
+        return orderItemRepository.countItemsSoldByOrderIdIn(ids, "draft").stream()
+                .collect(Collectors.toMap(
+                        OrderItemRepository.ItemsSoldOnOrder::getOrderId,
+                        OrderItemRepository.ItemsSoldOnOrder::getItemsSold));
+    }
+
+    @Test
+    void testCountItemsSoldByOrderIdIn_ShouldAddUpQuantities_OneRowPerOrder() {
+        // WHAT: Test the count of items sold on several orders at once
+        // WHY: The leaderboard's "items sold" is added up by the database in one query.
+        //      Two of a dish on one line are two items, so quantities are summed, not rows counted.
+
+        // Given
+        orderItemRepository.deleteAll();
+        itemOn(order1, menuItem1, 2, "completed");
+        itemOn(order1, menuItem2, 1, "fired");
+        itemOn(order1, menuItem3, 3, "pending");
+        itemOn(order2, menuItem1, 1, "completed");
+
+        // When & Then
+        assertEquals(Map.of(order1.getOrderId(), 6L, order2.getOrderId(), 1L), itemsSoldOn(order1, order2));
+    }
+
+    @Test
+    void testCountItemsSoldByOrderIdIn_ShouldLeaveDraftsOut() {
+        // WHAT: Test the count on an order that also holds drafts
+        // WHY: A draft was saved and never sent: the kitchen never made it and the guest
+        //      was never charged for it (the check leaves it out too), so it was not sold.
+
+        // Given
+        orderItemRepository.deleteAll();
+        itemOn(order1, menuItem1, 1, "completed");
+        itemOn(order1, menuItem2, 4, "draft");
+
+        // When & Then
+        assertEquals(Map.of(order1.getOrderId(), 1L), itemsSoldOn(order1));
+    }
+
+    @Test
+    void testCountItemsSoldByOrderIdIn_AnOrderThatSoldNothing_HasNoRow() {
+        // WHAT: Test an order with only drafts, and one with nothing on it
+        // WHY: GROUP BY makes a row only for an order that has matching items. The report
+        //      reads "no row" as zero, so that is what the query must do: not a row of null.
+
+        // Given
+        orderItemRepository.deleteAll();
+        itemOn(order1, menuItem1, 2, "draft");
+
+        // When & Then
+        assertEquals(Map.of(), itemsSoldOn(order1, order2));
+    }
+
+    @Test
+    void testCountItemsSoldByOrderIdIn_ShouldOnlyCountTheOrdersAskedFor() {
+        // WHAT: Test that another order's items stay out of the answer
+        // WHY: The report asks about the checks closed in one period, not every order
+
+        // Given
+        orderItemRepository.deleteAll();
+        itemOn(order1, menuItem1, 1, "completed");
+        itemOn(order2, menuItem1, 5, "completed");
+        itemOn(order3, menuItem1, 7, "completed");
+
+        // When & Then
+        assertEquals(Map.of(order1.getOrderId(), 1L, order3.getOrderId(), 7L), itemsSoldOn(order1, order3));
     }
 }

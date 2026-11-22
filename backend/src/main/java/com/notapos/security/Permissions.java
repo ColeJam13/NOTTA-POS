@@ -66,6 +66,13 @@ public final class Permissions {
     // a different job: one may change without the other.
     public static final String SEND_MESSAGES = "hasAnyRole('KITCHEN', 'BARTENDER', 'MANAGER')";
 
+    // Reading what each person sold in a period (the leaderboard): every role. The owner's
+    // decision D6: everyone sees everyone's name, rank, and sales. It carries no tips; tips
+    // stay with the person who earned them and managers (D10), and that is kept by the
+    // answer having no tip in it, not by this rule. The same roles as SEARCH today, and a
+    // rule of its own because it is a different job.
+    public static final String SEE_STAFF_SALES = "isAuthenticated()";
+
     // Any role at all. Not needed to let people in (a method with no rule is already open to
     // everyone signed in); it is written on the few endpoints that change something and are
     // meant for every role, to say that the missing role list is on purpose.

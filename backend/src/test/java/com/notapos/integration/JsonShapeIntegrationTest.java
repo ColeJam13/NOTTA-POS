@@ -237,6 +237,10 @@ class JsonShapeIntegrationTest extends BaseIntegrationTest {
                 new Case("notifications", "server", "/api/notifications"),
                 // Financials
                 new Case("financials", "manager", "/api/reports/financials?from=2026-11-18T00:00:00&to=2026-11-19T00:00:00"),
+                // The leaderboard: what each person sold that day. Read as a server, because
+                // every role may. One of the two people has no staff row (9099), so the
+                // recording also holds the name taken from the check.
+                new Case("staff-sales", "server", "/api/reports/staff-sales?from=2026-11-18T00:00:00&to=2026-11-19T00:00:00"),
                 // Staff
                 new Case("staff", "manager", "/api/staff"),
                 new Case("staff-me", "server", "/api/staff/me"));

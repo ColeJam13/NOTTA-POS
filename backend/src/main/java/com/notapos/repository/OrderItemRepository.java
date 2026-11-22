@@ -48,4 +48,25 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     List<OrderItem> findByOrderIdIn(Collection<Long> orderIds);     // Find items for MANY orders in one query (avoids one query per order)
 
     List<OrderItem> findByMenuItemId(Long menuItemId);              // Find items by menu item ID
+
+    // How many items each of MANY orders sold, added up by the database: one row per order
+    // that has any. "Sold" is what is on the check: every item but a draft (saved and never
+    // sent), counted by its quantity, so two of a dish on one line are two items. One query
+    // for a whole period's checks, and no item is loaded just to be counted.
+    // (GROUP BY makes one row per order; SUM adds the quantities within each. The "AS"
+    // names are what the getters of ItemsSoldOnOrder below are matched to.)
+    @Query("SELECT oi.orderId AS orderId, SUM(oi.quantity) AS itemsSold FROM OrderItem oi "
+            + "WHERE oi.orderId IN :orderIds AND oi.status <> :draftStatus GROUP BY oi.orderId")
+    List<ItemsSoldOnOrder> countItemsSoldByOrderIdIn(Collection<Long> orderIds, String draftStatus);
+
+    /**
+     * One row of the answer above. An interface with getters and no class behind it is a
+     * PROJECTION: Spring Data builds the object and fills each getter from the column of
+     * the same name, so a query can return two numbers without an entity or a DTO.
+     */
+    interface ItemsSoldOnOrder {
+        Long getOrderId();
+
+        Long getItemsSold();
+    }
 }

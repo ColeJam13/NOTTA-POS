@@ -335,6 +335,12 @@ class RoleMatrixIntegrationTest extends BaseIntegrationTest {
         // Writing a message to the floor: the kitchen, bartenders, and managers (Permissions.SEND_MESSAGES)
         endpoint("POST /api/notifications/messages", writesMessages, () -> json(post("/api/notifications/messages"), "{\"text\":\"Fryer is down\"}"));
 
+        // What each person sold, for the leaderboard: every role (Permissions.SEE_STAFF_SALES, the
+        // owner's decision D6). It is beside the Financials report on purpose: one is for
+        // everyone and carries no tips, the other is the manager's.
+        endpoint("GET /api/reports/staff-sales", anyoneSignedIn, () -> get("/api/reports/staff-sales")
+                .param("from", "2026-11-18T00:00:00").param("to", "2026-11-19T00:00:00"));
+
         endpoint("GET /api/reports/financials", managerOnly, () -> get("/api/reports/financials")
                 .param("from", "2026-11-18T00:00:00").param("to", "2026-11-19T00:00:00"));
         endpoint("PUT /api/tables/layout", managerOnly, () -> json(put("/api/tables/layout"),

@@ -3,16 +3,14 @@ package com.notapos.service;
 import com.notapos.dto.FinancialsReportView;
 import com.notapos.dto.FinancialsReportView.PaymentMethodTotal;
 import com.notapos.dto.FinancialsReportView.Transaction;
-import com.notapos.dto.OrderCheckView;
 import com.notapos.entity.Order;
-import com.notapos.entity.OrderItem;
 import com.notapos.entity.Payment;
 import com.notapos.entity.RestaurantTable;
 import com.notapos.enums.OrderStatus;
-import com.notapos.repository.OrderItemRepository;
 import com.notapos.repository.OrderRepository;
 import com.notapos.repository.PaymentRepository;
 import com.notapos.repository.TableRepository;
+import com.notapos.service.ClosedCheckAmountsService.Amounts;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +34,9 @@ import java.util.stream.Collectors;
  * HOW:  At most four database queries, however many checks the period holds:
  *         1. the orders closed in the period
  *         2. their payments                          (WHERE order_id IN (...))
- *         3. items, ONLY for orders with no recorded totals (WHERE order_id IN (...))
+ *         3. items, ONLY for orders with no recorded totals (WHERE order_id IN (...));
+ *            ClosedCheckAmountsService runs this one, because the per-person sales
+ *            report needs the same answer to "what was this check worth?"
  *         4. the tables of the 10 most recent checks  (WHERE table_id IN (...))
  * WHY:  The screen used to download every order, payment, order item, and table
  *       the restaurant has ever had and add them up in the browser. Money is added
@@ -58,22 +58,19 @@ public class FinancialsReportService {
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
 
     private final OrderRepository orderRepository;
-    private final OrderItemRepository orderItemRepository;
     private final PaymentRepository paymentRepository;
     private final TableRepository tableRepository;
-    private final OrderCheckService orderCheckService;
+    private final ClosedCheckAmountsService closedCheckAmountsService;      // What each closed check was worth (shared with StaffSalesReportService)
 
     @Autowired
     public FinancialsReportService(OrderRepository orderRepository,
-                                   OrderItemRepository orderItemRepository,
                                    PaymentRepository paymentRepository,
                                    TableRepository tableRepository,
-                                   OrderCheckService orderCheckService) {
+                                   ClosedCheckAmountsService closedCheckAmountsService) {
         this.orderRepository = orderRepository;
-        this.orderItemRepository = orderItemRepository;
         this.paymentRepository = paymentRepository;
         this.tableRepository = tableRepository;
-        this.orderCheckService = orderCheckService;
+        this.closedCheckAmountsService = closedCheckAmountsService;
     }
 
     public FinancialsReportView getReport(LocalDateTime from, LocalDateTime to) {     // Get the report for checks closed between two moments (both included)
@@ -90,7 +87,7 @@ public class FinancialsReportService {
 
         // Query 3: orders paid before the backend recorded the check hold zeros for subtotal, tax, and
         // total. Their amounts are worked out from their items - loaded with one query for all of them.
-        Map<Long, OrderCheckView> checksByOrderId = checksForOrdersWithoutTotals(closedOrders);
+        Map<Long, Amounts> amountsByOrderId = closedCheckAmountsService.amountsOf(closedOrders);
 
         BigDecimal revenue = BigDecimal.ZERO;
         BigDecimal tax = BigDecimal.ZERO;
@@ -99,14 +96,11 @@ public class FinancialsReportService {
         Map<Long, BigDecimal> totalByOrderId = new LinkedHashMap<>();
 
         for (Order order : closedOrders) {
-            OrderCheckView check = checksByOrderId.get(order.getOrderId());
-            BigDecimal orderSubtotal = check != null ? check.subtotal() : order.getSubtotal();
-            BigDecimal orderTax = check != null ? check.tax() : order.getTax();
-            BigDecimal orderTotal = check != null ? check.total() : order.getTotal();
+            Amounts amounts = amountsByOrderId.get(order.getOrderId());
 
-            revenue = revenue.add(orderSubtotal);
-            tax = tax.add(orderTax);
-            totalByOrderId.put(order.getOrderId(), orderTotal);
+            revenue = revenue.add(amounts.subtotal());
+            tax = tax.add(amounts.tax());
+            totalByOrderId.put(order.getOrderId(), amounts.total());
 
             Payment payment = paymentsByOrderId.get(order.getOrderId());
             if (payment != null) {
@@ -141,23 +135,6 @@ public class FinancialsReportService {
 
     private BigDecimal tipOf(Payment payment) {
         return payment.getTipAmount() != null ? payment.getTipAmount() : BigDecimal.ZERO;
-    }
-
-    private Map<Long, OrderCheckView> checksForOrdersWithoutTotals(List<Order> closedOrders) {
-        List<Order> withoutTotals = closedOrders.stream()
-                .filter(order -> order.getTotal() == null || order.getTotal().signum() == 0)
-                .toList();
-        if (withoutTotals.isEmpty()) {
-            return Map.of();                                            // Every check has its totals recorded - no items needed
-        }
-
-        List<Long> orderIds = withoutTotals.stream().map(Order::getOrderId).toList();
-        Map<Long, List<OrderItem>> itemsByOrderId = orderItemRepository.findByOrderIdIn(orderIds).stream()
-                .collect(Collectors.groupingBy(OrderItem::getOrderId));
-
-        return withoutTotals.stream().collect(Collectors.toMap(
-                Order::getOrderId,
-                order -> orderCheckService.buildCheck(order, itemsByOrderId.getOrDefault(order.getOrderId(), List.of()))));
     }
 
     // One row per payment method, each with its share of all the payment amounts
