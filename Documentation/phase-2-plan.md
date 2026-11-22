@@ -4,6 +4,8 @@ Revision 2, 2026-11-20. Revision 1 was written after an independent review of pu
 
 Revision 3 notes, 2026-11-21 (a second note follows this one): a check of #281 to #286 found the work sound (`main` at `83ad70e`, CI green). The owner answered four questions, recorded as D4, D9, D10, and D11 below. They add one small step, A6, which is next, and they change the feature order. Later the same day a check of the project's versions found Spring Boot 3.5 and Node.js 20 past the end of their support; the owner asked for the project to be kept current provided nothing breaks, which is the new Part U.
 
+Note of 2026-11-22: a sweep of `main` at `a12507a` (the merge of #296, CI green) found the twelve draft templates in and nothing broken. The owner then set the next goal: nothing fake in the app. The nav bar's bell and search box, the Challenges screen, and the leftovers of the Create React App template are built for real or removed, before anything else. The work order for that is `Documentation/nothing-fake-brief.md` (steps N1 to N5). It replaces the B1 and B3 sections below, records D5 and D6 as decided, and goes ahead of P3 in the order of work. The demo link for an outside visitor waits until after it.
+
 This is the work order. Read `CLAUDE.md` first; its working rules and process rules apply to everything here.
 
 ## What changed in this revision
@@ -41,9 +43,10 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 8b | U1. Spring Boot 3.5 to 4.1 (the 3.5 line no longer gets security fixes) | Done (#289) |
 | 9 | B4a. Design tokens: every screen reads its look from named values | Done (#290) |
 | 10 | **B4b and B4c. Template system, then the new templates** | B4b done (#291). B4c follows `Documentation/templates-brief.md`: groundwork (done, #293), then twelve templates in three batches. All three are done as drafts (#294, #295, #296): thirteen templates in all. What remains is the owner's notes, handled in a polish pull request. D9 (default decided), D13 |
+| 10a | **Nothing fake: N1 to N5** (the app's name and leftovers, search, notifications, per-person sales and the leaderboard, challenges). Follows `Documentation/nothing-fake-brief.md`. Covers B1 and B3 | Next. D5 and D6 decided 2026-11-22 |
 | 11 | P3. Phone-sized screens | |
 | 12 | P4. HTTPS on a private network, and the installable app | D8 |
-| 13 | B5, then B1, B2, B3 (features, in that order) | D4 (decided), D5, D6 |
+| 13 | B5, then B2 (B1 and B3 moved up to step 10a) | D4 (decided) |
 | Any gap | U2. Node 24 and the frontend tools held back by Node 20. Fits between any two steps | Ready: the owner installed Node 24 on 2026-11-21 |
 | Later | P5. Store apps and card payments through Square | D7 |
 | Later | U4. Standards backlog | D12 |
@@ -365,6 +368,8 @@ Things that would bring the project closer to common practice but are not urgent
 
 ### B1. Working notifications
 
+**Replaced on 2026-11-22 by `Documentation/nothing-fake-brief.md`, steps N3. Build from the brief; the paragraph below is kept as the record of what was first written.**
+
 The nav bar bell shows a hardcoded count. Build real ones: an 86 or un-86 reaches every order screen, "order up" reaches the server who opened the order when the kitchen completes its items, and kitchen and managers can write and send a message to the floor. Needs decision D5: who may send to whom, and whether a notification must be acknowledged. Polling is acceptable to start, consistent with the rest of the app.
 
 ### B2. Host view with waitlist
@@ -372,6 +377,8 @@ The nav bar bell shows a hardcoded count. Build real ones: an 86 or un-86 reache
 A host screen: floor with table statuses (use the existing `TableStatusLog` for how long a table has been seated), a waitlist (name, party size, quoted wait, time added, seated or left), seat-from-waitlist onto a table, and quick orders. Statuses beyond available and occupied (reserved, needs bussing) belong here; add them to `TableStatus`.
 
 ### B3. Challenges and leaderboard on real data
+
+**Replaced on 2026-11-22 by `Documentation/nothing-fake-brief.md`, steps N4 and N5. Build from the brief; the paragraph below is kept as the record of what was first written.**
 
 `views/Challenges` is entirely mock data. Orders now carry `staffId`, so per-person sales are available. Needs decision D6: which measures count (sales, a featured item, check average, fewest edits inside the timer) and over what period. Build the per-person sales report first; the leaderboard is a view of it.
 
@@ -434,8 +441,8 @@ The owner wants a list of default templates a manager can switch between: **Plai
 | D2 | Role matrix. **Decided 2026-11-20: confirmed as written**, including hosts opening orders, ringing in, sending, and taking payment. | A3b |
 | D3 | How shared terminals sign people out. **Decided 2026-11-20: only on SIGN OUT, for now.** | A4 |
 | D4 | Feature order. **Decided 2026-11-21: check handling first (voids, comps, splits), then notifications, host view, Challenges.** | Step 13 |
-| D5 | Notifications: who sends to whom, acknowledged or not | B1 |
-| D6 | Challenges: which measures and what period | B3 |
+| D5 | Notifications. **Decided 2026-11-22: the kitchen, bartenders, and managers may send a written message; the app itself sends 86 changes and "order up".** Proposed in the brief and open to change: a message goes to everyone, and a notification stays until the person dismisses it | N3 |
+| D6 | Challenges. **Decided 2026-11-22: four measures (items sold, total sales, check average, biggest single check); everyone sees everyone's sales and rank, and nobody's tips; the prize is text a manager writes, and a manager marks it awarded.** Proposed in the brief and open to change: counted when a check is paid | N4, N5 |
 | D7 | Store apps: wrap the web app (proposed) or write native apps; the Square account model | P5 |
 | D8 | How the app is served over HTTPS inside a restaurant (after the investigation in P4) | P4 |
 | D9 | Default template: **decided 2026-11-21, 8-Bit (today's look).** Still open: any direction the owner wants to give for Coffee Shop and Nightclub; ask when proposing each | B4c |
@@ -450,7 +457,8 @@ Owner actions still open unless already done: turn on Dependabot alerts (U3), tu
 
 ## How to continue
 
-1. Continue B4c from `Documentation/templates-brief.md`. Its groundwork is done (#293) and so is the first batch of four templates as drafts (#294: Plain, Coffee Shop, Nightclub, Fancy). The second batch is done too (#295: Dive Bar, Brunch Spot, Diner, Sports Bar), and the third (#296: Cantina, Izakaya, Beach Bar, High Contrast). B4c is built. The owner reviews by switching templates in the running app; notes are handled in a polish pull request, whenever they come. The next step in the table is P3, phone-sized screens. U2 (Node 24 in CI and the frontend tool bumps) and the rest of U3 (the Maven Wrapper) can go in at any gap. Part A (A1 to A6), P1, P2, and U1 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
+1. **Next: `Documentation/nothing-fake-brief.md`, step N1, then N2 to N5 in order, one pull request each.** The owner's notes on the twelve draft templates become a polish pull request whenever he sends them; it waits its turn like any other.
+1. B4c, for the record: it followed `Documentation/templates-brief.md`. Its groundwork is done (#293) and so is the first batch of four templates as drafts (#294: Plain, Coffee Shop, Nightclub, Fancy). The second batch is done too (#295: Dive Bar, Brunch Spot, Diner, Sports Bar), and the third (#296: Cantina, Izakaya, Beach Bar, High Contrast). B4c is built. The owner reviews by switching templates in the running app; notes are handled in a polish pull request, whenever they come. The next step in the table is P3, phone-sized screens. U2 (Node 24 in CI and the frontend tool bumps) and the rest of U3 (the Maven Wrapper) can go in at any gap. Part A (A1 to A6), P1, P2, and U1 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
 2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 
 ## Completed
