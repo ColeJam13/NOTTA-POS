@@ -11,6 +11,10 @@ import './dive-bar.css';
 import './brunch.css';
 import './diner.css';
 import './sports-bar.css';
+import './cantina.css';
+import './izakaya.css';
+import './beach-bar.css';
+import './high-contrast.css';
 import { useSyncExternalStore } from 'react';
 
 /**
@@ -158,6 +162,40 @@ export const TEMPLATES = [
     description: 'A stadium at night: navy, silver lines, turf green, scoreboard numbers.',
     scheme: 'dark',
     swatches: ['--color-bg', '--color-accent-fill', '--color-primary-fill', '--color-border'],
+    logo: 'text'
+  },
+
+  // ----- The third batch. Drafts as well.
+  {
+    id: 'cantina',
+    name: 'Cantina',
+    description: 'Sun-baked and warm: sand, terracotta, turquoise, and no shadows.',
+    scheme: 'light',
+    swatches: ['--color-bg', '--color-accent-fill', '--color-primary-fill', '--color-attention-surface'],
+    logo: 'text'
+  },
+  {
+    id: 'izakaya',
+    name: 'Izakaya',
+    description: 'Quiet and minimal: ink and paper, a soft blue, room to breathe.',
+    scheme: 'dark',
+    swatches: ['--color-bg', '--color-surface', '--color-primary-fill', '--color-accent-fill'],
+    logo: 'text'
+  },
+  {
+    id: 'beach-bar',
+    name: 'Beach Bar',
+    description: 'Sunset over water: deep teal, pink, orange, and round everything.',
+    scheme: 'dark',
+    swatches: ['--color-bg', '--color-accent-fill', '--color-primary-fill', '--color-attention'],
+    logo: 'text'
+  },
+  {
+    id: 'high-contrast',
+    name: 'High Contrast',
+    description: 'The most readable: black, white, and yellow, larger type, thick lines.',
+    scheme: 'dark',
+    swatches: ['--color-bg', '--color-text', '--color-accent-fill', '--color-danger-fill'],
     logo: 'text'
   }
 ];
