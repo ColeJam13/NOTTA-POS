@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TemplatePreviewBar from './TemplatePreviewBar';
 import { TEMPLATES, forgetTemplates, showChosenTemplate, previewTemplate } from '../../templates';
+import { TEST_LOOK } from '../../templates/testSupport';
 
 /**
  * Behavior tests for the bar shown while a manager is trying a template out.
@@ -21,7 +22,7 @@ let refusal;          // { status, message } = the fake backend refuses the next
 const onThePage = () => document.documentElement.getAttribute('data-template');
 
 beforeEach(() => {
-  TEMPLATES.push({ id: 'test-look', name: 'Test Look', description: 'Made up for the tests.' });
+  TEMPLATES.push(TEST_LOOK);
   window.localStorage.clear();
   forgetTemplates();
   showChosenTemplate('8-bit');

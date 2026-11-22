@@ -13,7 +13,7 @@
   background: var(--color-surface);
   padding: var(--space-15);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   font-size: var(--font-size-18);
   letter-spacing: var(--letter-spacing-wide);
   margin-bottom: var(--space-20);
@@ -29,7 +29,7 @@
 .settings-section {
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   padding: var(--space-20);
 }
 
@@ -41,22 +41,40 @@
   margin-bottom: var(--space-12);
 }
 
-/* --- One card per template --- */
+.settings-gallery-btn {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  font-family: var(--font-body);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing);
+  padding: var(--space-10) var(--space-20);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.settings-gallery-btn:hover {
+  background: var(--color-surface-hover);
+}
+
+/* --- One card per template, in a grid: as many across as fit --- */
 .template-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--space-15);
   margin: var(--space-20) 0;
 }
 
 .template-card {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-20);
+  flex-direction: column;
+  gap: var(--space-12);
   background: var(--color-bg-deep);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   padding: var(--space-15);
 }
 
@@ -64,9 +82,38 @@
   border-color: var(--color-border-primary);
 }
 
+/* The swatches on the left, LIGHT or DARK on the right */
+.template-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Four dots of the template's own colors. The box carries data-template, so the
+   tokens inside it are that template's (see TemplateSwatches in Settings.jsx). The
+   line around each dot keeps a white dot visible on a white card. */
+.template-swatches {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.template-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-round);
+  border: var(--border-width-thin) solid var(--color-border-muted);
+}
+
+.template-scheme {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-10);
+  letter-spacing: var(--letter-spacing);
+}
+
+/* Takes the room that is left, so the button or IN USE sits at the bottom of every
+   card whatever the length of the description */
 .template-card-text {
   flex: 1;
-  min-width: 200px;
 }
 
 .template-card-text h4 {
@@ -86,6 +133,7 @@
   font-size: var(--font-size-11);
   letter-spacing: var(--letter-spacing);
   white-space: nowrap;
+  padding: var(--space-10) 0;
 }
 
 .template-in-use {
@@ -105,7 +153,8 @@
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--letter-spacing);
   padding: var(--space-10) var(--space-20);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.3s;
@@ -113,103 +162,4 @@
 
 .template-preview-btn:hover {
   background: var(--color-surface-hover);
-}
-
-/* --- The sample: a small made-up corner of the app, drawn in that card's template.
-       The box carries data-template, and everything here is a token, so the sample
-       takes its template's values whatever the page around it is showing. Every
-       element inside needs its font set from the token again: App.css gives each
-       element the font by name, and inside this box that name must be this template's. --- */
-.template-sample {
-  width: 280px;
-  flex-shrink: 0;
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-body);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-12);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-}
-
-.template-sample * {
-  font-family: var(--font-body);
-}
-
-.template-sample-heading {
-  color: var(--color-heading);
-  background: var(--color-surface);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-6);
-  text-align: center;
-  font-size: var(--font-size-10);
-  letter-spacing: var(--letter-spacing);
-}
-
-.template-sample-row {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-8);
-  background: var(--color-surface);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-6) var(--space-8);
-  font-size: var(--font-size-8);
-}
-
-.template-sample-amount {
-  color: var(--color-primary);
-}
-
-.template-sample-row.locked {
-  background: var(--status-locked-surface);
-  border-color: var(--status-locked-border);
-  color: var(--status-locked-text);
-}
-
-.template-sample-statuses {
-  display: flex;
-  justify-content: space-between;
-  font-size: var(--font-size-9);
-}
-
-.template-sample-late {
-  color: var(--status-wait-late);
-}
-
-.template-sample-warning {
-  color: var(--status-wait-warning);
-}
-
-.template-sample-86 {
-  color: var(--status-86-text);
-}
-
-.template-sample-buttons {
-  display: flex;
-  gap: var(--space-6);
-}
-
-.template-sample-btn {
-  flex: 1;
-  text-align: center;
-  background: var(--color-control);
-  color: var(--color-text);
-  border-radius: var(--radius-md);
-  padding: var(--space-6) var(--space-4);
-  font-size: var(--font-size-8);
-  font-weight: var(--font-weight-bold);
-}
-
-.template-sample-btn.primary {
-  background: var(--color-primary-fill);
-  color: var(--color-on-primary);
-}
-
-.template-sample-btn.danger {
-  background: var(--color-danger-fill);
-  color: var(--color-on-danger);
 }

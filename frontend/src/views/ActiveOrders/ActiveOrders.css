@@ -13,7 +13,7 @@
   background: var(--color-surface);
   padding: var(--space-15);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   font-size: var(--font-size-18);
   letter-spacing: var(--letter-spacing-wide);
   margin: var(--space-20) 0;
@@ -38,7 +38,8 @@
   background: transparent;
   border: var(--border-width) solid var(--color-border);
   color: var(--color-text);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -67,7 +68,8 @@
 .order-card {
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
   padding: var(--space-20);
   margin-bottom: var(--space-20);
 }
@@ -90,7 +92,7 @@
    as the row, so the three read as a single block. */
 .order-item-ticket {
   background: var(--color-bg-deep);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
 }
 
 /* Modifiers, indented to line up under the item name (past the quantity column) */
@@ -122,7 +124,7 @@
   gap: var(--space-15);
   padding: var(--space-10);
   background: var(--color-bg-deep);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-box);
   font-size: var(--font-size-10);
 }
 
@@ -153,7 +155,8 @@
   color: var(--color-on-primary);
   font-family: var(--font-body);
   font-size: var(--font-size-8);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-button-small);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
   transition: all 0.3s;
   margin-left: auto;
@@ -172,7 +175,8 @@
   color: var(--color-on-primary);
   font-family: var(--font-body);
   font-size: var(--font-size-8);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-button-small);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
   transition: all 0.3s;
   margin-left: auto;
@@ -202,7 +206,8 @@
   background: transparent;
   border: var(--border-width) solid var(--color-border-primary);
   color: var(--color-primary);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -239,7 +244,7 @@
 
 /* A finished ticket brought back with SHOW DONE */
 .order-card.done {
-  opacity: 0.55;
+  opacity: var(--status-ticket-done-opacity);
   border-color: var(--status-ticket-done-border);
 }
 

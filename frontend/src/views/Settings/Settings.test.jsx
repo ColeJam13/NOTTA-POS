@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Settings from './Settings';
 import { TEMPLATES, forgetTemplates, showChosenTemplate, stopPreview } from '../../templates';
+import { TEST_LOOK } from '../../templates/testSupport';
 
 /**
  * Behavior tests for the Settings screen (managers only): the list of templates.
@@ -24,7 +25,7 @@ const onThePage = () => document.documentElement.getAttribute('data-template');
 const card = (id) => screen.getByTestId(`template-${id}`);
 
 beforeEach(() => {
-  TEMPLATES.push({ id: 'test-look', name: 'Test Look', description: 'Made up for the tests.' });
+  TEMPLATES.push(TEST_LOOK);
   window.localStorage.clear();
   forgetTemplates();
   showChosenTemplate('8-bit');                        // What the backend says the restaurant uses
@@ -40,7 +41,7 @@ afterEach(() => {
 
 const renderScreen = () => render(<Settings setCurrentView={vi.fn()} setSelectedTable={vi.fn()} />);
 
-test('the screen lists every template with its name, what it looks like, and a sample', () => {
+test('the screen lists every template with its name, what it looks like, light or dark, and four of its colors', () => {
   renderScreen();
   const section = screen.getByRole('region', { name: 'Template' });
 
@@ -49,10 +50,18 @@ test('the screen lists every template with its name, what it looks like, and a s
   expect(within(card('test-look')).getByRole('heading', { name: 'Test Look' })).toBeInTheDocument();
   expect(within(section).getAllByTestId(/^template-/)).toHaveLength(2);
 
-  // Each card's sample is marked with ITS template, which is what makes the stylesheet
-  // draw it in that template whatever the page around it is showing
-  expect(card('8-bit').querySelector('.template-sample')).toHaveAttribute('data-template', '8-bit');
-  expect(card('test-look').querySelector('.template-sample')).toHaveAttribute('data-template', 'test-look');
+  expect(within(card('8-bit')).getByText('DARK')).toBeInTheDocument();
+  expect(within(card('test-look')).getByText('LIGHT')).toBeInTheDocument();
+
+  // Each card's swatches are marked with ITS template, which is what makes the
+  // stylesheet draw them in that template's colors whatever the page is showing
+  expect(card('8-bit').querySelector('.template-swatches')).toHaveAttribute('data-template', '8-bit');
+  expect(card('test-look').querySelector('.template-swatches')).toHaveAttribute('data-template', 'test-look');
+  // Four dots each, drawn from tokens and never from a color written into the list
+  const dots = [...card('8-bit').querySelectorAll('.template-swatch')];
+  expect(dots).toHaveLength(4);
+  expect(dots.map(dot => dot.style.background)).toEqual(
+    ['var(--color-bg)', 'var(--color-accent-fill)', 'var(--color-primary-fill)', 'var(--color-danger-fill)']);
 });
 
 test('the template the restaurant uses is marked IN USE and cannot be previewed', () => {
@@ -108,5 +117,14 @@ test('with a single template, the screen says more are coming and offers nothing
   expect(screen.getByText(/only template so far/)).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /^Preview/ })).not.toBeInTheDocument();
 
-  TEMPLATES.push({ id: 'test-look', name: 'Test Look', description: 'Made up for the tests.' });    // For afterEach to remove
+  TEMPLATES.push(TEST_LOOK);    // For afterEach to remove
+});
+
+test('OPEN THE GALLERY goes to the gallery', async () => {
+  const setCurrentView = vi.fn();
+  render(<Settings setCurrentView={setCurrentView} setSelectedTable={vi.fn()} />);
+
+  await userEvent.click(screen.getByRole('button', { name: 'OPEN THE GALLERY' }));
+
+  expect(setCurrentView).toHaveBeenCalledWith('gallery');
 });

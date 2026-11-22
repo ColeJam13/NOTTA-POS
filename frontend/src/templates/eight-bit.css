@@ -65,12 +65,22 @@
      The font files are declared in fonts.css, beside this file. */
   --font-body: 'Press Start 2P', monospace;
   --font-logo: 'GothicByte', monospace;
+  /* Three more jobs a font can have. In this template the one pixel font does them all;
+     another template may give each its own face.
+       display  the title of a screen or pop-up (h1, h2)
+       heading  section headings and the names on cards (h3, h4)
+       numbers  amounts and timers: totals, a ticket's wait, the time left on a pause
+     App.css applies them. */
+  --font-display: 'Press Start 2P', monospace;
+  --font-heading: 'Press Start 2P', monospace;
+  --font-numbers: 'Press Start 2P', monospace;
   /* Set on the outermost box only; every element inside takes --font-body, so this one
      is never seen. Kept because it was there. */
   --font-fallback: 'Courier New', monospace;
 
   --font-weight-normal: normal;
   --font-weight-bold: bold;
+  --font-weight-heading: bold;           /* h1 to h4. A template with a light, elegant heading face sets this lower. */
 
   /* Type sizes. The number is the size in pixels in this template. */
   --font-size-8: 8px;
@@ -108,12 +118,21 @@
   /* SHAPE                                                                  */
   /* ====================================================================== */
 
-  /* Corners. Most things are --radius-md; panels and pop-ups are --radius-xl. */
-  --radius-xs: 5px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 12px;
+  /* Corners, named for the KIND of thing, so that a template can have pill-shaped
+     buttons and square cards, or the other way round. Where a kind has more than one
+     size here, a new template sets them equal. */
+  --radius-button: 8px;         /* Almost every button */
+  --radius-button-small: 6px;   /* START and COMPLETE on a kitchen ticket */
+  --radius-button-large: 12px;  /* The big ones: PIN pad keys and the Home screen's buttons */
+  --radius-field: 8px;          /* Text boxes */
+  --radius-field-small: 6px;    /* The text boxes on Staff and the dates on Financials */
+  --radius-card: 12px;          /* A free-standing card: a table's check, a kitchen ticket, a menu item, the floor */
+  --radius-box: 8px;            /* A box inside a screen: title bars, rows, panels, messages, a square table */
+  --radius-box-small: 6px;      /* The item rows of a closed check */
+  --radius-popup: 12px;         /* Pop-up windows */
+  --radius-chip: 5px;           /* A small label with a background */
+  --radius-bar: 5px;            /* The bars of the payment breakdown */
+  --radius-bar-large: 10px;     /* A Challenges progress bar */
   --radius-pill: 25px;          /* The search box: fully rounded ends */
   --radius-round: 50%;          /* Circles: the avatar, PIN dots, round tables */
 
@@ -147,6 +166,13 @@
   /* ====================================================================== */
   /* COLORS: SURFACES (what things are drawn on)                            */
   /* ====================================================================== */
+
+  /* How the browser draws the things it draws itself: the calendar of a date box, a
+     drop-down list, a tick box, scroll bars. "light" and "dark" make them suit the
+     template. "normal" is the browser's default, which is what this template has
+     always had (so they are light ones on a dark page; changing that would change
+     8-Bit). Every new template says light or dark. */
+  --color-scheme: normal;
 
   --color-bg: #1a1a2e;                    /* The page behind everything */
   --color-bg-deep: #0f0f1e;               /* Sunk below the page: the top bar, text boxes, list rows, the floor */
@@ -255,6 +281,11 @@
   --status-locked-surface: var(--color-bg-deep);
   --status-locked-text: var(--color-text-subtle);
   --status-locked-icon: var(--color-danger);
+  /* A locked line is also FADED: 0.5 draws it half see-through, so it sinks into the
+     page behind. (1 = not faded at all.) That makes its text fainter than the color
+     above says, which contrast.test.js takes into account. A new template should say
+     "locked" with its colors and leave this at 1. */
+  --status-locked-opacity: 0.5;
 
   /* --- A table's card on Tables and Quick Orders, by what its items are doing --- */
   --status-limbo-border: var(--color-border);                 /* Something is still in its edit window */
@@ -268,6 +299,7 @@
   --status-wait-late: var(--color-danger);                    /* ...15 minutes */
   --status-ticket-done-border: var(--color-border-muted);     /* A ticket with nothing left to make */
   --status-ticket-done-text: var(--color-text-subtle);
+  --status-ticket-done-opacity: 0.55;                         /* A finished ticket is faded too */
 
   /* --- 86'd: out for now --- */
   --status-86-text: var(--color-danger);
@@ -279,6 +311,7 @@
   --status-86-card-border: var(--color-border-muted);
   --status-86-card-text: var(--color-text-subtle);
   --status-86-label: var(--color-danger);
+  --status-86-card-opacity: 0.45;                             /* ...and faded */
 
   /* --- An error or refusal shown to the person at the screen --- */
   --status-error-text: var(--color-danger);
@@ -312,6 +345,13 @@
 
   --glow-danger: 0 0 20px rgba(255, 51, 102, 0.5);
   --glow-danger-tight: 0 0 15px rgba(255, 51, 102, 0.4);
+
+  /* Shadows things have AT REST, by kind. This template is flat until something is
+     pointed at, so they are "none"; a light template lifts its cards off the page with
+     a soft shadow here. (A glow above replaces the resting shadow while it shows.) */
+  --shadow-card: none;
+  --shadow-button: none;
+  --shadow-popup: none;
 
   --shadow-navbar: 0 4px 20px rgba(176, 38, 255, 0.3);        /* Under the top bar */
   --glow-logo: 0 0 10px #b026ff, 0 0 20px #b026ff;            /* Around the letters of the logo */

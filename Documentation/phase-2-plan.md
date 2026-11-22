@@ -40,7 +40,7 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 8a | A6. Two follow-ups from the review: tips on closed checks, and releasing a paused terminal | Done (#288) |
 | 8b | U1. Spring Boot 3.5 to 4.1 (the 3.5 line no longer gets security fixes) | Done (#289) |
 | 9 | B4a. Design tokens: every screen reads its look from named values | Done (#290) |
-| 10 | **B4b and B4c. Template system, then the new templates** | B4b done (#291). B4c is next and follows `Documentation/templates-brief.md`: groundwork, then twelve templates in three batches. D9 (default decided), D13 |
+| 10 | **B4b and B4c. Template system, then the new templates** | B4b done (#291). B4c follows `Documentation/templates-brief.md`: groundwork (done, #293), then twelve templates in three batches. The first batch (Plain, Coffee Shop, Nightclub, Fancy) is next. D9 (default decided), D13 |
 | 11 | P3. Phone-sized screens | |
 | 12 | P4. HTTPS on a private network, and the installable app | D8 |
 | 13 | B5, then B1, B2, B3 (features, in that order) | D4 (decided), D5, D6 |
@@ -450,7 +450,7 @@ Owner actions still open unless already done: turn on Dependabot alerts (U3), tu
 
 ## How to continue
 
-1. Start B4c with Plain: build it as a proposal (a palette and a font choice, with screenshots of the order screen, the kitchen display, and the Payment window in it), and get the owner's approval before finishing. Then Coffee Shop and Nightclub the same way, asking the owner first for any direction (D9). Each must pass the checks listed under B4c. U2 (Node 24 in CI and the frontend tool bumps) and the rest of U3 (the Maven Wrapper) can go in at any gap. Part A (A1 to A6), P1, P2, and U1 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
+1. Continue B4c from `Documentation/templates-brief.md`. Its groundwork is done (#293). Next is the first batch of four templates as drafts: Plain, Coffee Shop, Nightclub, Fancy. Then the second and third batches. The owner reviews by switching templates in the running app; notes are handled in a polish pull request. U2 (Node 24 in CI and the frontend tool bumps) and the rest of U3 (the Maven Wrapper) can go in at any gap. Part A (A1 to A6), P1, P2, and U1 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
 2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 
 ## Completed

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import logo from '../../assets/NOTTA LOGO.png';
+import Logo from '../../components/Logo';
 import PinPad from '../../components/PinPad';
 import { apiFetch } from '../../services/api';
 import './ChangePin.css';
@@ -111,7 +111,7 @@ function ChangePin({ staff, onPinChanged, onSignOut }) {
 
   return (
     <div className="change-pin-page">
-      <img src={logo} alt="NOTTA-POS Logo" className="change-pin-logo" />
+      <Logo pictureClassName="change-pin-logo" size="small" />
 
       {staff?.mustChangePin && (
         <p className="change-pin-why">

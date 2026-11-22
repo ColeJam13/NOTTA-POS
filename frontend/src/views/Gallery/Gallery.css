@@ -1,0 +1,188 @@
+.gallery-page {
+  flex: 1;
+  background: var(--color-bg);
+  padding: var(--space-40);
+  color: var(--color-text);
+  overflow-y: auto;
+}
+
+.gallery-page > h2 {
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--color-heading);
+  background: var(--color-surface);
+  padding: var(--space-15);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-box);
+  font-size: var(--font-size-18);
+  letter-spacing: var(--letter-spacing-wide);
+  margin-bottom: var(--space-20);
+}
+
+.gallery-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-20);
+  margin-bottom: var(--space-15);
+}
+
+.gallery-note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-11);
+  line-height: var(--line-height);
+  margin-bottom: var(--space-12);
+}
+
+.gallery-top .gallery-note {
+  margin-bottom: 0;
+}
+
+.gallery-note strong {
+  color: var(--color-primary);
+}
+
+.gallery-back,
+.gallery-switch {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  font-family: var(--font-body);
+  font-size: var(--font-size-10);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing);
+  padding: var(--space-10) var(--space-15);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.gallery-back:hover,
+.gallery-switch:hover {
+  background: var(--color-surface-hover);
+}
+
+/* One button per template; the one on screen is lit */
+.gallery-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin-bottom: var(--space-30);
+}
+
+.gallery-switch.active {
+  background: var(--color-accent-fill);
+  color: var(--color-on-accent);
+}
+
+/* The pieces, two across where there is room. A "wide" one takes the whole row. */
+.gallery-pieces {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+  gap: var(--space-20);
+  align-items: start;
+}
+
+.gallery-piece {
+  border: var(--border-width-thin) solid var(--color-border-muted);
+  border-radius: var(--radius-box);
+  padding: var(--space-20);
+  min-width: 0;                                     /* Lets a piece shrink to its column */
+}
+
+.gallery-piece.wide {
+  grid-column: 1 / -1;
+}
+
+.gallery-piece > h3 {
+  color: var(--color-subheading);
+  font-size: var(--font-size-12);
+  letter-spacing: var(--letter-spacing-wide);
+  margin-bottom: var(--space-8);
+}
+
+.gallery-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-10);
+  margin-bottom: var(--space-15);
+}
+
+/* The kinds of text, each drawn with the token it is named after */
+.gallery-text {
+  font-size: var(--font-size-12);
+  line-height: var(--line-height);
+  margin-top: var(--space-8);
+}
+
+.gallery-text.muted {
+  color: var(--color-text-muted);
+}
+
+.gallery-text.subtle {
+  color: var(--color-text-subtle);
+}
+
+.gallery-text.faint {
+  color: var(--color-text-faint);
+}
+
+.gallery-text.accent {
+  color: var(--color-accent);
+}
+
+.gallery-text.primary {
+  color: var(--color-primary);
+}
+
+.gallery-logo {
+  width: 240px;
+  max-width: 100%;
+}
+
+.gallery-tickets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: var(--space-15);
+  align-items: start;
+}
+
+/* ---------------------------------------------------------------------------
+   LAYOUT ONLY, for pieces taken out of their screens. On its own screen each of
+   these is sized to that screen (the menu is 60% of the order screen, the item
+   list is 35% of its height, the floor is 660 pixels tall, a pop-up is centered
+   over the page). Here they sit in a box on a page. Nothing below changes how a
+   piece LOOKS: no colors, fonts, corners, or borders.
+   --------------------------------------------------------------------------- */
+.gallery-page .menu-panel {
+  width: 100%;
+  padding: 0;
+}
+
+.gallery-page .order-items-list {
+  min-height: 0;
+  max-height: none;
+}
+
+.gallery-page .floor-canvas {
+  height: 150px;
+}
+
+.gallery-page .modal-content {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  animation: none;
+}
+
+.gallery-page .tables-grid,
+.gallery-page .view-toggle {
+  margin-top: 0;
+}
+
+.gallery-pin-pad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-14);
+}

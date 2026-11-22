@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import NavBar from '../../components/NavBar';
 import { apiFetch } from '../../services/api';
 import { ROLE_LABELS } from '../../utils/roles';
-import { formatTimeLeft } from '../../utils/formatters';
+import PausedTerminalRow from './PausedTerminalRow';
 import { useStaff } from '../../context/StaffContext';
 import './Staff.css';
 
@@ -214,18 +214,7 @@ function Staff({ setCurrentView, setSelectedTable }) {
           {pausedTerminals && pausedTerminals.length === 0 && <p className="staff-paused-none">No terminal is paused.</p>}
 
           {pausedTerminals && pausedTerminals.map(terminal => (
-            <div key={terminal.device} className="staff-paused-row">
-              <span className="staff-paused-device">{terminal.device}</span>
-              {terminal.thisDevice && <span className="staff-paused-here">THIS TERMINAL</span>}
-              <span className="staff-paused-left">{formatTimeLeft(terminal.secondsLeft)} left</span>
-              <button
-                className="staff-btn staff-btn-primary"
-                aria-label={`Release ${terminal.device}`}
-                onClick={() => releaseTerminal(terminal.device)}
-              >
-                RELEASE
-              </button>
-            </div>
+            <PausedTerminalRow key={terminal.device} terminal={terminal} onRelease={releaseTerminal} />
           ))}
 
           {releaseMessage && <p className="staff-message" role="alert">{releaseMessage}</p>}

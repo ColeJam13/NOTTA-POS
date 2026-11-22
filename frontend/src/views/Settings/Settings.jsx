@@ -3,40 +3,22 @@ import { TEMPLATES, useTemplates, previewTemplate } from '../../templates';
 import './Settings.css';
 
 /**
- * A small made-up corner of the app, drawn in one template.
+ * Four dots of a template's own colors, for its card.
  *
- * HOW IT IS DRAWN IN A TEMPLATE OTHER THAN THE PAGE'S: the box carries
+ * HOW THEY ARE DRAWN IN A TEMPLATE OTHER THAN THE PAGE'S: the box carries
  * data-template="<name>". Each template's stylesheet gives its values to any element
- * with its name on it, and Settings.css draws this box with tokens only, so everything
- * inside takes that template's colors, fonts, and shapes whatever the rest of the
- * page is showing.
- *
- * It shows the things a template must keep unmistakable: a heading, an amount, a
- * locked item, a late and a warned ticket, an 86'd item, and the three kinds of button.
+ * with its name on it, so var(--color-bg) inside this box is THAT template's
+ * background, whatever the page around it is showing. The four tokens to show are
+ * chosen per template (its "swatches" in templates/index.js); the colors themselves
+ * are never written down twice.
  */
-function TemplateSample({ templateId }) {
+function TemplateSwatches({ template }) {
   return (
-    // aria-hidden: this is a picture of the app, not part of it. A screen reader skips it.
-    <div className="template-sample" data-template={templateId} aria-hidden="true">
-      <div className="template-sample-heading">TABLE W2</div>
-      <div className="template-sample-row">
-        <span>Omelette of the Day</span>
-        <span className="template-sample-amount">$16.00</span>
-      </div>
-      <div className="template-sample-row locked">
-        <span>Garden Toast</span>
-        <span>LOCKED</span>
-      </div>
-      <div className="template-sample-statuses">
-        <span className="template-sample-late">20 MIN</span>
-        <span className="template-sample-warning">12 MIN</span>
-        <span className="template-sample-86">86&apos;D</span>
-      </div>
-      <div className="template-sample-buttons">
-        <span className="template-sample-btn primary">SEND</span>
-        <span className="template-sample-btn">SAVE</span>
-        <span className="template-sample-btn danger">CLOSE</span>
-      </div>
+    // aria-hidden: decoration. The name and description beside it say what the template is.
+    <div className="template-swatches" data-template={template.id} aria-hidden="true">
+      {template.swatches.map(token => (
+        <span key={token} className="template-swatch" style={{ background: `var(${token})` }} />
+      ))}
     </div>
   );
 }
@@ -48,7 +30,10 @@ function TemplateSample({ templateId }) {
  * has one, kept on the backend, so every terminal and phone looks the same.
  *
  * WHAT A MANAGER DOES HERE:
- *   - sees every template, each with a small sample drawn in it, and which is in use
+ *   - sees every template as a card (its name, a line about it, whether it is light or
+ *     dark, and four of its colors), and which is in use
+ *   - opens the GALLERY: one page with every piece of the interface in every state,
+ *     drawn in whichever template is on screen. It is the quick way to judge one.
  *   - presses PREVIEW to try one on this terminal only. A bar then sits at the top
  *     of every screen (components/TemplatePreviewBar), so they can walk through the
  *     order screen and the kitchen display in the new look before deciding. That bar
@@ -77,9 +62,15 @@ function Settings({ setCurrentView, setSelectedTable }) {
           <p className="settings-help">
             PREVIEW shows a template on this terminal only, so you can open the order screen
             and the kitchen display in it before deciding. Nothing changes for anyone else
-            until you choose it.
+            until you choose it. The gallery shows every piece of the app in every state on
+            one page, in whichever template is on screen.
           </p>
 
+          <button className="settings-gallery-btn" onClick={() => setCurrentView('gallery')}>
+            OPEN THE GALLERY
+          </button>
+
+          {/* A grid: as many cards across as fit, so thirteen templates are a few rows, not a long list */}
           <div className="template-list">
             {TEMPLATES.map(template => (
               <div
@@ -87,7 +78,10 @@ function Settings({ setCurrentView, setSelectedTable }) {
                 className={`template-card ${chosen === template.id ? 'in-use' : ''}`}
                 data-testid={`template-${template.id}`}
               >
-                <TemplateSample templateId={template.id} />
+                <div className="template-card-top">
+                  <TemplateSwatches template={template} />
+                  <span className="template-scheme">{template.scheme === 'light' ? 'LIGHT' : 'DARK'}</span>
+                </div>
                 <div className="template-card-text">
                   <h4>{template.name}</h4>
                   <p>{template.description}</p>

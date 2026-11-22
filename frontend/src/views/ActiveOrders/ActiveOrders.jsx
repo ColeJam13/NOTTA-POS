@@ -1,15 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import NavBar from '../../components/NavBar/NavBar';
-import { formatTableName } from '../../utils/formatters';
+import OrderTicket from './OrderTicket';
 import './ActiveOrders.css';
 import { apiFetch, getJson } from '../../services/api';
 import { serverNow } from '../../services/serverClock';
 import { useStaff } from '../../context/StaffContext';
 import { canDo } from '../../utils/roles';
-
-// A kitchen ticket that has waited this many minutes turns yellow, then red
-const WAITING_WARNING_MINUTES = 10;
-const WAITING_LATE_MINUTES = 15;
 
 // Statuses the kitchen sees: the edit window has closed and the item is theirs to make
 const isOnKitchenTicket = (item) =>
@@ -210,69 +206,19 @@ function ActiveOrders({ setCurrentView, setSelectedTable }) {
                 {tickets.length === 0 ? (
                 <p className="no-orders">{orders.length > 0 && view === 'BOH' ? 'ALL CAUGHT UP' : 'NO ACTIVE ORDERS'}</p>
                 ) : (
-                tickets.map(({ order, sortedItems, isDone, waitingMinutes }) => {
-                    return (
-                    <div key={order.orderId} className={`order-card ${isDone ? 'done' : ''}`}>
-                        <h3>
-                          {formatTableName(order)} - Order #{order.orderId}
-                          {/* How long the oldest unfinished item has been waiting (kitchen view only) */}
-                          {waitingMinutes !== null && (
-                            <span className={`ticket-wait ${
-                              waitingMinutes >= WAITING_LATE_MINUTES ? 'late' :
-                              waitingMinutes >= WAITING_WARNING_MINUTES ? 'warning' : ''
-                            }`}>
-                              {waitingMinutes} MIN
-                            </span>
-                          )}
-                          {isDone && <span className="ticket-done">DONE</span>}
-                        </h3>
-                        <div className="order-items">
-                        {sortedItems.map(item => (
-                            // One ticket line: the item row, then its modifiers and kitchen note underneath
-                            <div key={item.orderItemId} className="order-item-ticket">
-                            <div className="order-item-row">
-                            <span>{item.quantity}x</span>
-                            <span>{item.name}</span>
-                            <span className={`status-${item.status}`}>{item.status}</span>
-
-                            {view === 'BOH' && canMakeItems && item.status === 'pending' && (
-                              <button
-                                className="btn-start"                                                   // changes status from pending to fired
-                                onClick={() => changeItemStatus(item.orderItemId, 'start', 'fired')}
-                              >
-                                START
-                              </button>
-                            )}
-
-                            {view === 'BOH' && canMakeItems && item.status === 'fired' && (
-                              <button
-                                className="btn-complete"                                                                  // Complete order button appears when status is fired
-                                onClick={() => changeItemStatus(item.orderItemId, 'complete', 'completed')}             // changed state to completed
-                              >
-                                COMPLETE
-                              </button>
-                            )}
-                            </div>
-
-                            {/* What the kitchen needs to make the dish: modifiers, one per line */}
-                            {item.modifiers && item.modifiers.length > 0 && (
-                              <ul className="ticket-modifiers">
-                                {item.modifiers.map(modifier => (
-                                  <li key={modifier.modifierId}>{modifier.name}</li>
-                                ))}
-                              </ul>
-                            )}
-
-                            {/* Free-text kitchen note (allergies, "no onions", ...) */}
-                            {item.specialInstructions && (
-                              <p className="ticket-note">NOTE: {item.specialInstructions}</p>
-                            )}
-                            </div>
-                        ))}
-                        </div>
-                    </div>
-                    );
-                })
+                tickets.map(({ order, sortedItems, isDone, waitingMinutes }) => (
+                    <OrderTicket
+                      key={order.orderId}
+                      order={order}
+                      items={sortedItems}
+                      isDone={isDone}
+                      waitingMinutes={waitingMinutes}
+                      // START and COMPLETE: on the kitchen display only, and only for a role that may
+                      showButtons={view === 'BOH' && canMakeItems}
+                      onStart={(orderItemId) => changeItemStatus(orderItemId, 'start', 'fired')}              // changes status from pending to fired
+                      onComplete={(orderItemId) => changeItemStatus(orderItemId, 'complete', 'completed')}    // changed state to completed
+                    />
+                ))
                 )}
             </div>
         </div>

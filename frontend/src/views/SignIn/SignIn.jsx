@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import logo from '../../assets/NOTTA LOGO.png';
+import Logo from '../../components/Logo';
 import PinPad from '../../components/PinPad';
 import { apiFetch } from '../../services/api';
 import './SignIn.css';
@@ -47,7 +47,7 @@ function SignIn({ onSignedIn }) {
 
   return (
     <div className="sign-in-page">
-      <img src={logo} alt="NOTTA-POS Logo" className="sign-in-logo" />
+      <Logo pictureClassName="sign-in-logo" size="medium" />
 
       <h2>ENTER YOUR PIN</h2>
 

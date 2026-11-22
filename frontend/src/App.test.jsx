@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import App from './App';
 import { setSessionToken } from './services/api';
 import { TEMPLATES, forgetTemplates } from './templates';
+import { TEST_LOOK } from './templates/testSupport';
 
 /**
  * Tests for the app as a whole: signing in with a PIN, which screens each
@@ -36,7 +37,7 @@ beforeEach(() => {
   liveTokens = {};
   templateOnBackend = '8-bit';
   // The app has one real template so far; a made-up second one gives the tests something to switch to
-  TEMPLATES.push({ id: 'test-look', name: 'Test Look', description: 'Made up for the tests.' });
+  TEMPLATES.push(TEST_LOOK);
   window.localStorage.clear();
   forgetTemplates();
   window.sessionStorage.clear();

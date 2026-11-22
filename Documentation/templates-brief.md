@@ -16,7 +16,7 @@ That changes how B4c is run. The plan said one template per pull request, each a
 
 | Pull request | Contents |
 |---|---|
-| 1 | Groundwork (below). No new template yet |
+| 1 | Groundwork (below). No new template yet. **Done (#293): see "What the groundwork found" at the end** |
 | 2 | Plain, Coffee Shop, Nightclub, Fancy |
 | 3 | Dive Bar, Brunch Spot, Diner, Sports Bar |
 | 4 | Cantina, Izakaya, Beach Bar, High Contrast |
@@ -84,3 +84,17 @@ High Contrast should clear 7 to 1 for text, not just 4.5 to 1. Add that to the c
 ## What the owner will do
 
 Switch through the templates on the Settings screen and the gallery, use each for a mock service, and send notes: which to keep, which to change, which to drop. Nothing here is final until the owner has seen it running.
+
+## What the groundwork found (added with #293)
+
+For whoever builds the template pull requests.
+
+- **The contrast test is `frontend/src/templates/contrast.test.js`:** 73 pairs. 8-Bit fails 22 of them, each a named exception; nothing was changed in 8-Bit. High Contrast is already listed there as held to 7 to 1 for text.
+- **Fading counts.** A locked order line, a finished ticket, and an 86'd menu card are drawn partly see-through in 8-Bit. Those opacities are tokens now (`--status-locked-opacity`, `--status-ticket-done-opacity`, `--status-86-card-opacity`) and the test measures what is left after the fade. A new template sets them to 1 and uses color.
+- **Tokens added, all leaving 8-Bit pixel-identical** (46 screens compared with `main`): corners by kind of thing (`--radius-button`, `-field`, `-card`, `-box`, `-popup`, and a few sizes of each to set equal), shadows at rest (`--shadow-card`, `--shadow-button`, `--shadow-popup`), `--font-display` / `--font-heading` / `--font-numbers` and `--font-weight-heading`, and `--color-scheme`.
+- **What each brief line maps to.** "Pill-shaped buttons": `--radius-button`. "Soft shadow": the three `--shadow-...` tokens, and the hover glows set to a deeper shadow or `none`. "X for headings, Y for the rest": `--font-display` and `--font-heading` against `--font-body`. "Pacifico for the largest titles only": `--font-display`. "A monospaced face for timers and totals": `--font-numbers`. "Type sizes one step larger": the `--font-size-N` steps. "Generous spacing": the `--space-N` steps. "The gradient token in use": a fill token may hold a gradient (fill tokens are only ever used as backgrounds), and the contrast test then checks every color in it.
+- **Set `--status-limbo-border` to something other than `--color-border`.** In 8-Bit a table card with an item in its edit window has the same purple border as a card with nothing sent. A light template with quiet borders failed the contrast test on exactly this until the border was given the accent color.
+- **A throwaway light template was used to check all of this** (Plain's palette, pill buttons, three system fonts). It is not in the repository. With it, the contrast test passed with no exceptions, and the order screen, Financials (the date picker follows `--color-scheme`), Staff, the PIN pad, and the gallery all drew correctly.
+- **Getting a font as `woff2`:** this machine has no font converter. The Google Fonts project serves each font as `woff2` already (the Latin file is the one needed); that is where `PressStart2P-Regular.woff2` came from, 12 kB against 118 kB for the `.ttf`. Check each font's license file in that project before using it.
+- **Screenshots:** the gallery scrolls inside the page. To photograph all of it, make the browser window as tall as its content first.
+

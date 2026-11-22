@@ -47,8 +47,10 @@ import { useSyncExternalStore } from 'react';
  *      [data-template="its-name"] { ... } and it must define every token.
  *   2. Import the file above, after eight-bit.css.
  *   3. Add it to TEMPLATES below.
- *   tokens.test.js fails if any of the three is missing or a token was left out.
+ *   tokens.test.js fails if any of the three is missing or a token was left out, and
+ *   contrast.test.js fails if something in it cannot be read.
  *   The backend needs no change: it stores the name and nothing else.
+ *   Documentation/templates-brief.md has the rules every template must pass.
  */
 
 // The template a restaurant has until a manager chooses another, and the one drawn
@@ -60,18 +62,44 @@ export const DEFAULT_TEMPLATE = '8-bit';
 //               letters, digits, and hyphens only (the backend refuses anything else)
 //   name        what a manager sees
 //   description one line about the look, for the Settings screen
+//   scheme      'light' or 'dark': whether the template is dark text on a light page or
+//               the other way round. Shown on its card, so a manager choosing for a
+//               sunlit patio or a dim bar can tell before previewing.
+//   swatches    FOUR TOKENS whose colors sum the template up, drawn as dots on its card.
+//               Token names, not colors: the card draws them from the template's own
+//               stylesheet, so they can never disagree with it.
+//   logo        what the Home and PIN screens show at the top (components/Logo):
+//                 'picture'  the NOTTA-POS artwork. It is drawn in the 8-Bit colors, so
+//                            it belongs to 8-Bit (the owner's decision D13).
+//                 'text'     the name NOTTA-POS in the template's own display font and
+//                            accent color. Every other template, until one has artwork
+//                            of its own.
 export const TEMPLATES = [
   {
     id: '8-bit',
     name: '8-Bit',
-    description: 'Neon on dark, set in a pixel font. The look NOTTA-POS has always had.'
+    description: 'Neon on dark, set in a pixel font. The look NOTTA-POS has always had.',
+    scheme: 'dark',
+    swatches: ['--color-bg', '--color-accent-fill', '--color-primary-fill', '--color-danger-fill'],
+    logo: 'picture'
   }
 ];
 
 // Where this device keeps the last template the backend named
 const STORAGE_KEY = 'notta.template';
 
-let chosen = DEFAULT_TEMPLATE;      // The restaurant's template, as last heard from the backend
+// What this device remembers of the last answer from the backend, if it is a template
+// this app still has. index.html has already put the same name on the page.
+const rememberedTemplate = () => {
+  try {
+    const id = window.localStorage.getItem(STORAGE_KEY);
+    return TEMPLATES.some(template => template.id === id) ? id : DEFAULT_TEMPLATE;
+  } catch (error) {
+    return DEFAULT_TEMPLATE;        // Storage is switched off in this browser
+  }
+};
+
+let chosen = rememberedTemplate();  // The restaurant's template, as last heard from the backend (or remembered from last time)
 let previewing = null;              // The template being tried out on this device, or null
 
 // Screens that asked to be told when the template changes (through useTemplates), and
@@ -138,6 +166,12 @@ export const stopPreview = () => {
   draw(chosen);
   changed();
 };
+
+// The template this device is showing right now: the one being tried out, or else the
+// restaurant's. The whole entry from TEMPLATES, for code that needs to know something
+// about it (which logo to show, say).
+export const templateOnScreen = (current = state) =>
+  TEMPLATES.find(template => template.id === (current.previewing ?? current.chosen)) || TEMPLATES[0];
 
 // For tests: back to how a newly loaded page starts
 export const forgetTemplates = () => {
