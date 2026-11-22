@@ -1,0 +1,313 @@
+/*
+ * THE DINER TEMPLATE: a 1950s lunch counter. Cream, cherry red, chrome.
+ *
+ * A template is one file that gives a value to every token (see the top of eight-bit.css
+ * for what a token is and how the screens use them). This file has the same tokens as
+ * 8-Bit, in the same order, and applies where the page says data-template="diner".
+ *
+ * WHAT MAKES IT THE DINER
+ *   - A cream page, white cards, and chrome-grey lines 2px thick around everything.
+ *   - Cherry red for what is selected and for the logo; teal for the main action.
+ *   - The logo is in Pacifico, a brush script like a sign over the counter, and it is
+ *     the ONLY thing in Pacifico. A script cannot be read in capitals, so the logo is
+ *     drawn "Notta-Pos" (--logo-case) where every other template draws NOTTA-POS.
+ *     Titles, headings, and everything else are Barlow.
+ *   - 10px corners, and a hard little shadow under each card like the lip of a counter.
+ *
+ * DANGER IS A DARKER RED THAN THE ACCENT, on purpose (the brief): cherry means "selected",
+ * maroon means "86'd", "late", "this failed". Every one of those also has a word, an icon,
+ * or a place of its own on the screen.
+ */
+
+[data-template="diner"] {
+  /* ====================================================================== */
+  /* FONTS                                                                  */
+  /* ====================================================================== */
+
+  /* Barlow for everything, and Pacifico for the logo alone. Both ship with the app
+     (templates/fonts.css). Pacifico has one weight, so the logo weight is 400. */
+  --font-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-logo: 'Pacifico', 'Barlow', cursive;
+  --font-fallback: system-ui, sans-serif;
+  --font-display: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-heading: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-numbers: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
+  --font-weight-display: 700;                        /* h1 and h2: the titles of screens and pop-ups */
+  --font-weight-heading: 700;                        /* h3 and h4: section headings and the names on cards */
+  --font-weight-logo: 400;                           /* The logo as text, on the Home and PIN screens and in the top bar */
+
+  /* Type sizes, by step. The number in a token's name is its size in 8-Bit, whose pixel font
+     is wide and tall for its size. An ordinary font at the same number would be much
+     smaller to the eye, so each step here is a few pixels larger and none is below 12px.
+     (Item names on a kitchen ticket are step 10: 14px here.) */
+  --font-size-8: 12px;
+  --font-size-9: 13px;
+  --font-size-10: 14px;
+  --font-size-11: 14px;
+  --font-size-12: 15px;
+  --font-size-13: 16px;
+  --font-size-14: 17px;
+  --font-size-15: 18px;
+  --font-size-16: 19px;
+  --font-size-18: 21px;
+  --font-size-20: 23px;
+  --font-size-22: 25px;
+  --font-size-24: 28px;
+  --font-size-28: 32px;
+  --font-size-30: 34px;
+  --font-size-32: 36px;
+  --font-size-36: 40px;
+  --font-size-50: 54px;
+
+  --letter-spacing: 0.3px;
+  --letter-spacing-wide: 1px;
+  --letter-spacing-logo: 0;
+  --logo-case: none;                                 /* The logo as written, "Notta-Pos": a script cannot be read in capitals */
+
+  --line-height-tight: 1;
+  --line-height: 1.4;
+  --line-height-relaxed: 1.5;
+  --line-height-loose: 1.6;
+
+  /* ====================================================================== */
+  /* SHAPE                                                                  */
+  /* ====================================================================== */
+
+  /* 10px corners. Thick lines, as in 8-Bit: 2px, and 3px around a table's card. */
+  --radius-button: 10px;
+  --radius-button-small: 8px;
+  --radius-button-large: 12px;
+  --radius-field: 10px;
+  --radius-field-small: 10px;
+  --radius-card: 10px;
+  --radius-box: 10px;
+  --radius-box-small: 10px;
+  --radius-popup: 12px;
+  --radius-chip: 6px;
+  --radius-bar: 6px;
+  --radius-bar-large: 6px;
+  --radius-pill: 999px;
+  --radius-round: 50%;
+
+  --border-width-thin: 1px;
+  --border-width: 2px;
+  --border-width-thick: 3px;
+
+  /* Gaps and padding, by step. The same as 8-Bit: tap targets and spacing do not shrink. */
+  --space-2: 2px;
+  --space-3: 3px;
+  --space-4: 4px;
+  --space-5: 5px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-14: 14px;
+  --space-15: 15px;
+  --space-16: 16px;
+  --space-18: 18px;
+  --space-20: 20px;
+  --space-22: 22px;
+  --space-24: 24px;
+  --space-25: 25px;
+  --space-30: 30px;
+  --space-40: 40px;
+  --space-60: 60px;
+  --space-75: 75px;
+
+  /* ====================================================================== */
+  /* COLORS: SURFACES                                                       */
+  /* ====================================================================== */
+
+  --color-scheme: light;                             /* For the browser's own controls (date picker, drop-downs, scroll bars) */
+
+  --color-bg: #fdfbf4;                               /* The page */
+  --color-bg-deep: #f1ede2;                          /* Sunk below the page: the top bar, text boxes, rows */
+  --color-surface: #ffffff;                          /* Cards, panels, plain buttons */
+  --color-surface-hover: #f6f3ea;
+  --color-control: #ece9df;                          /* Neutral buttons on a panel */
+  --color-control-hover: #dfdcd1;
+  --color-overlay: rgba(30, 30, 36, 0.5);            /* The dimming behind a pop-up */
+
+  /* ====================================================================== */
+  /* COLORS: TEXT                                                           */
+  /* ====================================================================== */
+
+  --color-text: #1e1e24;
+  --color-text-muted: #4b4b55;
+  --color-text-subtle: #5f5f69;
+  --color-text-faint: #72727c;
+  --color-text-hint: #5f5f69;
+
+  /* ====================================================================== */
+  /* COLORS: THE FRAME AND THE ACCENT                                       */
+  /* ====================================================================== */
+
+  /* The frame is chrome grey. The accent is cherry red; section headings are dark, not red,
+     so that red is not everywhere. */
+  --color-border: #b8bdc7;                           /* The line around almost every box */
+  --color-accent: #c81e30;                           /* Accent text */
+  --color-accent-fill: #d62839;                      /* Accent background: a selected tab, a hovered button */
+  --color-on-accent: #ffffff;                        /* Text on it */
+  --color-accent-soft: #52607a;
+  --color-accent-surface: #fde7ea;
+  --color-subheading: #3a3a44;
+
+  /* ====================================================================== */
+  /* COLORS: PRIMARY (headings, amounts, the main action)                   */
+  /* ====================================================================== */
+
+  /* Titles are the text color. Teal is the main action and amounts. */
+  --color-heading: #1e1e24;
+  --color-primary: #0b6b74;
+  --color-primary-fill: #0e7c86;
+  --color-primary-fill-hover: #0b6770;
+  --color-on-primary: #ffffff;
+  --color-border-primary: #0e7c86;
+
+  --color-success: #0b6b74;
+  --color-success-fill: #0e7c86;
+  --color-on-success: #ffffff;
+
+  /* ====================================================================== */
+  /* COLORS: DANGER                                                         */
+  /* ====================================================================== */
+
+  --color-danger: #7d1029;
+  --color-danger-hover: #5e0b1e;
+  --color-danger-fill: #7d1029;
+  --color-danger-fill-hover: #5e0b1e;
+  --color-on-danger: #ffffff;
+  --color-border-danger: #7d1029;
+  --color-danger-surface: #f6e1e5;
+  --color-danger-surface-hover: #eecbd2;
+
+  /* ====================================================================== */
+  /* COLORS: ATTENTION                                                      */
+  /* ====================================================================== */
+
+  --color-attention: #8a5a00;
+  --color-border-attention: #b98000;
+  --color-attention-surface: #fff3cf;
+  --color-note: #8a5a00;
+
+  /* ====================================================================== */
+  /* COLORS: NEUTRAL AND SWITCHED OFF                                       */
+  /* ====================================================================== */
+
+  --color-border-muted: #72727c;
+  --color-border-neutral: #72727c;
+  --color-neutral-fill: #5f5f69;
+  --color-on-neutral: #ffffff;
+  --color-border-subtle: #e6e3d8;
+  --color-disabled-fill: #e2dfd5;
+  --color-on-disabled: #8a8a93;
+
+  --color-rank-gold: #8a5a00;
+  --color-rank-silver: #5f5f69;
+  --color-rank-bronze: #94502a;
+
+  --color-grid-line: rgba(14, 124, 134, 0.14);
+
+  /* ====================================================================== */
+  /* STATUS: colors that carry a meaning                                    */
+  /* ====================================================================== */
+
+  /* Each state has a color of its own and is never shown by fading (the three opacities
+     are 1). Where a state also has a word or an icon (the lock, 86'D, DONE), the screen
+     draws it in every template. */
+  /* A saved draft on the order */
+  --status-draft-border: var(--color-border-attention);
+  --status-draft-surface: var(--color-attention-surface);
+  --status-draft-text: var(--color-attention);
+
+  /* Locked: the kitchen has it. Said with color; not faded (opacity 1). */
+  --status-locked-border: var(--color-border-muted);
+  --status-locked-surface: var(--color-bg-deep);
+  --status-locked-text: var(--color-text-subtle);
+  --status-locked-icon: var(--color-danger);
+  --status-locked-opacity: 1;
+
+  /* A table's card: something in its edit window, the kitchen working, everything made */
+  --status-limbo-border: #6a4fd8;
+  --status-in-kitchen-border: var(--color-border-attention);
+  --status-all-done-border: var(--color-success);
+
+  /* The kitchen display: on time reads calm, 10 minutes amber, 15 minutes red */
+  --status-item-label: var(--color-primary);
+  --status-wait-ok: var(--color-success);
+  --status-wait-warning: var(--color-attention);
+  --status-wait-late: var(--color-danger);
+  --status-ticket-done-border: var(--color-border-muted);
+  --status-ticket-done-text: var(--color-text-subtle);
+  --status-ticket-done-opacity: 1;
+
+  /* 86'd */
+  --status-86-text: var(--color-danger);
+  --status-86-border: var(--color-border-danger);
+  --status-86-surface: var(--color-danger-surface);
+  --status-86-surface-hover: var(--color-danger-surface-hover);
+  --status-86-card-border: var(--color-border-muted);
+  --status-86-card-text: var(--color-text-subtle);
+  --status-86-label: var(--color-danger);
+  --status-86-card-opacity: 1;
+
+  /* An error or refusal */
+  --status-error-text: var(--color-danger);
+  --status-error-border: var(--color-border-danger);
+  --status-error-surface: var(--color-danger-surface);
+
+  /* A table on the Floor Map */
+  --status-table-available-border: var(--color-success);
+  --status-table-occupied-border: var(--color-border-danger);
+  --status-table-occupied-surface: var(--color-danger-surface);
+
+  /* A terminal paused for wrong PINs */
+  --status-paused-border: var(--color-border-attention);
+  --status-paused-text: var(--color-attention);
+
+  /* ====================================================================== */
+  /* GLOWS AND SHADOWS                                                      */
+  /* ====================================================================== */
+
+  /* No glow. A card rests on a hard 2px edge; under the pointer it lifts onto a soft shadow.
+     The logo in the top bar has a chrome edge behind its letters. */
+  --glow-accent: 0 4px 10px rgba(30, 30, 36, 0.16);
+  --glow-accent-soft: 0 4px 10px rgba(30, 30, 36, 0.16);
+  --glow-accent-tight: 0 4px 10px rgba(30, 30, 36, 0.16);
+  --glow-accent-tight-soft: 0 4px 10px rgba(30, 30, 36, 0.16);
+  --glow-accent-wide: 0 4px 10px rgba(30, 30, 36, 0.16);
+  --glow-primary: 0 4px 10px rgba(30, 30, 36, 0.16);
+  --glow-primary-soft: 0 4px 10px rgba(30, 30, 36, 0.16);
+  --glow-primary-tight: 0 4px 10px rgba(30, 30, 36, 0.16);
+  --glow-danger: 0 4px 10px rgba(30, 30, 36, 0.16);
+  --glow-danger-tight: 0 4px 10px rgba(30, 30, 36, 0.16);
+
+  --shadow-card: 0 2px 0 rgba(30, 30, 36, 0.08);
+  --shadow-button: none;
+  --shadow-popup: 0 14px 36px rgba(30, 30, 36, 0.25);
+  --shadow-navbar: 0 2px 0 #b8bdc7;
+  --glow-logo: 2px 2px 0 #d9dce3;
+  --ring-selected: 0 0 0 3px #fdfbf4, 0 0 0 6px #d62839;
+  --gradient-progress: linear-gradient(90deg, #d62839, #0e7c86);
+
+  /* ====================================================================== */
+  /* WHERE 8-BIT HAS TWO VALUES, THIS TEMPLATE HAS ONE                      */
+  /* ====================================================================== */
+
+  /* 8-Bit keeps ten values a hair apart from their neighbors, for historical reasons.
+     Here each of those tokens is simply its neighbor. */
+  --color-on-accent-alt: var(--color-on-accent);
+  --color-on-danger-alt: var(--color-on-danger);
+  --color-danger-alt: var(--color-danger);
+  --color-note-alt: var(--color-note);
+  --color-overlay-strong: var(--color-overlay);
+  --tip-input-surface: var(--color-bg-deep);
+  --tip-input-border: var(--color-border);
+  --tip-input-border-focus: var(--color-border-primary);
+  --tip-input-text: var(--color-text);
+  --tip-input-placeholder: var(--color-text-faint);
+}
