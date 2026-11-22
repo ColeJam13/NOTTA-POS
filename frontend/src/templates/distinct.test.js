@@ -19,7 +19,8 @@ import { templateFiles, templateNameOf, resolvedTokensOf } from './testSupport';
  *   - a table on the Floor Map is available or occupied;
  *   - a saved draft on the order has a border of its own.
  * States that also carry a word or an icon (the lock, 86'D, DONE) are not listed:
- * there the color is not the only signal.
+ * there the color is not the only signal. The leaderboard's gold, silver, and bronze
+ * medals are not listed for the same reason: each has its rank's number beside it.
  *
  * THE MINIMUM is a difference of 30 (see colorDifference in contrast.js for what the
  * number means). It is a floor that catches near-twins, not a judgment of taste.

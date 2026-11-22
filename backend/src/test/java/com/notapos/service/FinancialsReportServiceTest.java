@@ -10,9 +10,9 @@ import com.notapos.repository.OrderItemRepository;
 import com.notapos.repository.OrderRepository;
 import com.notapos.repository.PaymentRepository;
 import com.notapos.repository.TableRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
@@ -50,8 +50,16 @@ class FinancialsReportServiceTest {
     @Mock
     private OrderCheckService orderCheckService;
 
-    @InjectMocks
     private FinancialsReportService financialsReportService;
+
+    // The report asks ClosedCheckAmountsService what each check was worth. The real one is
+    // used here, over the same faked repositories, so these tests still cover the whole
+    // sum exactly as they did when that code lived inside the report.
+    @BeforeEach
+    void setUp() {
+        financialsReportService = new FinancialsReportService(orderRepository, paymentRepository, tableRepository,
+                new ClosedCheckAmountsService(orderItemRepository, orderCheckService));
+    }
 
     private final LocalDateTime from = LocalDateTime.of(2026, 11, 18, 0, 0);
     private final LocalDateTime to = LocalDateTime.of(2026, 11, 18, 23, 59, 59);

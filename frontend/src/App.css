@@ -34,7 +34,7 @@ h3, h4 {
 
 /* Amounts and timers: the totals of an order, a check, and the Payment window; the
    amount on a table's card; how long a ticket has waited; the time left on a pause;
-   the big numbers on Financials. "X *" as well as "X", because the rule at the top
+   the big numbers on Financials; the leaderboard's ranks and amounts. "X *" as well as "X", because the rule at the top
    gives every element inside X the body font directly. */
 .total-row, .total-row *,
 .summary-row, .summary-row *,
@@ -47,7 +47,10 @@ h3, h4 {
 .stat-value,
 .payment-amount,
 .transaction-total,
-.search-row-amount {
+.search-row-amount,
+.leaderboard-rank-number,
+.leaderboard-sales,
+.leaderboard-number {
   font-family: var(--font-numbers);
 }
 
