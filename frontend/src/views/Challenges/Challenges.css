@@ -647,4 +647,17 @@
   .challenge-form label {
     line-height: var(--line-height);
   }
+
+  /* "Your progress: $0.00 / $10.00" and "0%" share a line that is full on a phone:
+     keep a gap between them, and let the line wrap before they touch */
+  .progress-text {
+    flex-wrap: wrap;
+    gap: var(--space-4) var(--space-10);
+  }
+
+  .challenge-nobody,
+  .challenge-person-status,
+  .challenge-person-prize {
+    line-height: var(--line-height);
+  }
 }
