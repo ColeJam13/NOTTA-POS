@@ -129,12 +129,14 @@
   color: var(--color-text);
   font-size: var(--font-size-12);
   font-weight: var(--font-weight-bold);
+  line-height: var(--line-height);      /* A long goal wraps; without this its two lines touch in the pixel font */
   margin-bottom: var(--space-8);
 }
 
 .challenge-description {
   color: var(--color-text-muted);
   font-size: var(--font-size-12);
+  line-height: var(--line-height);
   margin-bottom: var(--space-15);
 }
 
@@ -276,19 +278,36 @@
   margin: 0 0 var(--space-15) 0;
 }
 
-/* One person: name, progress, status, and the prize. The name takes the room that is left. */
+/* One person, on two lines so that it fits half the screen in any template's font:
+     Sarah Miller              $77.00 / $30.00
+     COMPLETE                    [MARK AWARDED]
+   The left column takes the room that is left; the right one is as wide as what is in it. */
 .challenge-person {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
-  gap: var(--space-12);
-  padding: var(--space-8) 0;
+  column-gap: var(--space-12);
+  row-gap: var(--space-6);
+  padding: var(--space-10) 0;
+  border-top: var(--border-width-thin) solid var(--color-border-muted);
   color: var(--color-text);
   font-size: var(--font-size-12);
 }
 
+.challenge-person:first-child {
+  border-top: none;
+}
+
 .challenge-person-name {
   font-weight: var(--font-weight-bold);
+  line-height: var(--line-height);
+}
+
+/* The right-hand column: the amount on the first line, the prize on the second */
+.challenge-person .challenge-amount,
+.challenge-person-prize {
+  text-align: right;
+  white-space: nowrap;
 }
 
 .challenge-person-status,
