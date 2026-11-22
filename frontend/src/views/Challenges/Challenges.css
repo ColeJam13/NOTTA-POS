@@ -52,8 +52,9 @@
    step N5 puts challenges back, on real data, and draws them with these rules. The
    rules stay in between (.challenges-grid above, and from .challenge-card to
    .no-challenges below) so that the
-   tokens only they use (--gradient-progress, --radius-bar-large, --radius-chip) are
-   not left defined and unused, which tokens.test.js refuses. */
+   two tokens only they use (--gradient-progress and --radius-bar-large, the progress
+   bar's) are not left defined and unused in all thirteen templates, which
+   tokens.test.js refuses. */
 
 .challenge-card {
   background: var(--color-bg-deep);

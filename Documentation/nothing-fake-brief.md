@@ -127,6 +127,8 @@ Not built: sound or vibration, notifications while the app is closed (that needs
 
 ## N4. Per-person sales, and a real leaderboard (first half of B3)
 
+**Done (#301), as written below.** What the brief left open, and what was built: the backend works out each row's rank as well as its numbers, so the screen and N5 share one ranking; "biggest single check" and "check average" are before tax, like sales; "items sold" counts by quantity and leaves out drafts; a person is listed under the name they have today; the leaderboard opens on THIS WEEK and refreshes every 15 seconds; the first three ranks have a medal, with the rank's number always printed beside it; and the challenge cards' styles are kept in `Challenges.css`, unused, for N5 (removing them would have left the progress bar's two tokens defined and unused in all thirteen templates, which the token test refuses).
+
 **Decision D6, decided 2026-11-22.** Everyone signed in sees everyone's name, rank, and sales. The measures are the four below. Tips are not shown to anyone here.
 
 **Backend.** `GET /api/reports/staff-sales?from=...&to=...`, for anyone signed in, in the same form as the Financials report (local date-times, the backend's clock). One row per person who opened at least one check closed in the period:
