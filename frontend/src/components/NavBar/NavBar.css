@@ -159,6 +159,8 @@
 
 .navbar-logo {
   font-family: var(--font-logo);
+  font-weight: var(--font-weight-logo);
+  text-transform: var(--logo-case);      /* Capitals in almost every template. See Logo.css. */
   font-size: var(--font-size-28);
   color: var(--color-accent);
   text-shadow:

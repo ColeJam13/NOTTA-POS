@@ -18,11 +18,13 @@
    above; these give a template's display, heading, and numbers fonts to the things they
    are for. In 8-Bit all of them are the one pixel font, so nothing here changes it.
 
-   Titles of screens and pop-ups, then section headings and the names on cards. (The
-   logo in the top bar is an h1 with its own font, set in NavBar.css.) */
+   Titles of screens and pop-ups, then section headings and the names on cards. Each
+   has a weight of its own as well as a font: a template's title face may have a single
+   weight, and asking it for bold makes the browser fake one. (The logo in the top bar
+   is an h1 with its own font and weight, set in NavBar.css.) */
 h1, h2 {
   font-family: var(--font-display);
-  font-weight: var(--font-weight-heading);
+  font-weight: var(--font-weight-display);
 }
 
 h3, h4 {

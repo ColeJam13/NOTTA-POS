@@ -40,7 +40,7 @@ function NavBar({ currentView, setCurrentView, setSelectedTable, confirmLeave })
   return (
     <div className="navbar">
       <div className="navbar-top">
-        <h1 className="navbar-logo" onClick={() => goTo('home')} style={{cursor: 'pointer'}}>NOTTA-POS</h1>
+        <h1 className="navbar-logo" onClick={() => goTo('home')} style={{cursor: 'pointer'}}>Notta-Pos</h1>
         
         <div className="navbar-search">
           <input type="text" placeholder="Find table, order, item..." />

@@ -8,7 +8,7 @@ import './Logo.css';
  * WHAT: The template on screen decides which of two things this is (its "logo" entry
  *       in templates/index.js):
  *         'picture'  the artwork, as an image
- *         'text'     the name NOTTA-POS, set in the template's display font and
+ *         'text'     the name NOTTA-POS, set in the template's logo font (--font-logo) and
  *                    accent color
  * WHY:  The artwork is one picture, drawn in the 8-Bit colors: neon green and purple
  *       on black. A template cannot recolor a picture, and that picture on a cream
@@ -33,7 +33,9 @@ function Logo({ pictureClassName, size = 'medium' }) {
   // the same as the picture is, and not a line of text to be read out
   return (
     <div className={`logo-text logo-text-${size}`} role="img" aria-label="NOTTA-POS Logo">
-      NOTTA-POS
+      {/* Written in mixed case, drawn in capitals by every template but one: the
+          template's --logo-case decides (see Logo.css) */}
+      Notta-Pos
     </div>
   );
 }
