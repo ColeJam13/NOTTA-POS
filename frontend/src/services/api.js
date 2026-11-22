@@ -151,3 +151,39 @@ export const sendJson = async (method, path, body) => {
   }
   return response.json();
 };
+
+/**
+ * Send JSON to the backend and report back in one shape, for a form that has to show
+ * the backend's own words when something is refused.
+ *
+ * sendJson (above) throws on a refusal and says only the status. A form needs more:
+ * the backend explains a refusal in words written for the person at the screen ("The
+ * end has to be after the start.", "Dan has not completed this challenge."), and
+ * names each field that failed. This never throws.
+ *
+ * @param {string} method - 'POST', 'PUT', or 'DELETE'
+ * @param {string} path - e.g. '/api/challenges'
+ * @param {Object} [body] - Sent as JSON; leave out for a request with no body
+ * @returns {Promise<{ok: boolean, data: Object|null, message: string}>} - message is ''
+ *          when it worked
+ */
+export const sendForAnswer = async (method, path, body) => {
+  try {
+    const response = await apiFetch(path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body)
+    });
+    // An answer with no body (204 after a delete) is not an error
+    const data = await response.json().catch(() => null);
+
+    if (response.ok) return { ok: true, data, message: '' };
+
+    // Validation errors come back as one message per field; anything else as one message
+    const fieldMessages = data?.fieldErrors ? Object.values(data.fieldErrors).join('. ') : '';
+    return { ok: false, data: null, message: fieldMessages || data?.message || 'That could not be saved.' };
+  } catch (error) {
+    console.error(`${method} ${path} failed:`, error);
+    return { ok: false, data: null, message: 'Cannot reach the server.' };
+  }
+};

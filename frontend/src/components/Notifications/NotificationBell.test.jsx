@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import NotificationBell from './NotificationBell';
 import { NotificationsContext } from '../../context/NotificationsContext';
 import { StaffContext } from '../../context/StaffContext';
+import { asBackendStamp, forgetServerTime, noteServerTime, serverNow } from '../../services/serverClock';
 
 /**
  * Behavior tests for the bell in the top bar and the panel under it.
@@ -19,7 +20,8 @@ import { StaffContext } from '../../context/StaffContext';
  * the context is filled in by the test, so no request is made.
  */
 
-const minutesAgo = (minutes) => new Date(Date.now() - minutes * 60 * 1000).toISOString();
+// A time as the backend sends one: its own local date and time, with no zone
+const minutesAgo = (minutes) => asBackendStamp(serverNow() - minutes * 60 * 1000);
 
 const TOAST_86 = { notificationId: 3, kind: 'item_86', text: "Garden Toast is 86'd", fromName: 'Kit', createdAt: minutesAgo(5) };
 const ORDER_UP = { notificationId: 2, kind: 'order_up', text: 'Table W5 is up', fromName: 'Kit', createdAt: minutesAgo(12) };
@@ -231,4 +233,27 @@ test('only spaces is not a message', async () => {
 
   expect(screen.getByRole('button', { name: 'SEND' })).toBeDisabled();
   expect(sendMessage).not.toHaveBeenCalled();
+});
+
+// ============================================================================
+// "How long ago", on a tablet whose clock is not the backend's
+// ============================================================================
+
+test('on a tablet set to another time zone than the backend, five minutes ago still reads 5m ago', async () => {
+  // The backend's clock reads nine hours ahead of this tablet's (a tablet left on
+  // another time zone). Every answer carries the backend's time; the notification's own
+  // time is written the same way, so the difference between them is five minutes
+  // whatever this tablet thinks the time is. (A notification's time was once sent as a
+  // moment in UTC, which this tablet would have read nine hours off.)
+  const NINE_HOURS = 9 * 60 * 60 * 1000;
+  noteServerTime({ headers: { get: (name) => (name === 'X-Server-Time' ? asBackendStamp(Date.now() + NINE_HOURS) : null) } });
+
+  try {
+    renderBell([{ notificationId: 9, kind: 'message', text: 'Fryer is down', fromName: 'Kit', createdAt: asBackendStamp(serverNow() - 5 * 60 * 1000) }]);
+    const panel = await openPanel();
+
+    expect(within(panel).getByText('Kit · 5m ago')).toBeInTheDocument();
+  } finally {
+    forgetServerTime();
+  }
 });

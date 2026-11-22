@@ -153,6 +153,18 @@ After this step the challenge sections of the screen are still `mockData`. Remov
 
 ## N5. Challenges on real data (second half of B3)
 
+**Done (#302), as written below.** What the brief left open, and what was built:
+
+- A check average is "completed" only once the challenge has ended, because an average can fall again; while it runs a person at the target is ON TRACK, and their prize cannot be marked yet.
+- A challenge with a prize marked awarded can no longer be changed or deleted (it can be ended), and an award cannot be taken back. The screen asks before marking.
+- Items sold needs exactly one category or one item, as the table says. "Any item" is not offered.
+- A challenge set for later is listed under COMING UP, for everyone.
+- Everyone is SENT everyone's progress (D6); only a manager's card LISTS it, as "The screen" below puts it under "For managers".
+- The button reads MARK AWARDED, and is offered only when a prize was written.
+- FINISHED holds the 20 most recently ended.
+- The start and end are a date and a time each; a new form runs from now to 23:59 today.
+- Found on the way and fixed in the same pull request: N3 sent a notification's time as a UTC moment, which a tablet in another time zone than the backend read hours wrong. Every time in JSON is now the restaurant's local time.
+
 **Decided 2026-11-22, with D6.** A manager builds a challenge from one of four measures. The prize is text the manager writes, and a manager marks it awarded once it has been handed over.
 
 **What a challenge is.** A name, an optional description, a measure, a target, a start and an end, an optional prize ("$20", "first cut Friday"), and who made it.
@@ -196,6 +208,8 @@ A note for B5 (check handling): once an item can be voided or comped, it must st
 Nothing else here needs the owner before the work starts. If a step turns up a question this brief does not answer, ask. Do not guess and build.
 
 ## When all five are merged
+
+**Carried out in #302, the pull request of N5 itself, so that it lands with the fifth merge.**
 
 - Mark B1 and B3 done in `phase-2-plan.md`.
 - Remove these from `CLAUDE.md`: the known gap about the nav bar's count and search box, the gap about `manifest.json` and the unused files, "Challenges and leaderboard on real data" and "working notifications" under Later, and the two lines that say there are no per-person sales.

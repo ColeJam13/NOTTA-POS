@@ -139,6 +139,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
     }
 
+    @ExceptionHandler(InvalidChallengeException.class)                          // A challenge's fields do not add up -> 400
+    public ResponseEntity<ApiError> handleInvalidChallenge(InvalidChallengeException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(ChallengeRuleException.class)                             // The challenge is not in a state that allows the request -> 409
+    public ResponseEntity<ApiError> handleChallengeRule(ChallengeRuleException ex) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), null);
+    }
+
     @Override                                                                   // @Valid failed on a request body -> 400 with per-field messages
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex,

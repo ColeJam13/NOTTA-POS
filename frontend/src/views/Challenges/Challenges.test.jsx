@@ -41,6 +41,7 @@ beforeEach(() => {
     const path = url.replace('http://localhost:8080', '');
     requests.push(path);
     if (path === '/api/notifications') return answer([]);
+    if (path === '/api/challenges') return answer([]);          // The challenges have tests of their own (Challenges.challenges.test.jsx)
     if (path.startsWith('/api/reports/staff-sales?')) {
       if (backendIsDown) return { ok: false, status: 500, headers: { get: () => null }, json: async () => ({ message: 'Something went wrong' }) };
       return answer({ staff: typeof salesOnBackend === 'function' ? salesOnBackend(path) : salesOnBackend });

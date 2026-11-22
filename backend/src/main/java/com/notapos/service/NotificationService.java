@@ -1,5 +1,6 @@
 package com.notapos.service;
 
+import com.notapos.config.RestaurantTime;
 import com.notapos.dto.NotificationView;
 import com.notapos.entity.MenuItem;
 import com.notapos.entity.Notification;
@@ -67,14 +68,17 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final TableRepository tableRepository;
     private final Clock clock;
+    private final RestaurantTime restaurantTime;            // Turns a stored moment into the local time a screen is sent
 
     @Autowired
     public NotificationService(NotificationRepository notificationRepository,
                                TableRepository tableRepository,
-                               Clock clock) {
+                               Clock clock,
+                               RestaurantTime restaurantTime) {
         this.notificationRepository = notificationRepository;
         this.tableRepository = tableRepository;
         this.clock = clock;
+        this.restaurantTime = restaurantTime;
     }
 
     // ------------------------------------------------------------------
@@ -84,7 +88,7 @@ public class NotificationService {
     /** The signed-in person's notifications that they have not dismissed, newest first. */
     public List<NotificationView> getMine(StaffSession viewer) {
         return notificationRepository.findOnTheListOf(viewer.staffId(), listedSince(), LIST_LIMIT).stream()
-                .map(NotificationView::of)
+                .map(notification -> NotificationView.of(notification, restaurantTime))
                 .toList();
     }
 
@@ -127,7 +131,7 @@ public class NotificationService {
         Notification saved = notificationRepository.save(
                 notification(NotificationKind.MESSAGE, text.strip(), null, writer));
         log.info("{} (staff {}) sent a message to the floor", writer.name(), writer.staffId());
-        return NotificationView.of(saved);
+        return NotificationView.of(saved, restaurantTime);
     }
 
     // ------------------------------------------------------------------

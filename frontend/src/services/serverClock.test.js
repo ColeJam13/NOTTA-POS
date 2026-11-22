@@ -1,4 +1,4 @@
-import { forgetServerTime, noteServerTime, onThisDevice, serverNow } from './serverClock';
+import { asBackendStamp, forgetServerTime, noteServerTime, onThisDevice, serverNow } from './serverClock';
 import { apiFetch } from './api';
 import { formatTimeAgo } from '../utils/formatters';
 
@@ -103,4 +103,18 @@ test('"5m ago" is measured from the backend\'s now', () => {
   const closedAt = asBackendTime(Date.now() + TWO_HOURS_MS - 5.5 * 60 * 1000);
 
   expect(formatTimeAgo(closedAt)).toBe('5m ago');
+});
+
+test('asBackendStamp writes a moment the way the backend writes its stamps: local, no zone', () => {
+  // 7:08:09 in the morning on 5 January, by whatever clock the number was read from
+  expect(asBackendStamp(new Date(2026, 0, 5, 7, 8, 9).getTime())).toBe('2026-01-05T07:08:09');
+  // No "Z" and no offset: a stamp with one is a different clock (UTC), and comparing it
+  // with serverNow() is hours wrong on a device in another time zone
+  expect(asBackendStamp(Date.now())).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
+});
+
+test('a stamp made with asBackendStamp is read back as the same number of minutes ago, whatever the device clock', () => {
+  noteServerTime(answerFromABackend(TWO_HOURS_MS));
+
+  expect(formatTimeAgo(asBackendStamp(serverNow() - 12 * 60 * 1000))).toBe('12m ago');
 });

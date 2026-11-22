@@ -376,4 +376,36 @@ class StaffSalesReportServiceTest {
         verify(orderRepository).findByStatusAndClosedAtBetween("closed", from, to);
         verifyNoMoreInteractions(orderRepository);
     }
+
+    @Test
+    void testGetReport_ForACategoryOrOneItem_ShouldCountOnlyThoseItems_AndLeaveTheOtherNumbersAlone() {
+        // WHAT: Test the report asked to count only some items (what a challenge asks for)
+        // WHY: "Sell 15 from Sweet" and "sell 20 Daily Pastries" read their progress from
+        //      this report's items column. Checks, sales, average, and biggest check must
+        //      be the same whichever items are counted: only the items column changes.
+
+        // Given - one check; 5 items on it, 2 of them Sweet, 1 of them the pastry (item 41)
+        Order check = check(7L, "Sarah", "60.00");
+        closedInThePeriod(check);
+        onStaff(person(7L, "Sarah", true));
+        List<Long> ids = List.of(check.getOrderId());
+        lenient().when(orderItemRepository.countItemsSoldByOrderIdIn(ids, "draft")).thenReturn(List.of(sold(check, 5)));
+        lenient().when(orderItemRepository.countItemsSoldInCategoryByOrderIdIn(ids, "draft", "Sweet")).thenReturn(List.of(sold(check, 2)));
+        lenient().when(orderItemRepository.countItemsSoldOfMenuItemByOrderIdIn(ids, "draft", 41L)).thenReturn(List.of(sold(check, 1)));
+
+        // When
+        StaffSalesView.Row everything = staffSalesReportService.getReport(from, to).staff().get(0);
+        StaffSalesView.Row sweet = staffSalesReportService.getReport(from, to, StaffSalesReportService.ItemsCounted.inCategory("Sweet")).staff().get(0);
+        StaffSalesView.Row pastry = staffSalesReportService.getReport(from, to, StaffSalesReportService.ItemsCounted.ofMenuItem(41L)).staff().get(0);
+
+        // Then
+        assertEquals(5, everything.itemsSold());
+        assertEquals(2, sweet.itemsSold());
+        assertEquals(1, pastry.itemsSold());
+        for (StaffSalesView.Row row : List.of(everything, sweet, pastry)) {
+            assertEquals(new BigDecimal("60.00"), row.sales());
+            assertEquals(1, row.checksClosed());
+            assertEquals(new BigDecimal("60.00"), row.biggestCheck());
+        }
+    }
 }

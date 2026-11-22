@@ -133,6 +133,40 @@ test('the 86 board, the PIN pad, payment, messages, and paused terminals are all
   expect(piece('BUTTONS').querySelector('.btn-close-order:disabled')).not.toBeNull();
 });
 
+test('a challenge is shown in every state a card has, as a manager sees it, and with its form', async () => {
+  await renderGallery();
+  const challenges = piece('CHALLENGES');
+
+  // One card for each word a card can carry
+  const words = [...challenges.querySelectorAll('.gallery-challenges .challenge-status')].map(status => status.textContent);
+  expect(words).toEqual(['IN PROGRESS', 'COMPLETE', 'ON TRACK', 'NOT STARTED', 'COMPLETED', 'NOT COMPLETED']);
+  // Each goal reads as a sentence, one per measure
+  expect(within(challenges).getByText('Sell 15 from Sweet')).toBeInTheDocument();
+  expect(within(challenges).getByText('Sell 20 of Daily Pastry')).toBeInTheDocument();
+  expect(within(challenges).getByText('Hold a check average of at least $40.00, over 5 or more checks')).toBeInTheDocument();
+  expect(within(challenges).getByText('Close one check of at least $150.00')).toBeInTheDocument();
+  // The prize: waiting, and handed over
+  expect(within(challenges).getByText('Prize waiting')).toBeInTheDocument();
+  expect(within(challenges).getByText('Prize awarded by Alex')).toBeInTheDocument();
+  // A card that has not started has no bar; every other card has one
+  expect(challenges.querySelectorAll('.gallery-challenges [role="progressbar"]')).toHaveLength(5);
+
+  // The manager's card: everyone's progress, one prize to mark, one already marked, and the three buttons
+  const managed = within(challenges.querySelector('.gallery-challenge-manager'));
+  expect(managed.getByText('Everyone\'s progress')).toBeInTheDocument();
+  expect(managed.getAllByRole('listitem')).toHaveLength(3);
+  expect(managed.getAllByRole('button', { name: 'MARK AWARDED' })).toHaveLength(1);
+  expect(managed.getByText('Awarded by Alex')).toBeInTheDocument();
+  for (const name of ['EDIT', 'END NOW', 'DELETE']) expect(managed.getByRole('button', { name })).toBeInTheDocument();
+
+  // The form, with the four measures on offer
+  const form = within(within(challenges).getByRole('dialog', { name: 'New challenge' }));
+  expect(within(form.getByLabelText('What it measures')).getAllByRole('option').map(option => option.textContent))
+    .toEqual(['Items sold', 'Total sales', 'Check average', 'Biggest single check']);
+  // As on the real screen: no tips
+  expect(challenges.textContent).not.toMatch(/tip/i);
+});
+
 test('the leaderboard is shown with a tie, medals, your own row, and when empty, with the period buttons above it', async () => {
   await renderGallery();
   const board = piece('LEADERBOARD AND PERIOD BUTTONS');

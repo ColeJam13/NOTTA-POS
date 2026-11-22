@@ -72,7 +72,38 @@ public class StaffSalesReportService {
         this.closedCheckAmountsService = closedCheckAmountsService;
     }
 
+    /**
+     * Which items count toward "items sold".
+     *
+     * The leaderboard counts every item. A challenge may count the items of one menu
+     * category, or one menu item ("sell 15 from Sweet", "sell 20 Daily Pastries"). Every
+     * other number in the report (checks, sales, average, biggest check) is the same
+     * whichever is asked for: only the items column changes.
+     *
+     * @param category   Count the items in this menu category only, or null
+     * @param menuItemId Count this one menu item only, or null
+     */
+    public record ItemsCounted(String category, Long menuItemId) {
+
+        public static final ItemsCounted EVERYTHING = new ItemsCounted(null, null);
+
+        public static ItemsCounted inCategory(String category) {
+            return new ItemsCounted(category, null);
+        }
+
+        public static ItemsCounted ofMenuItem(Long menuItemId) {
+            return new ItemsCounted(null, menuItemId);
+        }
+    }
+
     public StaffSalesView getReport(LocalDateTime from, LocalDateTime to) {     // What each person sold on checks closed between two moments (both included)
+        return getReport(from, to, ItemsCounted.EVERYTHING);
+    }
+
+    // The same report, with "items sold" counting only some items. A challenge's
+    // progress is read from this, so a challenge and the leaderboard cannot count a
+    // check differently.
+    public StaffSalesView getReport(LocalDateTime from, LocalDateTime to, ItemsCounted itemsCounted) {
         // Query 1: the checks closed in the period. A check with nobody on record belongs to nobody.
         List<Order> closedOrders = orderRepository.findByStatusAndClosedAtBetween(OrderStatus.CLOSED.getValue(), from, to);
         List<Order> withAnOpener = closedOrders.stream().filter(order -> order.getStaffId() != null).toList();
@@ -85,8 +116,7 @@ public class StaffSalesReportService {
         Map<Long, Amounts> amountsByOrderId = closedCheckAmountsService.amountsOf(withAnOpener);
 
         // Query 3: how many items each check sold. A check with no row here sold none.
-        Map<Long, Long> itemsSoldByOrderId = orderItemRepository
-                .countItemsSoldByOrderIdIn(orderIds, OrderItemStatus.DRAFT.getValue()).stream()
+        Map<Long, Long> itemsSoldByOrderId = itemsSoldOn(orderIds, itemsCounted).stream()
                 .collect(Collectors.toMap(ItemsSoldOnOrder::getOrderId, ItemsSoldOnOrder::getItemsSold));
 
         // Add each check to the running sums of the person who opened it
@@ -123,6 +153,19 @@ public class StaffSalesReportService {
                 .thenComparing(Unranked::staffId));
 
         return new StaffSalesView(ranked(people));
+    }
+
+    // One of three queries, by which items count. Each adds up quantities in the database
+    // and leaves drafts out (a draft was never sent, so it was never sold).
+    private List<ItemsSoldOnOrder> itemsSoldOn(List<Long> orderIds, ItemsCounted itemsCounted) {
+        String draft = OrderItemStatus.DRAFT.getValue();
+        if (itemsCounted.menuItemId() != null) {
+            return orderItemRepository.countItemsSoldOfMenuItemByOrderIdIn(orderIds, draft, itemsCounted.menuItemId());
+        }
+        if (itemsCounted.category() != null) {
+            return orderItemRepository.countItemsSoldInCategoryByOrderIdIn(orderIds, draft, itemsCounted.category());
+        }
+        return orderItemRepository.countItemsSoldByOrderIdIn(orderIds, draft);
     }
 
     /**

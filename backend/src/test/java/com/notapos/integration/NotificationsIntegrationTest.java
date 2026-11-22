@@ -24,7 +24,9 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.IllegalTransactionStateException;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -198,9 +200,10 @@ class NotificationsIntegrationTest extends BaseIntegrationTest {
         JsonNode notice = bellOf(sarah).get(0);
         assertEquals("item_86", notice.get("kind").asString());
         assertEquals("Kit", notice.get("fromName").asString());
-        // A moment written with its zone, close to now
-        Instant created = Instant.parse(notice.get("createdAt").asString());
-        assertTrue(Math.abs(created.getEpochSecond() - Instant.now().getEpochSecond()) < 60, "created " + created);
+        // The restaurant's own clock with no zone, like every other time in JSON, and close to now
+        // (the test below this group says why it is not a moment in UTC)
+        LocalDateTime created = LocalDateTime.parse(notice.get("createdAt").asString());
+        assertTrue(Duration.between(created, LocalDateTime.now()).abs().getSeconds() < 60, "created " + created);
     }
 
     @Test
@@ -388,6 +391,32 @@ class NotificationsIntegrationTest extends BaseIntegrationTest {
         // Something new after that is on her list again
         message(dan, "Last call in ten");
         assertEquals(List.of("Last call in ten"), textsFor(sarah));
+    }
+
+    @Test
+    void testANotificationsTime_IsWrittenOnTheBackendsOwnClock_LikeEveryOtherStamp() throws Exception {
+        // WHAT: Test how "when it happened" is written in the answer
+        // WHY: A screen works out "5m ago" by comparing a stamp with the backend's time,
+        //      which every answer carries in the X-Server-Time header as a local date and
+        //      time with no zone (see ServerTimeFilter and the frontend's serverClock.js).
+        //      That only works if the stamp is written the same way. A notification's
+        //      time was sent as a moment in UTC ("...Z"): on a tablet set to another
+        //      time zone than the backend, "5m ago" came out hours wrong.
+
+        // Given - something that has just happened
+        eightySix(gardenToast, kit);
+
+        // When
+        MvcResult result = mockMvc.perform(get("/api/notifications").with(sarah)).andExpect(status().isOk()).andReturn();
+        String createdAt = objectMapper.readTree(result.getResponse().getContentAsString()).get(0).get("createdAt").asString();
+        String backendNow = result.getResponse().getHeader("X-Server-Time");
+
+        // Then - no zone on it, exactly like the header...
+        assertTrue(createdAt.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,9})?$"),
+                "a notification's time should be a local date and time with no zone, but was " + createdAt);
+        // ...and read the same way as the header, it is "a moment ago"
+        Duration ago = Duration.between(LocalDateTime.parse(createdAt), LocalDateTime.parse(backendNow));
+        assertTrue(ago.abs().getSeconds() < 30, "created " + createdAt + ", backend's time " + backendNow);
     }
 
     @Test

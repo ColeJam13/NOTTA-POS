@@ -263,9 +263,9 @@ class DatabaseMigrationTest {
 
         // Then - V1 actually ran here (type SQL, not BASELINE) and created the tables
         assertEquals("SQL", value(jdbcUrl, "SELECT type FROM flyway_schema_history WHERE version = '1'"));
-        // (the twelve from V1, staff_sessions from V4, settings from V7, and the two
-        // notification tables from V8)
-        assertEquals("16", value(jdbcUrl, "SELECT count(*) FROM information_schema.tables "
+        // (the twelve from V1, staff_sessions from V4, settings from V7, the two
+        // notification tables from V8, and the two challenge tables from V9)
+        assertEquals("18", value(jdbcUrl, "SELECT count(*) FROM information_schema.tables "
                 + "WHERE table_schema = 'public' AND table_name <> 'flyway_schema_history'"));
     }
 
@@ -519,5 +519,54 @@ class DatabaseMigrationTest {
                 + "WHERE table_name = 'notifications' AND column_name = 'created_at'"));
         assertEquals("timestamp with time zone", value(jdbcUrl, "SELECT data_type FROM information_schema.columns "
                 + "WHERE table_name = 'notification_dismissals' AND column_name = 'dismissed_at'"));
+    }
+
+    @Test
+    void testV9_ShouldAddTwoEmptyChallengeTablesToAnExistingDatabase() throws Exception {
+        // WHAT: Test the challenges and challenge_awards tables V9 adds
+        // WHY: Both must arrive EMPTY (a restaurant has no challenges until a manager
+        //      makes one). The database itself must refuse a challenge that ends before
+        //      it starts or has no target, a second award for the same person, and the
+        //      deletion of a challenge whose prize has been handed over.
+
+        // Given - a database from before Flyway
+        String jdbcUrl = databaseFromBeforeFlyway("v9_challenges");
+
+        // When
+        migrate(jdbcUrl);
+
+        // Then - both tables are there, and empty
+        assertEquals("0", value(jdbcUrl, "SELECT count(*) FROM challenges"));
+        assertEquals("0", value(jdbcUrl, "SELECT count(*) FROM challenge_awards"));
+
+        // And - a challenge with only what every challenge has can be stored; its ID is handed out
+        String insert = "INSERT INTO challenges (name, measure, target, starts_at, ends_at, created_by_staff_id, created_by_name, created_at) VALUES ";
+        run(jdbcUrl, insert + "('Big night', 'total_sales', 500, now(), now() + interval '6 hours', 2, 'Morgan', now())");
+        String id = value(jdbcUrl, "SELECT challenge_id FROM challenges");
+        assertNotNull(id);
+
+        // And - one that ends when it starts, and one with a target of nothing, are refused
+        assertThrows(Exception.class, () -> run(jdbcUrl,
+                insert + "('No time', 'total_sales', 500, '2026-11-18 17:00+00', '2026-11-18 17:00+00', 2, 'Morgan', now())"));
+        assertThrows(Exception.class, () -> run(jdbcUrl,
+                insert + "('Free prize', 'total_sales', 0, now(), now() + interval '6 hours', 2, 'Morgan', now())"));
+
+        // And - a person can be awarded once per challenge, and another person can be as well
+        String award = "INSERT INTO challenge_awards (challenge_id, staff_id, staff_name, awarded_by_staff_id, awarded_by_name, awarded_at) VALUES ";
+        run(jdbcUrl, award + "(" + id + ", 7, 'Sarah', 2, 'Morgan', now())");
+        assertThrows(Exception.class, () -> run(jdbcUrl, award + "(" + id + ", 7, 'Sarah', 2, 'Morgan', now())"));
+        run(jdbcUrl, award + "(" + id + ", 8, 'Dan', 2, 'Morgan', now())");
+        assertEquals("2", value(jdbcUrl, "SELECT count(*) FROM challenge_awards"));
+
+        // And - an award needs a real challenge, and a challenge with an award cannot be deleted
+        assertThrows(Exception.class, () -> run(jdbcUrl, award + "(987654, 7, 'Sarah', 2, 'Morgan', now())"));
+        assertThrows(Exception.class, () -> run(jdbcUrl, "DELETE FROM challenges WHERE challenge_id = " + id));
+        assertEquals("1", value(jdbcUrl, "SELECT count(*) FROM challenges"));
+
+        // And - the times are moments with a zone, like every table added since V4
+        assertEquals("timestamp with time zone", value(jdbcUrl, "SELECT data_type FROM information_schema.columns "
+                + "WHERE table_name = 'challenges' AND column_name = 'ends_at'"));
+        assertEquals("timestamp with time zone", value(jdbcUrl, "SELECT data_type FROM information_schema.columns "
+                + "WHERE table_name = 'challenge_awards' AND column_name = 'awarded_at'"));
     }
 }
