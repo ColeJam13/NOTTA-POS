@@ -56,6 +56,16 @@ public final class Permissions {
     // tip is decided per person in the service, as it is on the Tables screen.
     public static final String SEARCH = "isAuthenticated()";
 
+    // Reading and dismissing your own notifications (the bell in the top bar): every role.
+    // "Your own" is not a role question, so it is not decided here: the endpoints take no
+    // staff ID at all, and NotificationService only ever asks for the signed-in person's.
+    public static final String OWN_NOTIFICATIONS = "isAuthenticated()";
+
+    // Writing a message to the floor: the kitchen, bartenders, and managers (the owner's
+    // decision D5). The same roles as CHANGE_86 today, and a rule of its own because it is
+    // a different job: one may change without the other.
+    public static final String SEND_MESSAGES = "hasAnyRole('KITCHEN', 'BARTENDER', 'MANAGER')";
+
     // Any role at all. Not needed to let people in (a method with no rule is already open to
     // everyone signed in); it is written on the few endpoints that change something and are
     // meant for every role, to say that the missing role list is on purpose.

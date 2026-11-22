@@ -41,6 +41,13 @@ class OrderItemServiceTest {
     @Mock
     private com.notapos.repository.OrderRepository orderRepository;
 
+    @Mock
+    private NotificationService notificationService;        // Stands in for the bell: these tests check WHEN it is told, not what it does
+
+    // The signed-in person doing the thing: a cook
+    private static final com.notapos.security.StaffSession KIT = new com.notapos.security.StaffSession(
+            9L, "Kit", com.notapos.enums.StaffRole.KITCHEN, java.time.Instant.now(), false);
+
     @InjectMocks
     private OrderItemService orderItemService;
 
@@ -498,12 +505,73 @@ class OrderItemServiceTest {
         when(orderItemRepository.save(any(OrderItem.class))).thenReturn(testItem);
 
         // When
-        OrderItem result = orderItemService.completeItem(1L);
+        OrderItem result = orderItemService.completeItem(1L, KIT);
 
         // Then
         assertEquals("completed", result.getStatus());
         assertNotNull(result.getCompletedAt());
         verify(orderItemRepository, times(1)).save(testItem);
+    }
+
+    // ------------------------------------------------------------------
+    // Order up: the notice to the server when a check has nothing left to make
+    // ------------------------------------------------------------------
+
+    private OrderItem itemWithStatus(long id, String status) {
+        OrderItem item = new OrderItem();
+        item.setOrderItemId(id);
+        item.setOrderId(1L);
+        item.setStatus(status);
+        return item;
+    }
+
+    @Test
+    void testCompleteItem_WhenItWasTheLastOneToMake_ShouldSayOrderUp() {
+        // WHAT: Complete the one item still being made. Another is already made, and a
+        //       draft was never sent.
+        // WHY: The server finds out their table's food is ready without watching the
+        //      kitchen display. A draft does not hold the notice back: it was not sent.
+        testItem.setStatus("fired");
+        com.notapos.entity.Order order = new com.notapos.entity.Order();
+        order.setOrderId(1L);
+        when(orderItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
+        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(testItem);
+        when(orderItemRepository.findByOrderId(1L)).thenReturn(List.of(
+                testItem, itemWithStatus(2L, "completed"), itemWithStatus(3L, "draft")));
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        orderItemService.completeItem(1L, KIT);
+
+        verify(notificationService, times(1)).orderUp(order, KIT);
+    }
+
+    @Test
+    void testCompleteItem_WhenSomethingSentIsStillToMake_ShouldSayNothing() {
+        // WHAT: Three checks, each with one other item: waiting, started, or in its edit window
+        // WHY: "Order up" means the whole of what was sent is ready, not one plate of it
+        for (String other : new String[] { "pending", "fired", "limbo" }) {
+            testItem.setStatus("fired");
+            when(orderItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
+            when(orderItemRepository.save(any(OrderItem.class))).thenReturn(testItem);
+            when(orderItemRepository.findByOrderId(1L)).thenReturn(List.of(testItem, itemWithStatus(2L, other)));
+
+            orderItemService.completeItem(1L, KIT);
+        }
+
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    void testCompleteItem_WhenItWasAlreadyCompleted_ShouldSayNothing() {
+        // WHY: Pressing COMPLETE twice must not ring the bell twice
+        testItem.setStatus("completed");
+        when(orderItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
+        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(testItem);
+
+        orderItemService.completeItem(1L, KIT);
+
+        verifyNoInteractions(notificationService);
+        verify(orderItemRepository, never()).findByOrderId(any());
     }
 
     @Test
@@ -516,7 +584,7 @@ class OrderItemServiceTest {
 
         // When & Then
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            orderItemService.completeItem(999L);
+            orderItemService.completeItem(999L, KIT);
         });
         
         assertTrue(exception.getMessage().contains("Order item not found"));

@@ -30,6 +30,13 @@ class MenuItemServiceTest {
     @Mock
     private MenuItemRepository menuItemRepository;
 
+    @Mock
+    private NotificationService notificationService;        // Stands in for the bell: these tests check WHEN it is told, not what it does
+
+    // The signed-in person doing the thing: a cook
+    private static final com.notapos.security.StaffSession KIT = new com.notapos.security.StaffSession(
+            9L, "Kit", com.notapos.enums.StaffRole.KITCHEN, java.time.Instant.now(), false);
+
     @InjectMocks
     private MenuItemService menuItemService;
 
@@ -292,7 +299,7 @@ class MenuItemServiceTest {
         when(menuItemRepository.save(any(MenuItem.class))).thenReturn(testMenuItem);
 
         // When
-        MenuItem result = menuItemService.set86d(1L, true);
+        MenuItem result = menuItemService.set86d(1L, true, KIT);
 
         // Then - 86'd, and still on the menu
         assertTrue(result.getIs86d());
@@ -311,10 +318,40 @@ class MenuItemServiceTest {
         when(menuItemRepository.save(any(MenuItem.class))).thenReturn(testMenuItem);
 
         // When
-        MenuItem result = menuItemService.set86d(1L, false);
+        MenuItem result = menuItemService.set86d(1L, false, KIT);
 
         // Then
         assertFalse(result.getIs86d());
+    }
+
+    @Test
+    void testSet86d_WhenTheStateChanges_ShouldTellEveryoneElse() {
+        // WHAT: 86 an item that was available, then put it back on
+        // WHY: The floor finds out from the bell, not by tapping the item and being refused.
+        //      The service hands over the item as it now is and who changed it.
+        when(menuItemRepository.findById(1L)).thenReturn(Optional.of(testMenuItem));
+        when(menuItemRepository.save(any(MenuItem.class))).thenReturn(testMenuItem);
+
+        menuItemService.set86d(1L, true, KIT);
+        verify(notificationService, times(1)).itemEightySixChanged(testMenuItem, KIT);
+
+        menuItemService.set86d(1L, false, KIT);
+        verify(notificationService, times(2)).itemEightySixChanged(testMenuItem, KIT);
+    }
+
+    @Test
+    void testSet86d_WhenNothingChanges_ShouldTellNobody() {
+        // WHAT: 86 an item that is already 86'd, and put back one that was never out
+        // WHY: Two people tapping the same tile must not send two notices for one thing
+        testMenuItem.setIs86d(true);
+        when(menuItemRepository.findById(1L)).thenReturn(Optional.of(testMenuItem));
+        when(menuItemRepository.save(any(MenuItem.class))).thenReturn(testMenuItem);
+        menuItemService.set86d(1L, true, KIT);
+
+        testMenuItem.setIs86d(false);
+        menuItemService.set86d(1L, false, KIT);
+
+        verifyNoInteractions(notificationService);
     }
 
     @Test
@@ -326,8 +363,9 @@ class MenuItemServiceTest {
         when(menuItemRepository.findById(99L)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(com.notapos.exception.ResourceNotFoundException.class, () -> menuItemService.set86d(99L, true));
+        assertThrows(com.notapos.exception.ResourceNotFoundException.class, () -> menuItemService.set86d(99L, true, KIT));
         verify(menuItemRepository, never()).save(any());
+        verifyNoInteractions(notificationService);
     }
 
     @Test

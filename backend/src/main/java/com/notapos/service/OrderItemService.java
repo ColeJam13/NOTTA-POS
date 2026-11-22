@@ -12,6 +12,7 @@ import com.notapos.entity.OrderItem;
 import com.notapos.repository.OrderItemModifierRepository;
 import com.notapos.repository.OrderItemRepository;
 import com.notapos.repository.OrderRepository;
+import com.notapos.security.StaffSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
@@ -33,14 +34,17 @@ public class OrderItemService {
     private final OrderItemRepository orderItemRepository;
     private final OrderItemModifierRepository orderItemModifierRepository;     // Needed so deleting an item also deletes its modifiers
     private final OrderRepository orderRepository;                             // Needed to check an order is still open before anything is sent on it
+    private final NotificationService notificationService;                     // Tells the server when everything sent on their check has been made
 
     @Autowired
     public OrderItemService(OrderItemRepository orderItemRepository,
                             OrderItemModifierRepository orderItemModifierRepository,
-                            OrderRepository orderRepository) {
+                            OrderRepository orderRepository,
+                            NotificationService notificationService) {
         this.orderItemRepository = orderItemRepository;
         this.orderItemModifierRepository = orderItemModifierRepository;
         this.orderRepository = orderRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -240,15 +244,47 @@ public class OrderItemService {
                 return orderItemRepository.save(item);
     }
 
+    /**
+     * Mark an item as completed, and say "order up" when it was the last one.
+     *
+     * ORDER UP: when completing this item leaves the check with nothing SENT that is
+     * still to be made, the person who opened the check is notified (see
+     * NotificationService.orderUp, which also decides who is not). "Sent" is an item
+     * in its edit window, waiting, or started; a draft has not been sent and does
+     * not hold the notice back. A check can be "up" more than once: a second round
+     * sent later is a second notice when it is made.
+     *
+     * The notice is written in this transaction, so it exists exactly when the
+     * completion does. It is only written when this call did the completing:
+     * pressing COMPLETE on an item that is already completed says nothing new.
+     *
+     * @param by The signed-in person completing the item
+     */
     @Transactional
-    public OrderItem completeItem(Long id) {                            // Mark item as completed
+    public OrderItem completeItem(Long id, StaffSession by) {
         OrderItem item = orderItemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order item not found with id: " + id));
 
+        boolean wasAlreadyCompleted = OrderItemStatus.COMPLETED.matches(item.getStatus());
         item.setStatus(OrderItemStatus.COMPLETED.getValue());
         item.setCompletedAt(LocalDateTime.now());
+        OrderItem saved = orderItemRepository.save(item);
 
-        return orderItemRepository.save(item);
+        if (!wasAlreadyCompleted && nothingSentIsLeftToMake(saved.getOrderId())) {
+            orderRepository.findById(saved.getOrderId())
+                    .ifPresent(order -> notificationService.orderUp(order, by));
+        }
+        return saved;
+    }
+
+    // True when no item on the order is in its edit window, waiting for the kitchen, or
+    // being made. (Reading the items here also sends the completion above to the database
+    // first, so the item just completed is counted as completed.)
+    private boolean nothingSentIsLeftToMake(Long orderId) {
+        return orderItemRepository.findByOrderId(orderId).stream()
+                .noneMatch(other -> OrderItemStatus.LIMBO.matches(other.getStatus())
+                        || OrderItemStatus.PENDING.matches(other.getStatus())
+                        || OrderItemStatus.FIRED.matches(other.getStatus()));
     }
 
     @Transactional

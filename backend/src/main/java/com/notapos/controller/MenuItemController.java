@@ -1,6 +1,7 @@
 package com.notapos.controller;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import jakarta.validation.Valid;
 import com.notapos.entity.MenuItem;
 import com.notapos.service.MenuItemService;
@@ -8,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import com.notapos.security.Permissions;
+import com.notapos.security.StaffSession;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -105,14 +107,16 @@ public class MenuItemController {
 
     @PreAuthorize(Permissions.CHANGE_86)             // The people who know what has run out
     @PutMapping("/{id}/86")                                                         // 86 an item: out for now, still shown on the menu
-    public ResponseEntity<MenuItem> eightySixMenuItem(@PathVariable Long id) {
-        return ResponseEntity.ok(menuItemService.set86d(id, true));
+    public ResponseEntity<MenuItem> eightySixMenuItem(@PathVariable Long id,
+                                                      @AuthenticationPrincipal StaffSession currentStaff) {     // Who did it: everyone else is told
+        return ResponseEntity.ok(menuItemService.set86d(id, true, currentStaff));
     }
 
     @PreAuthorize(Permissions.CHANGE_86)
     @PutMapping("/{id}/un-86")                                                      // Put an 86'd item back on
-    public ResponseEntity<MenuItem> unEightySixMenuItem(@PathVariable Long id) {
-        return ResponseEntity.ok(menuItemService.set86d(id, false));
+    public ResponseEntity<MenuItem> unEightySixMenuItem(@PathVariable Long id,
+                                                        @AuthenticationPrincipal StaffSession currentStaff) {
+        return ResponseEntity.ok(menuItemService.set86d(id, false, currentStaff));
     }
 
     @PreAuthorize(Permissions.MANAGER_ONLY)                                     // Managers only

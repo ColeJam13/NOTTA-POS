@@ -373,14 +373,14 @@ class MenuItemControllerTest {
 
         // Given
         testItem.setIs86d(true);
-        when(menuItemService.set86d(1L, true)).thenReturn(testItem);
+        when(menuItemService.set86d(eq(1L), eq(true), any())).thenReturn(testItem);
 
         // When/Then
         mockMvc.perform(put("/api/menu-items/1/86").with(signIn.asManager()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.is86d").value(true));
 
-        verify(menuItemService).set86d(1L, true);
+        verify(menuItemService).set86d(eq(1L), eq(true), any());
     }
 
     @Test
@@ -390,14 +390,14 @@ class MenuItemControllerTest {
 
         // Given
         testItem.setIs86d(false);
-        when(menuItemService.set86d(1L, false)).thenReturn(testItem);
+        when(menuItemService.set86d(eq(1L), eq(false), any())).thenReturn(testItem);
 
         // When/Then
         mockMvc.perform(put("/api/menu-items/1/un-86").with(signIn.asManager()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.is86d").value(false));
 
-        verify(menuItemService).set86d(1L, false);
+        verify(menuItemService).set86d(eq(1L), eq(false), any());
     }
 
     @Test
@@ -406,7 +406,7 @@ class MenuItemControllerTest {
         // WHY: The board should hear about it instead of showing a change that did not happen
 
         // Given
-        when(menuItemService.set86d(99L, true))
+        when(menuItemService.set86d(eq(99L), eq(true), any()))
                 .thenThrow(new com.notapos.exception.ResourceNotFoundException("Menu item not found with id: 99"));
 
         // When/Then
@@ -437,7 +437,7 @@ class MenuItemControllerTest {
         mockMvc.perform(put("/api/menu-items/1/86").with(signIn.asServer()))
                 .andExpect(status().isForbidden());
 
-        verify(menuItemService, never()).set86d(any(), anyBoolean());
+        verify(menuItemService, never()).set86d(any(), anyBoolean(), any());
     }
 
     @Test
@@ -446,7 +446,7 @@ class MenuItemControllerTest {
         // WHY: The kitchen is who knows first that something has run out
 
         testItem.setIs86d(true);
-        when(menuItemService.set86d(1L, true)).thenReturn(testItem);
+        when(menuItemService.set86d(eq(1L), eq(true), any())).thenReturn(testItem);
 
         mockMvc.perform(put("/api/menu-items/1/86").with(signIn.asKitchen()))
                 .andExpect(status().isOk());
@@ -460,7 +460,7 @@ class MenuItemControllerTest {
         mockMvc.perform(put("/api/menu-items/1/un-86"))
                 .andExpect(status().isUnauthorized());
 
-        verify(menuItemService, never()).set86d(any(), anyBoolean());
+        verify(menuItemService, never()).set86d(any(), anyBoolean(), any());
     }
 
     @Test

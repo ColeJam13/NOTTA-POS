@@ -6,6 +6,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -18,6 +21,9 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
@@ -72,6 +78,28 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class JsonShapeIntegrationTest extends BaseIntegrationTest {
 
+    /**
+     * For this class only, the backend's clock stands still at 18:00 UTC on the day the
+     * fixed rows below are dated.
+     *
+     * WHY: A person's notifications are "the last 24 hours". With the real clock, a
+     * notification inserted with a fixed time would be listed today and gone tomorrow,
+     * and the recorded answer could not stay the same. With the clock held here, the
+     * answer is the same on any day the tests run.
+     *
+     * @Primary makes this the Clock that is handed to everything asking for one, in
+     * place of TimeConfig's (which is still there, unused). Nothing else recorded here
+     * depends on what time it is now.
+     */
+    @TestConfiguration
+    static class ClockHeldStill {
+        @Bean
+        @Primary
+        Clock clockHeldOnTheDayOfTheFixedRows() {
+            return Clock.fixed(Instant.parse("2026-11-18T18:00:00Z"), ZoneOffset.UTC);
+        }
+    }
+
     // Where the recorded answers live, as the tests read them and as "record" writes them
     private static final String RECORDED_ON_CLASSPATH = "/json-shape/";
     private static final Path RECORDED_IN_SOURCE = Path.of("src", "test", "resources", "json-shape");
@@ -91,7 +119,8 @@ class JsonShapeIntegrationTest extends BaseIntegrationTest {
         // Empty every table (nothing rolls back by itself in an integration test)
         for (String table : List.of("order_item_modifiers", "order_items", "payments", "orders",
                 "menu_item_modifier_groups", "modifiers", "modifier_groups", "menu_items", "prep_stations",
-                "table_status_logs", "tables", "staff_sessions", "staff", "settings")) {
+                "table_status_logs", "tables", "staff_sessions", "staff", "settings",
+                "notification_dismissals", "notifications")) {
             jdbc.update("DELETE FROM " + table);
         }
 
@@ -148,6 +177,15 @@ class JsonShapeIntegrationTest extends BaseIntegrationTest {
                 + "(9302, 9003, 12.88, 0.00, 'cash', 'completed', NULL, '2026-11-18 11:52:00'), "
                 + "(9303, 9004, 16.48, 3.25, 'cash', 'completed', NULL, '2026-11-18 10:40:00')");
 
+        // ----- Notifications: an 86 and a message for everyone, an "order up" for Sarah, and one she dismissed -----
+        jdbc.update("INSERT INTO notifications (notification_id, kind, body, recipient_staff_id, created_by_staff_id, created_by_name, created_at) VALUES "
+                + "(9401, 'item_86', 'Garden Toast is 86''d', NULL, 9099, 'Dan', '2026-11-18 16:00:00+00'), "
+                + "(9402, 'order_up', 'Table W1 is up', 9007, 9099, 'Dan', '2026-11-18 16:30:00.25+00'), "              // A time with a fraction of a second
+                + "(9403, 'message', 'Fryer is down for 10 minutes', NULL, 9099, 'Dan', '2026-11-18 17:00:00+00'), "
+                + "(9404, 'item_back', 'Garden Toast is back on', NULL, 9099, 'Dan', '2026-11-18 17:30:00+00'), "       // Sarah dismissed this one
+                + "(9405, 'message', 'A system notice', NULL, NULL, NULL, '2026-11-18 15:00:00+00')");                  // From nobody on record
+        jdbc.update("INSERT INTO notification_dismissals (notification_id, staff_id, dismissed_at) VALUES (9404, 9007, '2026-11-18 17:45:00+00')");
+
         morgan = signIn.as(9002L, "Morgan", StaffRole.MANAGER);
         sarah = signIn.as(9007L, "Sarah", StaffRole.SERVER);
     }
@@ -195,6 +233,8 @@ class JsonShapeIntegrationTest extends BaseIntegrationTest {
                 new Case("order-check", "server", "/api/orders/9001/check"),
                 new Case("payments-for-order", "manager", "/api/payments/order/9002"),
                 new Case("settings", "server", "/api/settings"),
+                // The bell in the top bar: the signed-in person's own notifications
+                new Case("notifications", "server", "/api/notifications"),
                 // Financials
                 new Case("financials", "manager", "/api/reports/financials?from=2026-11-18T00:00:00&to=2026-11-19T00:00:00"),
                 // Staff
