@@ -80,6 +80,7 @@ button.search-row {
 .search-row-detail {
   color: var(--color-text-muted);
   font-size: var(--font-size-10);
+  line-height: var(--line-height);      /* A long detail line wraps; without this its two lines touch in the pixel font */
 }
 
 .search-row-amount {

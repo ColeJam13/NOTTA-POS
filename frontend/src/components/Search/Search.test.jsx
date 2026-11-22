@@ -377,7 +377,18 @@ test('Escape closes the panel and keeps what was typed; coming back to the box s
   expect(box()).toHaveValue('7');
   expect(box()).toHaveAttribute('aria-expanded', 'false');
 
+  // The typing cursor never left the box, so "focus" will not happen again: a click
+  // in the box, or the down arrow, brings the list back
+  await userEvent.click(box());
+  expect(screen.getByRole('listbox')).toBeInTheDocument();
+  await userEvent.keyboard('{Escape}');
+  await userEvent.keyboard('{ArrowDown}');
+  expect(screen.getByRole('listbox')).toBeInTheDocument();
+  expect(screen.queryByRole('option', { selected: true })).not.toBeInTheDocument();     // Opening it is all that arrow did
+
+  // ...and so does coming back from somewhere else
   await userEvent.click(screen.getByRole('button', { name: 'somewhere else' }));
+  expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   await userEvent.click(box());
   expect(screen.getByRole('listbox')).toBeInTheDocument();
   expect(searches()).toHaveLength(1);                // The answer it already had; nothing new was asked

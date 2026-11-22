@@ -135,11 +135,18 @@ function Search({ onOpenTable, onOpenScreen }) {
     document.getElementById(`search-${choosable[next].key}`)?.scrollIntoView?.({ block: 'nearest' });
   };
 
+  // Show the last answer again, if there is one. For coming back to the box after Escape
+  // or a click elsewhere: the box may never have lost the typing cursor, so "it was
+  // focused" is not enough of a signal, and a click or the down arrow asks for it too.
+  const reopen = () => {
+    if (results || failed) setPanelOpen(true);
+  };
+
   const onKeyDown = (event) => {
     if (event.key === 'Escape') {
       setPanelOpen(false);
     } else if (!panelOpen) {
-      return;                                           // Nothing on screen to move through
+      if (event.key === 'ArrowDown') reopen();          // Down from a closed box opens the list, as in any drop-down
     } else if (event.key === 'ArrowDown') {
       event.preventDefault();                           // Otherwise the typing cursor jumps to the end of the text
       step(1);
@@ -171,7 +178,8 @@ function Search({ onOpenTable, onOpenScreen }) {
         value={text}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={onKeyDown}
-        onFocus={() => { if (results || failed) setPanelOpen(true); }}      // Coming back to the box shows the last answer again
+        onFocus={reopen}
+        onClick={reopen}
       />
 
       {panelOpen && (
