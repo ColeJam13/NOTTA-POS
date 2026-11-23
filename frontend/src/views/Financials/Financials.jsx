@@ -4,6 +4,7 @@ import { formatTableName, formatTimeAgo, formatPaymentMethod } from '../../utils
 import './Financials.css';
 import { getJson } from '../../services/api';
 import PeriodPicker, { rangeOf, periodOf } from '../../components/PeriodPicker';
+import WideScreenNote from '../../components/WideScreenNote';
 
 // What the screen shows before the first report arrives, or if it cannot be loaded
 const EMPTY_REPORT = {
@@ -60,6 +61,8 @@ function Financials({ setCurrentView, setSelectedTable }) {
             <NavBar currentView="financials" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />
             <div className="financials-page">
                 <h2>FINANCIALS</h2>
+                {/* Drawn on a phone only */}
+                <WideScreenNote>This screen is laid out for a tablet or a wider screen. On a phone everything is here, one thing under another.</WideScreenNote>
 
                 <PeriodPicker period={period} onChange={setPeriod} />
 

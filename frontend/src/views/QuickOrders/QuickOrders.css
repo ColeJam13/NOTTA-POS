@@ -252,3 +252,46 @@ font-size: var(--font-size-16);
   margin-top: var(--space-10);
   padding-top: var(--space-15);
 }
+
+/* ----- On a phone (see App.css) -----
+   Two cards to a line, and the two view buttons share the width. */
+@media (max-width: 700px) {
+  .view-toggle {
+    margin-bottom: var(--space-12);
+  }
+
+  .toggle-btn {
+    flex: 1;
+    min-height: 44px;
+    padding: var(--space-8);
+  }
+
+  .tables-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-10);
+    margin-top: var(--space-12);
+  }
+
+  .table-card {
+    padding: var(--space-12) var(--space-8);
+    min-width: 0;
+  }
+
+  .table-card * {
+    overflow-wrap: anywhere;
+  }
+
+  /* A paid check's pop-up: a line that wraps has room between its two halves */
+  .modal-info p,
+  .modal-item,
+  .check-line-note {
+    line-height: var(--line-height);
+    overflow-wrap: anywhere;
+  }
+
+  /* ...but an amount is never broken in two */
+  .modal-item > :last-child {
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+}

@@ -44,7 +44,7 @@ One pull request at a time, in this order. Steps 3 to 9 need nothing from the ow
 | 9 | B4a. Design tokens: every screen reads its look from named values | Done (#290) |
 | 10 | **B4b and B4c. Template system, then the new templates** | B4b done (#291). B4c follows `Documentation/templates-brief.md`: groundwork (done, #293), then twelve templates in three batches. All three are done as drafts (#294, #295, #296): thirteen templates in all. What remains is the owner's notes, handled in a polish pull request. D9 (default decided), D13 |
 | 10a | **Nothing fake: N1 to N5** (the app's name and leftovers, search, notifications, per-person sales and the leaderboard, challenges). Follows `Documentation/nothing-fake-brief.md`. Covers B1 and B3 | **Done.** N1 (#298), N2 (#299), N3 (#300), N4 (#301), N5 (#302). D5 and D6 decided 2026-11-22 |
-| 11 | P3. Phone-sized screens | |
+| 11 | P3. Phone-sized screens | Done (#303) |
 | 12 | P4. HTTPS on a private network, and the installable app | D8 |
 | 13 | B5, then B2 (B1 and B3 moved up to step 10a) | D4 (decided) |
 | Any gap | U2. Node 24 and the frontend tools held back by Node 20. Fits between any two steps | Ready: the owner installed Node 24 on 2026-11-21 |
@@ -253,6 +253,8 @@ Claude Code works in Linux and cannot run the Windows script or reach the machin
 
 ### P3. Phone-sized screens
 
+**Done (#303).** A window up to 700 pixels wide has a layout of its own; anything wider is unchanged. Sign-in, Home, Tables, Quick Orders, the order screen (one half at a time, with the buttons at the bottom), the modifier picker, payment, Active Orders and the kitchen display, the 86 board, Challenges, search, and notifications fit a phone. The Floor Map scrolls and does not offer EDIT LAYOUT there; Financials, Staff, and the gallery keep their tablet layout and say so. Checked in Chromium at a phone's size, not on a real phone: the owner's checklist is at the end of `Documentation/test-host.md`. The text below is kept as the record of what was asked.
+
 The screens are laid out for a tablet. Staff will use their own phones.
 
 - Sign-in, tables, the order screen, the modifier picker, payment, and Active Orders get a narrow layout. The Floor Map editor, Financials, and Staff can stay tablet-and-up; say so on screen.
@@ -457,7 +459,7 @@ Owner actions still open unless already done: turn on Dependabot alerts (U3), tu
 
 ## How to continue
 
-1. **Next: P3, phone-sized screens (step 11 in the table above).** `Documentation/nothing-fake-brief.md` is finished: N1 to N5 are done (#298 to #302), which covers B1 and B3, and its "When all five are merged" list was carried out in #302. After P3 comes P4, then B5 (check handling; its pull request must say how a voided or comped item stops counting toward sales, the leaderboard, and challenges), then B2. The owner's notes on the twelve draft templates become a polish pull request whenever he sends them; it waits its turn like any other.
+1. **Next: P4, HTTPS on a private network and the installable app (step 12 in the table above). It starts with an investigation and the owner's decision D8: bring him the options, and do not build until he picks.** P3 (phone-sized screens) is done (#303), and so is `Documentation/nothing-fake-brief.md`: N1 to N5 (#298 to #302), which covers B1 and B3. After P4 comes B5 (check handling; its pull request must say how a voided or comped item stops counting toward sales, the leaderboard, and challenges), then B2. The owner's notes on the twelve draft templates become a polish pull request whenever he sends them; it waits its turn like any other.
 1. B4c, for the record: it followed `Documentation/templates-brief.md`. Its groundwork is done (#293) and so is the first batch of four templates as drafts (#294: Plain, Coffee Shop, Nightclub, Fancy). The second batch is done too (#295: Dive Bar, Brunch Spot, Diner, Sports Bar), and the third (#296: Cantina, Izakaya, Beach Bar, High Contrast). B4c is built. The owner reviews by switching templates in the running app; notes are handled in a polish pull request, whenever they come. The next step in the table is P3, phone-sized screens. U2 (Node 24 in CI and the frontend tool bumps) and the rest of U3 (the Maven Wrapper) can go in at any gap. Part A (A1 to A6), P1, P2, and U1 are finished. (P2's Windows steps wait on the owner's run through the checklist in `test-host.md`; fix what that turns up before B4a if it blocks using the test host.)
 2. After each merge, mark the step done in the table above and in its section, the way A1 and A2 were.
 

@@ -5,6 +5,7 @@ import './FloorMap.css';
 import { apiFetch } from '../../services/api';
 import { useStaff } from '../../context/StaffContext';
 import { canDo } from '../../utils/roles';
+import WideScreenNote from '../../components/WideScreenNote';
 
 // In edit mode a dragged table snaps to this many pixels, so tables line up in rows
 const GRID_SIZE = 10;
@@ -243,6 +244,8 @@ function FloorMap({ setCurrentView, setSelectedTable }) {
 
             <div className="floor-map-page">
                 <h2>FLOOR MAP</h2>
+                {/* Drawn on a phone only, where EDIT LAYOUT is not offered (FloorMap.css) */}
+                <WideScreenNote>The floor is drawn at its full size: scroll to see all of it, or use TABLES for a list. Rearranging the floor needs a tablet or a wider screen.</WideScreenNote>
 
                 <div className="floor-toolbar">
                     {editing ? (

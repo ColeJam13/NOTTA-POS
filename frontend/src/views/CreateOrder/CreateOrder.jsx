@@ -47,6 +47,11 @@ const MENU_REFRESH_MS = 5000;
 function CreateOrder({ setCurrentView, selectedTable, setSelectedTable }) {
   const [menuItems, setMenuItems] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('Savory');
+  // On a phone there is room for one half of this screen at a time: the menu, or the
+  // order. This says which. (On a wider screen both are drawn and it is not looked at.)
+  // It starts on the menu, because ringing in is what the screen is opened for; the
+  // countdown, the total, and SEND are at the bottom in both.
+  const [phoneView, setPhoneView] = useState('menu');
   const [orderItems, setOrderItems] = useState([])
   const [currentTable, setCurrentTable] = useState(selectedTable); // Changed: store entire table object instead of just ID
   const [currentOrderId, setCurrentOrderId] = useState(null);
@@ -659,7 +664,29 @@ useEffect(() => {
   return (
     <div className="page-with-nav">
       <NavBar currentView="createOrder" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} confirmLeave={confirmLeave} />
-            <div className="app">
+            {/* "phone-shows-menu" / "phone-shows-order" only mean something on a phone, where
+                one half is drawn at a time (CreateOrder.css). On a wider screen both halves
+                are always there and the class changes nothing. */}
+            <div className={`app phone-shows-${phoneView}`}>
+            {/* The switch between the two halves. Drawn on a phone only (hidden by
+                CreateOrder.css everywhere else). The second button names the table, since
+                the title that says it is part of the order half. */}
+            <div className="order-view-toggle" role="group" aria-label="Show the menu or the order">
+              <button
+                className={`order-view-btn ${phoneView === 'menu' ? 'active' : ''}`}
+                aria-pressed={phoneView === 'menu'}
+                onClick={() => setPhoneView('menu')}
+              >
+                MENU
+              </button>
+              <button
+                className={`order-view-btn ${phoneView === 'order' ? 'active' : ''}`}
+                aria-pressed={phoneView === 'order'}
+                onClick={() => setPhoneView('order')}
+              >
+                {currentTable ? formatTableName(currentTable) : 'Quick Order'} ({orderItems.length})
+              </button>
+            </div>
             <div className="order-panel">
                 <h2>Current Order - {currentTable ? formatTableName(currentTable) : 'New Quick Order'}</h2>
 

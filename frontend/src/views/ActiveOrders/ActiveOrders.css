@@ -252,3 +252,55 @@
   float: right;
   color: var(--status-ticket-done-text);
 }
+
+/* ----- On a phone (see App.css) -----
+   One ticket to a line. START and COMPLETE are big enough to hit with a thumb. */
+@media (max-width: 700px) {
+  .order-card {
+    padding: var(--space-12);
+    margin-bottom: var(--space-12);
+  }
+
+  /* The table on one side and how long it has waited on the other, each on a line of
+     its own if the title is long. (Floated, the wait sat on top of a long title.) */
+  .order-card h3 {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-6) var(--space-10);
+    line-height: var(--line-height);
+  }
+
+  .ticket-wait {
+    float: none;
+  }
+
+  .order-item-row {
+    flex-wrap: wrap;
+    gap: var(--space-6) var(--space-8);
+  }
+
+  .order-item-row span:first-child {
+    width: auto;
+  }
+
+  .btn-start,
+  .btn-complete {
+    min-width: 88px;
+    min-height: 44px;
+    margin-left: auto;
+  }
+
+  .kitchen-controls {
+    gap: var(--space-8);
+  }
+
+  .station-btn {
+    min-height: 44px;
+  }
+
+  /* A long item name wraps here; without this its lines touch in the pixel font */
+  .order-item-row span {
+    line-height: var(--line-height);
+  }
+}

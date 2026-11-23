@@ -202,3 +202,106 @@
   background: var(--color-accent-fill);
   color: var(--color-on-accent);
 }
+
+/* ============================================================================
+   ON A PHONE (a window up to 700 pixels wide; see App.css for what that means)
+
+   The bar comes apart into three pieces, top to bottom of the screen:
+     1. logo, bell, gear, who is signed in, sign out     (one short row)
+     2. the search box                                    (a row of its own)
+     ... the screen itself ...
+     3. the row of screen buttons, at the BOTTOM, where a thumb reaches, as a
+        strip that scrolls sideways
+   ============================================================================ */
+@media (max-width: 700px) {
+  /* "display: contents" takes the bar's own box away and leaves its two rows as
+     direct parts of the screen's column (.page-with-nav). That is what lets "order"
+     below send the buttons to the bottom, under the screen's content, with no
+     change to the markup. The bar's line and shadow go with its box; each row
+     draws its own. */
+  .navbar {
+    display: contents;
+  }
+
+  .navbar-top {
+    position: relative;                  /* The search and notification panels hang from this row (see below) */
+    flex-wrap: wrap;
+    gap: var(--space-8) var(--space-10);
+    padding: var(--space-8) var(--space-10);
+    background: var(--color-bg-deep);
+    border-bottom: var(--border-width) solid var(--color-border);
+  }
+
+  /* The logo has whatever the buttons beside it leave, and is cut short (with "...")
+     before it would push them onto a line of their own: on a 360-pixel phone, in a
+     template with large type, the name and four buttons do not fit side by side. */
+  .navbar-logo {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: var(--font-size-16);
+    white-space: nowrap;
+  }
+
+  .navbar-right {
+    flex-shrink: 0;
+    gap: var(--space-8);
+    margin-left: auto;
+  }
+
+  /* Second row, the whole width */
+  .navbar-search {
+    order: 3;
+    flex: 1 0 100%;
+    max-width: none;
+    position: static;                    /* So its panel of results is placed against the whole row, not the box */
+  }
+
+  .navbar-search input {
+    min-height: 44px;                    /* A finger needs about this much to land on */
+  }
+
+  .notifications-btn,
+  .settings-btn,
+  .sign-out-btn {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  /* The name and role are on the Home screen; here the round badge with the initials is enough */
+  .user-details,
+  .sign-out-label {
+    display: none;
+  }
+
+  .user-info {
+    gap: var(--space-8);
+  }
+
+  /* The row of screen buttons: last in the column, one line, scrolling sideways */
+  .navbar-bottom {
+    order: 99;
+    flex-shrink: 0;
+    justify-content: flex-start;
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-10);
+    overflow-x: auto;
+    border-top: var(--border-width) solid var(--color-border);
+  }
+
+  .navbar-bottom button {
+    flex-shrink: 0;
+    min-height: 44px;
+    white-space: nowrap;
+  }
+
+  /* On the order screen the search row is left off: that screen needs every line of
+     the phone for the menu and the order, and a server looking for another table has
+     the row of screen buttons at the bottom. (":has" asks "does this screen hold the
+     order screen's two halves?". A browser too old to know ":has" keeps the row.) */
+  .page-with-nav:has(> .app) .navbar-search {
+    display: none;
+  }
+}

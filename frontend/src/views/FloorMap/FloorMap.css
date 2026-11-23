@@ -174,3 +174,19 @@
 .table-visual.selected {
   box-shadow: var(--ring-selected);
 }
+
+/* ----- On a phone (see App.css) -----
+   The floor is drawn at the size it has on a tablet and the page scrolls to reach all
+   of it: a table's place on the floor is a number of pixels, and squeezing the room
+   to a phone's width would put tables on top of each other. Rearranging the floor is
+   for a wider screen; the button is not offered here and a note says why. Opening a
+   table by tapping it works as it does anywhere. */
+@media (max-width: 700px) {
+  .floor-canvas {
+    width: 1286px;                       /* As wide as the floor is in a 1366-pixel window */
+  }
+
+  .floor-toolbar {
+    display: none;
+  }
+}

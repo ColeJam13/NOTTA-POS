@@ -67,3 +67,13 @@
   border-color: var(--color-border-muted);
   color: var(--color-text-muted);
 }
+
+/* ----- On a short phone -----
+   The pad is three 90-pixel columns, which fits any phone's width as it is. On a
+   screen under 700 pixels tall (a small phone, or any phone with the keyboard up)
+   the keys are a little shorter so that the whole pad stays on screen. */
+@media (max-width: 700px) and (max-height: 700px) {
+  .pin-key {
+    height: 64px;
+  }
+}

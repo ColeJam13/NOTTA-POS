@@ -154,7 +154,7 @@ Remove-NetFirewallRule -DisplayName "NOTTA-POS"
 
 The address can change when the machine restarts, because the router hands them out. To keep it the same, look in the router's settings for "DHCP reservation" or "static lease" and reserve the address for this machine.
 
-The screens are not laid out for a phone yet (that is step P3 of the plan). A tablet in landscape is the closest to what they were designed for.
+The screens staff use during service have a layout for a phone held upright (step P3 of the plan). Held sideways, a phone gets the tablet's layout and does not have the height for it. The checklist for a real phone is at the end of this guide.
 
 ## Every day
 
@@ -239,3 +239,40 @@ These are the things nobody has yet seen work on Windows. Tick them off the firs
 - [ ] `backup-notta-pos.cmd` wrote a file of more than a few KB into `backups`.
 - [ ] Closing the start window stopped the app (the phone can no longer load it), and starting again left the phone signed in.
 - [ ] Deliberate mistakes are caught in plain words: rename `application-local.properties` and start (it should say the file is missing), then put it back.
+
+## Checklist for a real phone
+
+The phone layout was built and checked in a desktop browser set to a phone's size (390 by 844 and 360 by 640, with touch). Nobody has yet held it. These are the things only a real phone can show. Use the phones your staff actually carry, at least one iPhone (Safari) and one Android (Chrome), held upright, on the Wi-Fi. Say which did not go as written, with a screenshot if you can.
+
+Signing in and getting around:
+
+- [ ] The PIN pad is all on screen without scrolling, and each key registers one tap (no double digits, no missed taps).
+- [ ] After signing in, Home shows every screen your role has, two buttons to a line.
+- [ ] On any screen, the row of screen buttons is at the bottom of the phone, above the browser's own bar and not hidden under it. It slides sideways with a finger, and the screen you are on is lit and in view.
+- [ ] Nothing on any screen below slides sideways as a whole page.
+- [ ] Scrolling a long screen (Tables with many checks, the 86 board) does not leave the row of buttons floating in the middle or cut off when the browser's address bar hides and comes back.
+
+Taking an order:
+
+- [ ] Open a table from TABLES. The order screen opens on MENU with the table's name and item count on the switch beside it.
+- [ ] The categories slide sideways. Tapping an item adds it: the count on the switch goes up and the bar at the bottom says "Ready to send or save as draft".
+- [ ] An item with choices opens a picker that covers the whole phone, with ADD TO ORDER at the bottom. Typing a kitchen note brings up the keyboard: can you still reach ADD TO ORDER, or does the keyboard cover it? (This is the one I most expect to need work.)
+- [ ] The switch shows the order: every item, its choices and note, and a pencil and an x you can hit without hitting the other.
+- [ ] SEND ORDER is reachable with the thumb of the hand holding the phone. After it, the countdown shows at the bottom on both halves, and SEND NOW? sends at once.
+- [ ] CLOSE ORDER opens the Payment window. It fits; the tip buttons and the custom tip box work with the number keyboard; PROCESS PAYMENT stays on screen while the rest scrolls.
+
+The rest of a shift:
+
+- [ ] The kitchen display (ACTIVE ORDERS, BOH VIEW) on a phone: one ticket to a line, and START and COMPLETE are easy to hit with a wet thumb.
+- [ ] The 86 board: tap an item to 86 it, tap it in the red box to put it back.
+- [ ] The search box: typing a table number shows results under the top bar, inside the screen, with the keyboard up. Tapping a result opens it.
+- [ ] The bell: the panel fits, a notification can be dismissed, and (kitchen, bartender, manager) a message can be written and sent with the keyboard up.
+- [ ] Challenges: the cards fit, and the leaderboard slides sideways inside its own box.
+- [ ] The Floor Map shows a note, slides to show the whole floor, opens a table on a tap, and does not offer EDIT LAYOUT. Financials and Staff show a note and are readable.
+
+Things I could not check at all:
+
+- [ ] Each of the templates you care about, on the phone: text is readable at arm's length, and nothing is cut off. (Thirteen were measured by a script; none was looked at by a person on a phone.)
+- [ ] The phone's own text-size setting turned up one or two steps: does anything overlap or go off screen?
+- [ ] Turning the phone sideways: it gets the tablet's layout, which does not fit the height. Is that acceptable, or should sideways be given the phone layout too?
+- [ ] After the phone has slept in a pocket for a few minutes, the screen it wakes on is still signed in and catches up within a few seconds.

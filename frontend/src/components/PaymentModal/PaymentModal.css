@@ -318,3 +318,97 @@
   text-align: center;
   padding: var(--space-40) var(--space-20);
 }
+
+/* ----- On a phone (see App.css) -----
+   The window takes nearly the whole screen. What is in it scrolls; CANCEL and PROCESS
+   PAYMENT stay at the bottom of it, within a thumb's reach, whatever the scrolling.
+   ".modal-overlay .modal-content" (two names) so that these rules also win over the
+   .modal-content rules in Tables.css and QuickOrders.css, which draw the closed-check
+   pop-up with the same names. */
+@media (max-width: 700px) {
+  /* The box itself has one margin inside it, whichever of the three stylesheets that
+     style ".modal-content" was loaded last; the Payment window's header and body then
+     add none of their own. */
+  .modal-overlay .modal-content {
+    width: 96%;
+    max-width: none;
+    max-height: 96dvh;
+    padding: var(--space-12);
+  }
+
+  .modal-header {
+    padding: 0 0 var(--space-10);
+  }
+
+  /* Room on both sides of a centered title for the x in the corner */
+  .modal-overlay .modal-content h2 {
+    font-size: var(--font-size-16);
+    line-height: var(--line-height);
+    padding: 0 var(--space-40);
+    margin-bottom: var(--space-12);
+  }
+
+  .modal-header h2 {
+    padding: 0;
+    margin-bottom: 0;
+  }
+
+  .modal-overlay .modal-close {
+    top: 4px;
+    right: 4px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .modal-body {
+    padding: var(--space-10) 0 0;
+  }
+
+  .order-summary {
+    padding: var(--space-10) var(--space-12);
+    margin-bottom: var(--space-15);
+  }
+
+  .summary-row {
+    padding: var(--space-5) 0;
+    font-size: var(--font-size-12);
+  }
+
+  .summary-row.total {
+    font-size: var(--font-size-16);
+    margin-top: var(--space-5);
+    padding-top: var(--space-8);
+  }
+
+  .form-group {
+    margin-bottom: var(--space-15);
+  }
+
+  .payment-method-btn,
+  .tip-btn {
+    min-height: 48px;
+    padding: var(--space-8);
+  }
+
+  .tip-buttons {
+    gap: var(--space-6);
+  }
+
+  .grand-total {
+    padding: var(--space-10) var(--space-12);
+    margin-bottom: var(--space-10);
+  }
+
+  /* Stays in view at the bottom of the window while the rest scrolls under it */
+  .modal-actions {
+    position: sticky;
+    bottom: 0;
+    padding: var(--space-10) 0;
+    background: var(--color-surface);
+  }
+
+  .btn-cancel,
+  .btn-process {
+    min-height: 52px;
+  }
+}

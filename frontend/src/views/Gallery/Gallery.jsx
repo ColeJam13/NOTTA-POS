@@ -20,6 +20,7 @@ import ChallengeForm from '../Challenges/ChallengeForm';
 import { EightySixChip, EightySixTile } from '../EightySixBoard/EightySixPieces';
 import { TEMPLATES, useTemplates, templateOnScreen, previewTemplate, stopPreview } from '../../templates';
 import { serverNow, asBackendStamp } from '../../services/serverClock';
+import WideScreenNote from '../../components/WideScreenNote';
 // The stylesheets of the screens the pieces below come from. (In the built app every
 // stylesheet is loaded anyway; naming them here says where each look is defined.)
 import '../CreateOrder/CreateOrder.css';
@@ -269,6 +270,8 @@ function Gallery({ setCurrentView, setSelectedTable }) {
       <NavBar currentView="settings" setCurrentView={setCurrentView} setSelectedTable={setSelectedTable} />
       <div className="gallery-page">
         <h2>TEMPLATE GALLERY</h2>
+        {/* Drawn on a phone only */}
+        <WideScreenNote>The gallery is laid out for a tablet or a wider screen: its pieces are drawn at the size they have there, and on a phone it scrolls sideways.</WideScreenNote>
 
         <div className="gallery-top">
           <button className="gallery-back" onClick={() => setCurrentView('settings')}>BACK TO SETTINGS</button>

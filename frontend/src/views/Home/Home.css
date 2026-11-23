@@ -106,3 +106,52 @@
   background: var(--color-accent-fill);
   color: var(--color-on-accent);
 }
+
+/* ----- On a phone (see App.css) -----
+   Two buttons to a line in place of three, under a smaller logo, and the page scrolls
+   if the role has many screens. */
+@media (max-width: 700px) {
+  .home-page {
+    height: 100dvh;
+    justify-content: flex-start;
+    padding: var(--space-75) var(--space-12) var(--space-20);
+    overflow-y: auto;
+  }
+
+  .logo-container {
+    margin-bottom: var(--space-30);
+    max-width: 100%;
+  }
+
+  .home-logo {
+    max-width: 260px;
+  }
+
+  .home-buttons {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-12);
+    width: 100%;
+  }
+
+  .landing-btn {
+    min-height: 72px;
+    padding: var(--space-12) var(--space-8);
+    font-size: var(--font-size-12);
+    letter-spacing: var(--letter-spacing);
+  }
+
+  .home-signed-in {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+    justify-content: flex-end;
+    gap: var(--space-8);
+  }
+
+  .home-sign-out,
+  .home-settings {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+}

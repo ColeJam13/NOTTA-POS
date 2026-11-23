@@ -211,3 +211,54 @@
   letter-spacing: var(--letter-spacing);
   margin-top: var(--space-8);
 }
+
+/* ----- On a phone (see App.css) -----
+   This screen is laid out for a tablet or wider (a note at its top says so). These
+   rules keep it readable on a phone: one number to a line, and each payment method's
+   bar under its amount. */
+@media (max-width: 700px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-8);
+    margin-bottom: var(--space-15);
+  }
+
+  .stat-card {
+    padding: var(--space-12) var(--space-8);
+    min-width: 0;
+  }
+
+  .payment-breakdown,
+  .recent-transactions {
+    padding: var(--space-12);
+  }
+
+  .payment-row {
+    grid-template-columns: 1fr auto;
+    gap: var(--space-6) var(--space-10);
+  }
+
+  .payment-bar-container {
+    grid-column: 1 / -1;
+  }
+
+  .transaction-item {
+    flex-wrap: wrap;
+    gap: var(--space-8);
+    padding: var(--space-10);
+  }
+
+  /* The big numbers are sized for a third of a tablet; here they have half a phone */
+  .stat-value,
+  .stat-value.large {
+    font-size: var(--font-size-18);
+    overflow-wrap: anywhere;
+  }
+
+  .stat-label,
+  .stat-note,
+  .payment-breakdown h3,
+  .recent-transactions h3 {
+    line-height: var(--line-height);
+  }
+}

@@ -1311,3 +1311,67 @@ test('an item that was removed before it was saved leaves no hole in the positio
 
   expect(positionsRungIn()).toEqual([0, 1]);
 });
+
+// ---------------------------------------------------------------------------
+// On a phone: one half of the screen at a time (step P3)
+//
+// A phone has room for the menu OR the order, not both, so the screen has a switch
+// between them. Which half is DRAWN is the stylesheet's doing (CreateOrder.css, under
+// "on a phone"), and this test browser draws no layout; what can be tested here is what
+// the stylesheet reads: the class on the screen, and what the switch says.
+// ---------------------------------------------------------------------------
+
+test('the screen starts on the menu half, and the switch changes which half a phone shows', async () => {
+  const { container } = await renderScreen();
+  const halves = container.querySelector('.app');
+  const toggle = screen.getByRole('group', { name: 'Show the menu or the order' });
+  const [menuButton, orderButton] = within(toggle).getAllByRole('button');
+
+  expect(halves).toHaveClass('phone-shows-menu');
+  expect(menuButton).toHaveTextContent('MENU');
+  expect(menuButton).toHaveAttribute('aria-pressed', 'true');
+  expect(orderButton).toHaveAttribute('aria-pressed', 'false');
+
+  await userEvent.click(orderButton);
+  expect(halves).toHaveClass('phone-shows-order');
+  expect(halves).not.toHaveClass('phone-shows-menu');
+  expect(orderButton).toHaveAttribute('aria-pressed', 'true');
+
+  await userEvent.click(menuButton);
+  expect(halves).toHaveClass('phone-shows-menu');
+});
+
+test('the switch names the table and counts the items, so the menu half says what is on the order', async () => {
+  existingOrders = [{ orderId: 77, tableId: 3, status: 'open' }];
+  existingItems = [{ orderItemId: 50, menuItemId: 1, price: 17.0, quantity: 1, status: 'fired' }];
+  const { container } = await renderScreen({ tableId: 3, tableNumber: 'W3', status: 'occupied' });
+  const orderButton = within(screen.getByRole('group', { name: 'Show the menu or the order' })).getAllByRole('button')[1];
+
+  await within(orderList(container)).findByText('Chicken Cutty');
+  expect(orderButton).toHaveTextContent('Table W3 (1)');
+
+  // Ringing one in on the menu half is counted at once, and does not leave the menu
+  await userEvent.click(menuCard('Fries'));
+  expect(orderButton).toHaveTextContent('Table W3 (2)');
+  expect(container.querySelector('.app')).toHaveClass('phone-shows-menu');
+});
+
+test('with no table yet, the switch says Quick Order', async () => {
+  await renderScreen();
+
+  expect(within(screen.getByRole('group', { name: 'Show the menu or the order' })).getAllByRole('button')[1]).toHaveTextContent('Quick Order (0)');
+});
+
+test('both halves, the totals, and the buttons are in the page whichever half a phone shows', async () => {
+  // On a wide screen both halves are drawn side by side and the switch is hidden. Nothing
+  // is taken out of the page when the other half is chosen: only a class changes.
+  const { container } = await renderScreen();
+
+  await userEvent.click(within(screen.getByRole('group', { name: 'Show the menu or the order' })).getAllByRole('button')[1]);
+
+  expect(container.querySelector('.menu-panel')).not.toBeNull();
+  expect(orderList(container)).not.toBeNull();
+  expect(container.querySelector('.order-totals')).not.toBeNull();
+  expect(screen.getByRole('button', { name: 'SEND ORDER' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'CLOSE ORDER' })).toBeInTheDocument();
+});
